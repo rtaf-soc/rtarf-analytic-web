@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const MapView = () => {
-  const position: [number, number] = [13.7563, 100.5018]; // Bangkok
+  const position: [number, number] = [13.7563, 100.5018]; 
 
   return (
     <MapContainer center={position} zoom={12} style={{ height: "100vh", width: "100%" }}>
