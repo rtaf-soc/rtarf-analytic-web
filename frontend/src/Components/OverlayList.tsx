@@ -129,7 +129,7 @@ const formatTime: DateFormatter = (date: Date): string => {
             </div>
           </div>
 
-          {/* OwnerInformation*/}
+          {/* OwnerIn formation*/}
           <div>
             <div className="text-black font-semibold mb-0.5">Owner Information</div>
             <div className="space-y-0 text-black ml-1 text-[12px]">
