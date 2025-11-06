@@ -44,10 +44,10 @@ const DevConDashboard = () => {
   };
 
   return (
-    <div className="w-72 h-[100vh] bg-gradient-to-br from-gray-900 to-gray-800 p-3 rounded-lg shadow-2xl flex flex-col justify-between overflow-hidden">
+    <div className="w-72 h-[100vh] bg-black p-3 rounded-lg shadow-2xl flex flex-col justify-between overflow-hidden">
       {/* DEFCON Status */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-3 border-2 border-green-500 flex flex-col items-center">
-        <div className="text-[20px] text-white font-bold mb-2 tracking-widest">
+      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-600 flex flex-col items-center">
+        <div className="text-[20px] text-white font-bold mb-2 tracking-widest ">
           DEFCON
         </div>
         <div className="relative mb-2">
