@@ -28,3 +28,4 @@ sqlalchemy
 
 # สำหรับสร้าง node
 geoalchemy2
+shapely
