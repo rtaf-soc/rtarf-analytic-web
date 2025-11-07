@@ -1,4 +1,4 @@
-#elstic_client.py
+#app/elstic_client.py
 import os
 from dotenv import load_dotenv
 from elasticsearch import AsyncElasticsearch

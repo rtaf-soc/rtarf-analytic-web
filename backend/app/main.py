@@ -2,7 +2,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-
+from . import elastic_client
 from . import database, models, crud, schemas
 
 
@@ -16,6 +16,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Lifecycle event handlers
+@app.on_event("startup")
+async def startup_event():
+    """Initialize connections on startup"""
+    pass
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close connections on shutdown"""
+    await elastic_client.es.close()
 
 # Dependency Injection
 def get_db():
@@ -156,6 +167,24 @@ def read_single_rtarf_event(event_id: str, db: Session = Depends(get_db)):
         )
     return db_event
 
+@app.post("/rtarf-events/sync-from-elasticsearch",
+          response_model=schemas.SyncResponse,  # ← Use correct response model
+          tags=["RTARF Events ES"])
+async def query_rtarf_event(db: Session = Depends(get_db)):
+    """
+    Sync RTARF events from Elasticsearch to PostgreSQL
+    
+    Returns:
+        SyncResponse with status, total_processed, inserted, and updated counts
+    """
+    try:
+        result = await crud.insert_rtarf_event_into_postgres(db, elastic_client.es)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync events: {str(e)}"
+        )
 
 # ===============================================================
 # Health Check
