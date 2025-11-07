@@ -3,10 +3,9 @@ import { AlertTriangle } from "lucide-react";
 
 const DevConDashboard = () => {
   const [defconLevel] = useState(1);
-
   const threats = [
-    { id: "THREAT 5", code: "8281034OCT24", color: "bg-yellow-400" },
-    { id: "THREAT 4", code: "2809420CT24", color: "bg-yellow-400" },
+    { id: "THREAT 5", code: "8281034OCT24", color: "bg-yellow-300" },
+    { id: "THREAT 4", code: "2809420CT24", color: "bg-yellow-300" },
     { id: "THREAT 3", code: "2805350CT24", color: "bg-yellow-400" },
     { id: "THREAT 2", code: "2801030CT24", color: "bg-red-500" },
     { id: "THREAT 1", code: "272315OCT24", color: "bg-yellow-400" },
@@ -46,17 +45,38 @@ const DevConDashboard = () => {
   return (
     <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
       {/* DEFCON Status */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col items-center">
-        <div className="text-[20px] text-white font-bold mb-2 tracking-widest ">
+
+      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
+        {/* ชื่อ DEFCON ให้อยู่ตรงกลาง */}
+        <div className="text-[25px] text-white font-bold mb-3 tracking-wider text-center">
           DEFCON
         </div>
-        <div className="relative mb-2">
-          <div className="w-30 h-30 rounded-full border-4 border-green-500 flex items-center justify-center bg-black">
-            <span className="text-8xl font-bold text-green-400">
-              {defconLevel}
-            </span>
+
+        {/* ส่วน DEFCON Level */}
+        <div className="flex items-center justify-between">
+          {/* 🔹 กรอบด้านซ้าย 4 ช่อง */}
+          <div className="flex flex-col justify-center gap-1.5">
+            {[4, 3, 2, 1].map((level) => (
+              <div
+                key={level}
+                className={`w-12 h-4 border-2 ${
+                  level === defconLevel
+                    ? "border-green-500 bg-green-400 shadow-[0_0_10px_rgba(0,255,0,0.7)]"
+                    : "border-gray-600 bg-transparent"
+                }`}
+              ></div>
+            ))}
           </div>
-          <div className="absolute -inset-1 rounded-full border-4 border-green-400/30 animate-pulse"></div>
+
+          {/* 🔸 วงกลม Defcon Level */}
+          <div className="relative">
+            <div className="w-28 h-28 rounded-full border-8 border-green-500 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,255,0,0.3)]">
+              <span className="text-8xl font-bold text-green-400">
+                {defconLevel}
+              </span>
+            </div>
+            <div className="absolute -inset-1 rounded-full border-4 border-green-400/30 animate-pulse"></div>
+          </div>
         </div>
       </div>
 
@@ -66,7 +86,7 @@ const DevConDashboard = () => {
         bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1"
       >
         <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
-          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-semibold">
+          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
             Top 3 ประเทศ ลาดตระเวนมายังเครือข่ายประจำสัปดาห์
           </div>
 
@@ -102,7 +122,7 @@ const DevConDashboard = () => {
           className="bg-black rounded-lg p-[6px] 
     shadow-[inset_0_1px_3px_rgba(255,255,255,0.15),inset_0_-2px_4px_rgba(0,0,0,0.7)]"
         >
-          <div className="text-[9px] text-white mb-[4px] tracking-wide text-center font-semibold">
+          <div className="text-[9px] text-white mb-[4px] tracking-wide text-center font-bold">
             THREAT DISTRIBUTION
           </div>
 

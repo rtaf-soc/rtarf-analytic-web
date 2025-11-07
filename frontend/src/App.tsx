@@ -1,22 +1,23 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Outlet, Navigate } from "react-router-dom";
 import Defcon from "./Components/Defcon";
 import MapView from "./Components/MapView";
 import OverlayList from "./Components/OverlayList";
 import "./index.css";
 
-const App = () => {
+// Layout หลัก (Sidebar ซ้าย + Defcon ขวา)
+const MainLayout = () => {
   return (
     <div className="bg-black h-screen relative">
-      {/* OverlayList - Fixed ซ้าย (w-60) */}
+      {/* ซ้าย */}
       <OverlayList />
 
-      {/* MapView - กลาง เว้นพื้นที่ซ้าย-ขวา */}
+      {/* เนื้อหากลาง */}
       <div className="ml-59 mr-58 h-full">
-        <MapView />
+        <Outlet />
       </div>
 
-      {/* Defcon - Fixed ขวา */}
+      {/* ขวา */}
       <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50">
         <Defcon />
       </div>
@@ -24,5 +25,23 @@ const App = () => {
   );
 };
 
+// กำหนด route
+const App = () => {
+  return (
+    <Routes>
+      {/* 🔸 redirect หน้า "/" ให้ไป "/cycop1" */}
+      <Route path="/" element={<Navigate to="/cycop1" replace />} />
+
+      {/* 🔹 main layout อยู่ใน path /cycop1 */}
+      <Route path="/cycop1" element={<MainLayout />}>
+        <Route index element={<MapView />} />  {/* /cycop1 */}
+      </Route>
+
+      <Route path="/mitre1" element={<MainLayout />}>
+        <Route index element={<MapView />} />  {/* /mitre1 */}
+      </Route>
+    </Routes>
+  );
+};
 
 export default App;

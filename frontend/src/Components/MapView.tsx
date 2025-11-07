@@ -12,12 +12,13 @@ import "../index.css";
 
 // ไอคอน threat สีแดง/เหลือง
 const redIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/565/565547.png",
+  iconUrl: "/img/warning.png",
   iconSize: [24, 24],
+  
 });
 
 const yellowIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
+  iconUrl: "/img/warning.png",
   iconSize: [24, 24],
 });
 
