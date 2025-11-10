@@ -44,10 +44,10 @@ const DevConDashboard = () => {
 
   return (
     <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
-      {/* DEFCON Status */}
+      {/*DEFCON Status*/}
 
       <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
-        {/* ชื่อ DEFCON ให้อยู่ตรงกลาง */}
+        {/*ชื่อ DEFCON ให้อยู่ตรงกลาง*/}
         <div className="text-[25px] text-white font-bold mb-3 tracking-wider text-center">
           DEFCON
         </div>
