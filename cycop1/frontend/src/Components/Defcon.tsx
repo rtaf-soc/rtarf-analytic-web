@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
-import { fetchAlertSummary, type AlertSummary } from "../services/postgresService";
+import { fetchAlertSummary, type AlertSummary } from "../services/defensiveService";
 
 const DevConDashboard = () => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
