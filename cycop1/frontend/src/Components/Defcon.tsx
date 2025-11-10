@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
+import { fetchAlertSummary, type AlertSummary } from "../services/postgresService";
 
 const DevConDashboard = () => {
+  const [alertData, setAlertData] = useState<AlertSummary | null>(null);
   const [defconLevel] = useState(1);
   const threats = [
     { id: "THREAT 5", code: "8281034OCT24", color: "bg-yellow-300" },
@@ -11,18 +13,51 @@ const DevConDashboard = () => {
     { id: "THREAT 1", code: "272315OCT24", color: "bg-yellow-400" },
   ];
 
-  const pieData = [
-    { label: "IP Sweep", value: 35, color: "bg-purple-500", hex: "#a855f7" },
-    { label: "Malware", value: 25, color: "bg-pink-500", hex: "#ec4899" },
-    { label: "DDoS", value: 20, color: "bg-green-500", hex: "#22c55e" },
-    { label: "Phishing", value: 12, color: "bg-yellow-400", hex: "#facc15" },
-    { label: "Others", value: 8, color: "bg-blue-400", hex: "#60a5fa" },
-  ];
+  useEffect(() => {
+    const loadAlertData = async () => {
+      const summary = await fetchAlertSummary();
+      console.log("Show alert:", summary);
+      setAlertData(summary);
+    };
+    loadAlertData();
+  }, []);
 
+  // ✅ Convert backend data to pie chart data
+  const pieData =
+    alertData?.alert_summarys
+      ?.slice(0, 5) // top 5 categories for pie
+      .map((item, i) => ({
+        label: item.alert_name,
+        value: item.count,
+        // Randomized color palette (you can tweak)
+        color: [
+          "bg-purple-500",
+          "bg-pink-500",
+          "bg-green-500",
+          "bg-yellow-400",
+          "bg-blue-400",
+        ][i % 5],
+        hex: ["#a855f7", "#ec4899", "#22c55e", "#facc15", "#60a5fa"][i % 5],
+      })) || [];
+
+  // ✅ Fallback while loading
+  if (!alertData) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-black text-white">
+        Loading Threat Dashboard...
+      </div>
+    );
+  }
+
+  // ✅ Calculate total for pie chart
+  const totalValue = pieData.reduce((sum, item) => sum + item.value, 0) || 1;
+
+  // ✅ Generate pie chart arcs
   const generatePieChart = () => {
     let currentAngle = 0;
+
     return pieData.map((item, idx) => {
-      const angle = (item.value / 100) * 360;
+      const angle = (item.value / totalValue) * 360;
       const startAngle = currentAngle;
       currentAngle += angle;
 
@@ -41,7 +76,6 @@ const DevConDashboard = () => {
       );
     });
   };
-
   return (
     <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
       {/*DEFCON Status*/}
@@ -59,11 +93,10 @@ const DevConDashboard = () => {
             {[4, 3, 2, 1].map((level) => (
               <div
                 key={level}
-                className={`w-12 h-4 border-2 ${
-                  level === defconLevel
-                    ? "border-green-500 bg-green-400 shadow-[0_0_10px_rgba(0,255,0,0.7)]"
-                    : "border-gray-600 bg-transparent"
-                }`}
+                className={`w-12 h-4 border-2 ${level === defconLevel
+                  ? "border-green-500 bg-green-400 shadow-[0_0_10px_rgba(0,255,0,0.7)]"
+                  : "border-gray-600 bg-transparent"
+                  }`}
               ></div>
             ))}
           </div>
@@ -144,7 +177,7 @@ const DevConDashboard = () => {
                     className="flex items-center gap-[4px] text-[8px]"
                   >
                     <div className={`w-2 h-2 rounded-sm ${item.color}`}></div>
-                    <span className="text-gray-300 flex-1 truncate">
+                    <span className="text-gray-300 line-clamp-2">
                       {item.label}
                     </span>
                     <span className="text-gray-500">{item.value}%</span>
