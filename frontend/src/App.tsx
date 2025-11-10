@@ -12,7 +12,7 @@ const MainLayout = () => {
       {/*ซ้าย*/}
       <OverlayList />
 
-      {/* เนื้อหากลาง */}
+      {/*เนื้อหากลาง*/}
       <div className="ml-59 mr-58 h-full">
         <Outlet />
       </div>
