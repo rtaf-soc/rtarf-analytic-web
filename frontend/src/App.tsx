@@ -9,7 +9,7 @@ import "./index.css";
 const MainLayout = () => {
   return (
     <div className="bg-black h-screen relative">
-      {/* ซ้าย */}
+      {/*ซ้าย*/}
       <OverlayList />
 
       {/* เนื้อหากลาง */}
