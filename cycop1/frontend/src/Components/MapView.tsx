@@ -75,7 +75,7 @@ const MapView = () => {
         <Polyline
           key={idx}
           positions={line}
-          pathOptions={{ color: "#00ffff", weight: 2 }}
+          pathOptions={{ color: "#32CD32", weight: 2 }}
         />
       ))}
     </MapContainer>
