@@ -75,3 +75,14 @@ def read_alerts_by_ip(
     ดึง alerts ล่าสุดจาก IP address
     """
     return crud.get_latest_alerts_by_ip(db, ip_address=ip_address, limit=limit)
+
+@router.get("/latest", response_model=List[schemas.Alert])
+def get_lastest_alert(db: Session = Depends(get_db)):
+    try:
+        result = crud.get_latest_alerts(db)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get alert latest list: {str(e)}"
+     )

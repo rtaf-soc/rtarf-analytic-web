@@ -311,8 +311,16 @@ logger = logging.getLogger(__name__)
 
 def _extract_fields(source):
     """Extract and normalize fields from Elasticsearch document"""
+    # --- Incident / Status (optional mapping if data source contains them) ---
+    
+
     # --- Palo-XSIAM ---
-    palo = source.get("palo-xsiam") or source
+    palo = source.get("palo-xsiam")
+    if not isinstance(palo, dict):
+           palo = {}
+    
+    incident_id = palo.get("incident_id")
+    status = palo.get("status")
     px_tactics = palo.get("mitre_tactics_ids_and_names")
     px_techniques = palo.get("mitre_techniques_ids_and_names")
     description = palo.get("description")
@@ -371,6 +379,8 @@ def _extract_fields(source):
     suricata_class = suricata_class if isinstance(suricata_class, str) else None
 
     return {
+        "incident_id": incident_id,
+        "status": status,
         "palo_tactics": normalize_list(px_tactics),
         "palo_techniques": normalize_list(px_techniques),
         "description": description,
@@ -385,7 +395,7 @@ def _extract_fields(source):
         "cs_event_objective": cs_event_objective,
         "suricata_classification": suricata_class
     }
-    
+
 def _bulk_upsert_records(db: Session, records: list):
     """
     Perform bulk upsert using PostgreSQL's ON CONFLICT DO UPDATE
@@ -395,11 +405,11 @@ def _bulk_upsert_records(db: Session, records: list):
         return 0, 0
     
     try:
-        # Use PostgreSQL's INSERT ... ON CONFLICT for upsert
         stmt = insert(models.RtarfEvent).values(records)
         
-        # Define what to do on conflict (when event_id already exists)
         update_dict = {
+            'incident_id': stmt.excluded.incident_id,
+            'status': stmt.excluded.status,
             'mitre_tactics_ids_and_names': stmt.excluded.mitre_tactics_ids_and_names,
             'mitre_techniques_ids_and_names': stmt.excluded.mitre_techniques_ids_and_names,
             'description': stmt.excluded.description,
@@ -430,7 +440,7 @@ def _bulk_upsert_records(db: Session, records: list):
         db.rollback()
         logger.error(f"Bulk upsert failed: {e}")
         raise
-
+    
 async def insert_rtarf_event_into_postgres(db: Session, es_client):
     """
     Fetch events from Elasticsearch and insert into PostgreSQL
@@ -440,8 +450,6 @@ async def insert_rtarf_event_into_postgres(db: Session, es_client):
         "query": {
             "bool": {
                 "should": [
-                    # {"exists": {"field": "suricata.classification"}},
-                    # {"exists": {"field": "crowdstrike.event.MitreAttack.Tactic"}},
                     {"exists": {"field": "palo-xsiam.mitre_tactics_ids_and_names"}},
                 ],
                 "minimum_should_match": 1
@@ -472,6 +480,8 @@ async def insert_rtarf_event_into_postgres(db: Session, es_client):
         
         record = {
             "event_id": es_id,
+            "incident_id": fields["incident_id"],
+            "status": fields["status"],
             "mitre_tactics_ids_and_names": fields["palo_tactics"],
             "mitre_techniques_ids_and_names": fields["palo_techniques"],
             "description": fields["description"],
@@ -505,6 +515,81 @@ async def insert_rtarf_event_into_postgres(db: Session, es_client):
         db.rollback()
         logger.error(f"Unexpected error: {e}")
         return {"status": "error", "message": str(e)}
+
+# async def insert_rtarf_event_into_postgres(db: Session, es_client):
+#     """
+#     Fetch events from Elasticsearch and insert into PostgreSQL
+#     Returns a summary of the operation
+#     """
+#     query = {
+#         "query": {
+#             "bool": {
+#                 "should": [
+#                     # {"exists": {"field": "suricata.classification"}},
+#                     # {"exists": {"field": "crowdstrike.event.MitreAttack.Tactic"}},
+#                     {"exists": {"field": "palo-xsiam.mitre_tactics_ids_and_names"}},
+#                 ],
+#                 "minimum_should_match": 1
+#             }
+#         }
+#     }
+    
+#     try:
+#         resp = await es_client.search(index="rtarf-events-beat*", body=query, size=250)
+#     except Exception as e:
+#         logger.error(f"Elasticsearch query failed: {e}")
+#         raise
+    
+#     record_batch = []
+    
+#     for hit in resp["hits"]["hits"]:
+#         source = hit.get("_source", {})
+#         es_id = hit.get("_id")
+#         fields = _extract_fields(source)
+        
+#         ts = source.get("@timestamp") or source.get("timestamp")
+#         parsed_ts = None
+#         if ts:
+#             try:
+#                 parsed_ts = dateparser.parse(ts)
+#             except Exception:
+#                 parsed_ts = None
+        
+#         record = {
+#             "event_id": es_id,
+#             "mitre_tactics_ids_and_names": fields["palo_tactics"],
+#             "mitre_techniques_ids_and_names": fields["palo_techniques"],
+#             "description": fields["description"],
+#             "severity": fields["severity"],
+#             "alert_categories": fields["alert_categories"],
+#             "crowdstrike_tactics": fields["cs_tactics"],
+#             "crowdstrike_tactics_ids": fields["cs_tactics_ids"],
+#             "crowdstrike_techniques": fields["cs_techniques"],
+#             "crowdstrike_techniques_ids": fields["cs_techniques_ids"],
+#             "crowdstrike_severity": fields["cs_severity"],  
+#             "crowdstrike_event_name": fields["cs_event_name"],
+#             "crowdstrike_event_objective": fields["cs_event_objective"],
+#             "suricata_classification": fields["suricata_classification"],
+#             "timestamp": parsed_ts
+#         }
+#         record_batch.append(record)
+    
+#     try:
+#         inserted, updated = _bulk_upsert_records(db, record_batch)
+#         return {
+#             "status": "success",
+#             "total_processed": len(record_batch),
+#             "inserted": inserted,
+#             "updated": updated
+#         }
+#     except IntegrityError as e:
+#         db.rollback()
+#         logger.error(f"Integrity error: {e}")
+#         return {"status": "error", "message": "Integrity error inserting records"}
+#     except Exception as e:
+#         db.rollback()
+#         logger.error(f"Unexpected error: {e}")
+#         return {"status": "error", "message": str(e)}
     
     
 def get_rtarf_event(db: Session, event_id: str):
@@ -620,11 +705,20 @@ async def get_all_event_and_insert_into_alert(db: Session, es=None):
         
         # Determine severity
         severity = event.severity or event.crowdstrike_severity or "Unknown"
+        
+        incident_id = event.incident_id or "none"
+        
+        description= event.description or "none"
+        
+        status = event.status or "pending"
 
         alert = models.Alert(
             event_id=event.event_id,
             alert_name=alert_name,
             severity=severity,
+            incident_id=incident_id,
+            description=description,
+            status=status,
             source=source_name,
             timestamp=datetime.utcnow()
         )

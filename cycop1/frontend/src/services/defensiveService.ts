@@ -1,5 +1,6 @@
 // services/postgresService.ts
 import axios from "axios";
+import { type  AlertBase } from "../types/defensive";
 
 const POSTGRES_API_URL =
   import.meta.env.VITE_POSTGRES_API_URL || "http://localhost:8000";
@@ -15,23 +16,36 @@ export interface AlertItem {
 
 export interface AlertSummary {
   total_alerts: number;
-  alert_summarys: AlertItem[];  // ✅ array of objects
+  alert_summarys: AlertItem[];
 }
 
 export async function fetchAlertSummary(): Promise<AlertSummary> {
   try {
     const response = await axios.get<AlertSummary>(
-      `${POSTGRES_API_URL}/alert-lists/summary`
+      `${POSTGRES_API_URL}/alerts/summary`
     );
     return response.data;
   } catch (error) {
     console.error("Error fetching alert summary from PostgreSQL:", error);
     return {
       total_alerts: 0,
-      alert_summarys: [], // ✅ return valid empty array
+      alert_summarys: [],
     };
   }
 }
+
+export async function fetchLatestAlert(): Promise<AlertBase[]> {
+  try {
+    const response = await axios.get<AlertBase[]>(
+      `${POSTGRES_API_URL}/alerts/latest`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching latest alert:", error);
+    return [];
+  }
+}
+
 
 // ==============================
 // Node Services

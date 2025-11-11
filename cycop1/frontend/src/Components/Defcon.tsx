@@ -1,28 +1,48 @@
-import React, { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
-import { fetchAlertSummary, type AlertSummary } from "../services/defensiveService";
+import { useState, useEffect } from "react";
+import { fetchAlertSummary, type AlertSummary, fetchLatestAlert } from "../services/defensiveService";
+import { type AlertBase } from "../types/defensive";
 
 const DevConDashboard = () => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
+  const [threatData, setThreatData] = useState<AlertBase[]>([]);
   const [defconLevel] = useState(1);
-  const threats = [
-    { id: "THREAT 5", code: "8281034OCT24", color: "bg-yellow-300" },
-    { id: "THREAT 4", code: "2809420CT24", color: "bg-yellow-300" },
-    { id: "THREAT 3", code: "2805350CT24", color: "bg-yellow-400" },
-    { id: "THREAT 2", code: "2801030CT24", color: "bg-red-500" },
-    { id: "THREAT 1", code: "272315OCT24", color: "bg-yellow-400" },
-  ];
+  // const threats = [
+  //   { id: "THREAT 5", code: "8281034OCT24", color: "bg-yellow-300" },
+  //   { id: "THREAT 4", code: "2809420CT24", color: "bg-yellow-300" },
+  //   { id: "THREAT 3", code: "2805350CT24", color: "bg-yellow-400" },
+  //   { id: "THREAT 2", code: "2801030CT24", color: "bg-red-500" },
+  //   { id: "THREAT 1", code: "272315OCT24", color: "bg-yellow-400" },
+  // ];
 
   useEffect(() => {
     const loadAlertData = async () => {
       const summary = await fetchAlertSummary();
+      const threat = await fetchLatestAlert();
       console.log("Show alert:", summary);
+      console.log("Show threat:", threat)
       setAlertData(summary);
+      setThreatData(threat);
     };
     loadAlertData();
   }, []);
 
-  // ✅ Convert backend data to pie chart data
+  function getSeverityColor(severity?: string): string {
+    switch (severity) {
+      case 'critical': return 'bg-red-500';
+      case 'high': return 'bg-orange-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'low': return 'bg-blue-500';
+      default: return 'bg-gray-300';
+    }
+  }
+
+  const threats = threatData?.map((item, i) => ({
+    description: item.description,
+    code: item.incident_id,
+    color: getSeverityColor(item.severity),
+  })
+  )
+
   const pieData =
     alertData?.alert_summarys
       ?.slice(0, 5) // top 5 categories for pie
@@ -205,9 +225,14 @@ const DevConDashboard = () => {
               <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
 
               {/* ข้อความ Threat ID และ Code */}
-              <div className="flex flex-col text-[15px] leading-tight">
-                <span className="text-white font-semibold">{threat.id}</span>
-                <span className="text-white font-mono text-[12px]">
+              <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight">
+                <span
+                  className="text-white font-semibold truncate"
+                  title={threat.description} // full text on hover
+                >
+                  {threat.description}
+                </span>
+                <span className="text-white font-mono text-[12px] truncate" title={threat.code}>
                   {threat.code}
                 </span>
               </div>

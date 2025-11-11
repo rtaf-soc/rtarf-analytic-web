@@ -117,7 +117,11 @@ class RtarfEvent(Base):
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(String(255), unique=True, index=True, nullable=False)
     
-    # เพิ่ม network-related fields
+    # Incident and Status fields
+    incident_id = Column(String(255), index=True, nullable=True)
+    status = Column(String(50), default="pending", nullable=False)
+    
+    # Network-related fields
     source_ip = Column(INET, index=True)
     destination_ip = Column(INET, index=True)
     source_port = Column(Integer)
@@ -157,10 +161,13 @@ class RtarfEvent(Base):
         Index('idx_rtarf_events_timestamp', timestamp.desc()),
         Index('idx_rtarf_events_source_ip', source_ip),
         Index('idx_rtarf_events_dest_ip', destination_ip),
+        Index('idx_rtarf_events_incident_id', incident_id),
+        Index('idx_rtarf_events_status', status),
     )
 
     def __repr__(self):
-        return f"<RtarfEvent(id={self.id}, event_id='{self.event_id}', severity='{self.severity}')>"
+        return f"<RtarfEvent(id={self.id}, event_id='{self.event_id}', severity='{self.severity}', status='{self.status}')>"
+
     
     
 class Alert(Base):
@@ -171,9 +178,12 @@ class Alert(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(String(255), unique=True, index=True, nullable=False)  
-    alert_name = Column(String(255), index=True, nullable=False)  
+    alert_name = Column(String(255), index=True, nullable=False)
+    description = Column(Text)  
     severity = Column(String(50), index=True)
     source = Column(String(50), index=True)
+    incident_id = Column(String(255), index=True, nullable=True)
+    status = Column(String(50), default="pending", nullable=False)
     
     # เพิ่ม network fields
     source_ip = Column(INET, index=True)
