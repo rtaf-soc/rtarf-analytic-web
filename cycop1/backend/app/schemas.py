@@ -195,6 +195,9 @@ class ConnectionStatistics(BaseModel):
 
 class RtarfEventBase(BaseModel):
     event_id: str = Field(..., max_length=255, description="Event ID เฉพาะ")
+    incident_id: Optional[str] = Field(None, max_length=255, description="Incident ID ที่เชื่อมโยงกับ Event")
+    status: Optional[str] = Field("pending", max_length=50, description="สถานะของ Event (เช่น new, in_progress, resolved)")
+
     source_ip: Optional[str] = Field(None, description="IP address ต้นทาง")
     destination_ip: Optional[str] = Field(None, description="IP address ปลายทาง")
     source_port: Optional[int] = Field(None, ge=0, le=65535)
@@ -274,7 +277,10 @@ class AlertBase(BaseModel):
     event_id: str = Field(..., max_length=255, description="Event ID เฉพาะ")
     alert_name: str = Field(..., max_length=255, description="ชื่อ alert")
     severity: Optional[str] = Field(None, max_length=50, description="ระดับความรุนแรง")
-    source: Optional[str] = Field(None, max_length=50, description="แหล่งที่มาของ alert")  # ✅ แก้ไขเป็น Optional
+    source: Optional[str] = Field(None, max_length=50, description="แหล่งที่มาของ alert")
+    incident_id: Optional[str] = Field(None, max_length=255, description="Incident ID ที่เชื่อมโยงกับ Event")
+    status: Optional[str] = Field("pending", max_length=50, description="สถานะของ Event (เช่น new, in_progress, resolved)")
+    description: Optional[str] = None
     source_ip: Optional[str] = Field(None, description="IP address ต้นทาง")
     destination_ip: Optional[str] = Field(None, description="IP address ปลายทาง")
     affected_node_id: Optional[int] = Field(None, description="ID ของโหนดที่ได้รับผลกระทบ")
