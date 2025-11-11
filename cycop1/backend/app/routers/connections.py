@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from .. import crud, schemas, database
+from .. import crud, schemas, database, models
 
 router = APIRouter()
 
@@ -59,6 +59,26 @@ def read_all_connections(
         protocol=protocol
     )
     return connections
+
+@router.get("/with-nodes", response_model=List[schemas.NetworkConnectionWithNodes])
+def read_all_connections_with_nodes(db: Session = Depends(get_db)):
+    """
+    ดึงข้อมูลการเชื่อมต่อทั้งหมด พร้อมข้อมูลโหนด (source/destination)
+    """
+    db_connections = db.query(models.NetworkConnection).all()
+
+    result = []
+    for conn in db_connections:
+        result.append(
+            schemas.NetworkConnectionWithNodes(
+                **schemas.NetworkConnection.from_orm(conn).dict(),
+                source_node=schemas.Node.from_orm_with_location(conn.source_node)
+                if conn.source_node else None,
+                destination_node=schemas.Node.from_orm_with_location(conn.destination_node)
+                if conn.destination_node else None,
+            )
+        )
+    return result
 
 @router.get("/{connection_id}", response_model=schemas.NetworkConnectionWithNodes)
 def read_single_connection(
