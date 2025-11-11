@@ -51,8 +51,8 @@ export interface NodePayload {
 export async function createNode(payload: NodePayload): Promise<NodePayload> {
   try{
     const response = await axios.post<NodePayload> (
-      `${POSTGRES_API_URL}/node/`,
-      Node
+      `${POSTGRES_API_URL}/nodes/`,
+      payload
     );
     return response.data;
   } catch (error) {

@@ -11,6 +11,7 @@
 # pip install -r requirements.txt
 #
 # Note: Requires Python 3.12 or lower (3.14 not supported yet)
+# python -m app.drop_tables
 
 flask
 flask-cors
@@ -30,3 +31,5 @@ sqlalchemy
 # สำหรับสร้าง node
 geoalchemy2
 shapely
+
+
