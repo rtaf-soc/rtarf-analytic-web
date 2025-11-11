@@ -14,9 +14,8 @@ const router = createBrowserRouter([
     path: "/",
     element: <MainLayout />,
     children: [
-      { index: true, element: <MainLayout /> },
+      { index: true, element: <MapView /> },
       { path: "/node-create", element: <CreateNode/>} ,
-      { path: "/cycop1", element: <MapView/> },
     ],
   },
 
@@ -27,6 +26,7 @@ const router = createBrowserRouter([
       {index: true, element: <MitreAttackNavigator />},
     ]
   }
+  
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
