@@ -6,14 +6,7 @@ const DevConDashboard = () => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
   const [threatData, setThreatData] = useState<AlertBase[]>([]);
   const [defconLevel] = useState(1);
-  // const threats = [
-  //   { id: "THREAT 5", code: "8281034OCT24", color: "bg-yellow-300" },
-  //   { id: "THREAT 4", code: "2809420CT24", color: "bg-yellow-300" },
-  //   { id: "THREAT 3", code: "2805350CT24", color: "bg-yellow-400" },
-  //   { id: "THREAT 2", code: "2801030CT24", color: "bg-red-500" },
-  //   { id: "THREAT 1", code: "272315OCT24", color: "bg-yellow-400" },
-  // ];
-
+ 
   useEffect(() => {
     const loadAlertData = async () => {
       const summary = await fetchAlertSummary();
@@ -36,7 +29,7 @@ const DevConDashboard = () => {
     }
   }
 
-  const threats = threatData?.map((item, i) => ({
+  const threats = threatData?.map((item) => ({
     description: item.description,
     code: item.incident_id,
     color: getSeverityColor(item.severity),
@@ -48,8 +41,7 @@ const DevConDashboard = () => {
       ?.slice(0, 5) // top 5 categories for pie
       .map((item, i) => ({
         label: item.alert_name,
-        value: item.count,
-        // Randomized color palette (you can tweak)
+        value: Number(((item.count / alertData.total_alerts) * 100).toFixed(1)),
         color: [
           "bg-purple-500",
           "bg-pink-500",
@@ -59,6 +51,7 @@ const DevConDashboard = () => {
         ][i % 5],
         hex: ["#a855f7", "#ec4899", "#22c55e", "#facc15", "#60a5fa"][i % 5],
       })) || [];
+
 
   // ✅ Fallback while loading
   if (!alertData) {

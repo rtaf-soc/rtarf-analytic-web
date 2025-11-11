@@ -169,7 +169,6 @@ class RtarfEvent(Base):
         return f"<RtarfEvent(id={self.id}, event_id='{self.event_id}', severity='{self.severity}', status='{self.status}')>"
 
     
-    
 class Alert(Base):
     """
     Store alert list to show 10 latest alerts from that node
@@ -201,3 +200,48 @@ class Alert(Base):
     
     def __repr__(self):
         return f"<Alert(id={self.id}, event_id='{self.event_id}', alert_name='{self.alert_name}', severity='{self.severity}')>"
+    
+    
+class NodeEvent(Base):
+    """
+    Junction table linking NodePositions with RtarfEvents
+    Tracks which events occurred on which nodes
+    """
+    __tablename__ = "node_events"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Foreign keys
+    node_id = Column(Integer, ForeignKey('node_positions.id', ondelete='CASCADE'), nullable=False, index=True)
+    rtarf_event_id = Column(Integer, ForeignKey('rtarf_events.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    # Role of the node in this event
+    node_role = Column(String(50), index=True)  # 'source', 'destination', 'affected', 'related'
+    
+    # Store IP for quick reference (denormalized for performance)
+    node_ip = Column(INET, index=True)
+    
+    # Event relevance score (optional - for ranking/filtering)
+    relevance_score = Column(Integer, default=100)  # 0-100, higher = more relevant
+    
+    # Additional context about the node's involvement
+    involvement_metadata = Column(JSONB, default=dict)  # e.g., {'action': 'initiated', 'impact': 'high'}
+    
+    # Timestamps
+    detected_at = Column(DateTime, default=datetime.utcnow, server_default=func.now())
+    created_at = Column(DateTime, default=datetime.utcnow, server_default=func.now())
+    
+    # Relationships
+    node = relationship("NodePosition", backref="node_events")
+    event = relationship("RtarfEvent", backref="associated_nodes")
+    
+    # Composite indexes for efficient queries
+    __table_args__ = (
+        Index('idx_node_events_node_event', node_id, rtarf_event_id, unique=True),  # Prevent duplicates
+        Index('idx_node_events_node_role', node_id, node_role),
+        Index('idx_node_events_ip', node_ip),
+        Index('idx_node_events_detected', detected_at.desc()),
+    )
+    
+    def __repr__(self):
+        return f"<NodeEvent(node_id={self.node_id}, rtarf_event_id={self.rtarf_event_id}, role='{self.node_role}', ip='{self.node_ip}')>"

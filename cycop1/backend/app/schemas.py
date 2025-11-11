@@ -422,3 +422,157 @@ class AreaSearchParams(BaseModel):
         if 'min_longitude' in info.data and v <= info.data['min_longitude']:
             raise ValueError('max_longitude must be greater than min_longitude')
         return v
+    
+
+# ===============================================================
+# Schemas for NodeEvent
+# ===============================================================
+
+class NodeEventBase(BaseModel):
+    """Base schema for NodeEvent"""
+    node_id: int = Field(..., description="ID ของ Node ที่เกี่ยวข้อง")
+    rtarf_event_id: int = Field(..., description="ID ของ RtarfEvent (Primary Key, not event_id string)")
+    node_role: Optional[str] = Field(
+        None, 
+        max_length=50, 
+        description="บทบาทของ Node ใน Event (source, destination, affected, related)"
+    )
+    node_ip: Optional[str] = Field(None, description="IP address ของ Node")
+    relevance_score: Optional[int] = Field(
+        100, 
+        ge=0, 
+        le=100, 
+        description="คะแนนความเกี่ยวข้อง (0-100)"
+    )
+    involvement_metadata: Optional[Dict] = Field(
+        default_factory=dict,
+        description="ข้อมูลเพิ่มเติมเกี่ยวกับการมีส่วนร่วมของ Node"
+    )
+    
+    @field_validator('node_role')
+    @classmethod
+    def validate_node_role(cls, v):
+        if v is not None:
+            allowed_roles = ['source', 'destination', 'affected', 'related']
+            if v not in allowed_roles:
+                raise ValueError(f"node_role must be one of: {', '.join(allowed_roles)}")
+        return v
+    
+    @field_validator('node_ip')
+    @classmethod
+    def validate_ip(cls, v):
+        if v is not None:
+            try:
+                ipaddress.ip_address(v)
+            except ValueError:
+                raise ValueError(f"Invalid IP address: {v}")
+        return v
+
+
+class NodeEventCreate(NodeEventBase):
+    """Schema for creating new NodeEvent"""
+    pass
+
+
+class NodeEventUpdate(BaseModel):
+    """Schema for updating NodeEvent"""
+    node_role: Optional[str] = Field(None, max_length=50)
+    relevance_score: Optional[int] = Field(None, ge=0, le=100)
+    involvement_metadata: Optional[Dict] = None
+    
+    @field_validator('node_role')
+    @classmethod
+    def validate_node_role(cls, v):
+        if v is not None:
+            allowed_roles = ['source', 'destination', 'affected', 'related']
+            if v not in allowed_roles:
+                raise ValueError(f"node_role must be one of: {', '.join(allowed_roles)}")
+        return v
+
+
+class NodeEvent(NodeEventBase):
+    """Schema for NodeEvent response"""
+    id: int
+    detected_at: datetime
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class NodeEventWithDetails(NodeEvent):
+    """Schema for NodeEvent with related node and event details"""
+    node: Optional['Node'] = None
+    rtarf_event: Optional['RtarfEvent'] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class NodeEventListResponse(BaseModel):
+    """Response schema for list of NodeEvents"""
+    total: int
+    items: List[NodeEvent]
+    page: int = 1
+    page_size: int = 10
+
+
+class NodeWithEventsResponse(BaseModel):
+    """Response showing a node with all its associated events"""
+    node_id: int
+    node_name: str
+    node_ip: Optional[str] = None
+    total_events: int
+    events: List[NodeEvent]
+    
+    class Config:
+        from_attributes = True
+
+
+class EventWithNodesResponse(BaseModel):
+    """Response showing an event with all associated nodes"""
+    event_id: int
+    event_name: str
+    severity: Optional[str] = None
+    total_nodes: int
+    nodes: List[NodeEvent]
+    
+    class Config:
+        from_attributes = True
+
+
+class BulkNodeEventCreate(BaseModel):
+    """Schema for bulk creating NodeEvents"""
+    events: List[NodeEventCreate] = Field(..., description="รายการ NodeEvents ที่ต้องการสร้าง")
+
+
+class BulkNodeEventResponse(BaseModel):
+    """Response for bulk NodeEvent creation"""
+    status: str
+    total_processed: int
+    created: int
+    failed: int
+    errors: Optional[List[Dict]] = None
+
+
+# ===============================================================
+# Helper Schemas for specific use cases
+# ===============================================================
+
+class NodeEventSummary(BaseModel):
+    """Summary of events for a node"""
+    node_id: int
+    node_name: str
+    total_events: int
+    events_by_role: Dict[str, int]  # {'source': 5, 'destination': 3, etc.}
+    events_by_severity: Dict[str, int]  # {'high': 2, 'medium': 4, etc.}
+    latest_event_time: Optional[datetime] = None
+
+
+class EventNodesSummary(BaseModel):
+    """Summary of nodes affected by an event"""
+    event_id: int
+    event_name: str
+    total_nodes: int
+    nodes_by_role: Dict[str, int]
+    affected_ips: List[str]

@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { GetAllNode } from "../services/defensiveService";
+import type { NodeGet } from "../types/defensive";
 import {
   MapContainer,
   TileLayer,
@@ -9,12 +11,13 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../index.css";
+import { color } from "chart.js/helpers";
 
 // ไอคอน threat สีแดง/เหลือง
 const redIcon = new L.Icon({
   iconUrl: "/img/warning.png",
   iconSize: [24, 24],
-  
+
 });
 
 const yellowIcon = new L.Icon({
@@ -23,6 +26,17 @@ const yellowIcon = new L.Icon({
 });
 
 const MapView = () => {
+  const [nodeData, setNodeData] = useState<NodeGet[]>([]);
+
+  useEffect(() => {
+    const loadNodeData = async () => {
+      const nodes = await GetAllNode();
+      console.log("Show Node:", nodes)
+      setNodeData(nodes);
+    };
+    loadNodeData();
+  }, []);
+
   // พิกัดตัวอย่าง threat (กรุงเทพ, เชียงใหม่, สงขลา, โคราช, ขอนแก่น)
   const threats: { name: string; coords: [number, number]; color: string }[] = [
     { name: "THREAT 1", coords: [13.7563, 100.5018], color: "red" }, // กรุงเทพ
@@ -32,6 +46,14 @@ const MapView = () => {
     { name: "THREAT 5", coords: [16.4419, 102.835], color: "yellow" }, // ขอนแก่น
   ];
 
+  const threatDatas =
+    nodeData?.map((item, i) => ({
+        id: item.id,
+        name: item.name,
+        coords: [item.latitude, item.longitude] as [number, number],
+        color: "red"
+      })) || [];
+
   // เส้นเชื่อม (polyline)
   const connections = [
     [threats[0].coords, threats[1].coords],
@@ -39,6 +61,11 @@ const MapView = () => {
     [threats[3].coords, threats[4].coords],
     [threats[0].coords, threats[2].coords],
   ];
+
+  // const connections =
+  // threatDatas.length > 1
+  //   ? threatDatas.slice(1).map(t => [threatDatas[0].coords, t.coords])
+  //   : [];
 
   return (
     <MapContainer
@@ -56,11 +83,11 @@ const MapView = () => {
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
         opacity={0.1}
       />
-      
+
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
       {/* 🔴 วาง Threat จุดต่าง ๆ */}
-      {threats.map((t, idx) => (
+      {threatDatas.map((t, idx) => (
         <Marker
           key={idx}
           position={t.coords}
