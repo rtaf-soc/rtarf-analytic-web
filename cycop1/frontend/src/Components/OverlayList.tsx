@@ -73,55 +73,36 @@ const OverlayList = () => {
         </div>
       </div>
 
-      {/* World Map */}
-      <div className="bg-black rounded-lg p-0.5 mb-1 border-8 border-gray-500 w-57">
-        <div className="bg-slate-700 rounded p-1 relative">
-          <svg viewBox="0 0 200 100" className="w-full h-16">
-            {/* Simple world map outline */}
-            <path
-              d="M 20 30 L 40 25 L 60 30 L 80 25 L 100 30 L 120 35 L 140 30 L 160 35 L 180 30"
-              stroke="#4b5563"
-              strokeWidth="1"
-              fill="none"
-            />
-            <path
-              d="M 30 50 Q 50 45 70 50 T 110 50 T 150 45"
-              stroke="#4b5563"
-              strokeWidth="1"
-              fill="none"
-            />
-            <ellipse
-              cx="50"
-              cy="35"
-              rx="15"
-              ry="10"
-              fill="#6b7280"
-              opacity="0.5"
-            />
-            <ellipse
-              cx="100"
-              cy="55"
-              rx="20"
-              ry="15"
-              fill="#6b7280"
-              opacity="0.5"
-            />
-            <ellipse
-              cx="150"
-              cy="40"
-              rx="18"
-              ry="12"
-              fill="#6b7280"
-              opacity="0.5"
-            />
+      <div className="bg-slate-700 rounded p-1 relative overflow-hidden border-8 border-gray-500 mb-1">
+        {/* SVG World Map */}
+        <img
+          src="img/world.svg"
+          alt="World Map"
+          className="w-full h-24 object-contain rounded"
+        />
 
-            {/* Location marker */}
-            <rect x="145" y="35" width="15" height="15" fill="#22c55e" rx="2" />
-            <text x="152" y="46" fontSize="10" fill="white" textAnchor="middle">
-              ✓
-            </text>
-          </svg>
-        </div>
+        {/* Marker: Thailand position */}
+        {/* พิกัดนี้อิงจาก world.svg ที่เป็นแบบแผนที่ Mercator */}
+        <div
+          className="absolute border-3 border-green-500 animate-pulse"
+          style={{
+            left: "72%", // ปรับได้ตามจุดจริงใน SVG
+            top: "40%", // ปรับได้ตามจุดจริงใน SVG
+            width: "25px",
+            height: "25px",
+          }}
+        ></div>
+
+        {/* เพิ่ม Glow Effect รอบ marker */}
+        <div
+          className="absolute rounded-full bg-green-400 opacity-50 blur-sm"
+          style={{
+            left: "calc(73% - 3px)",
+            top: "calc(48% - 3px)",
+            width: "12px",
+            height: "12px",
+          }}
+        ></div>
       </div>
 
       {/* Overlay List */}
