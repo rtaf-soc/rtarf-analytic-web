@@ -88,3 +88,45 @@ export async function GetAllNode(): Promise<NodeGet[]> {
   }
 }
 
+// ==============================
+// Network Connection Services
+// ==============================
+
+export interface ConnectionNode {
+  id: number;
+  name: string;
+  node_type: string;
+  latitude: number;
+  longitude: number;
+  ip_address?: string;
+}
+
+export interface NetworkConnection {
+  id: number;
+  source_node_id: number;
+  destination_node_id: number;
+  protocol?: string;
+  connection_type?: string;
+  connection_status?: string;
+  bytes_sent?: number;
+  bytes_received?: number;
+  packets_sent?: number;
+  packets_received?: number;
+  source_node?: ConnectionNode | null;
+  destination_node?: ConnectionNode | null;
+  created_at?: string;
+  first_seen?: string;
+  last_seen?: string;
+}
+
+export async function GetAllConnectionsWithNodes(): Promise<NetworkConnection[]> {
+  try {
+    const response = await axios.get<NetworkConnection[]>(
+      `${POSTGRES_API_URL}/connections/with-nodes`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching connections with nodes:", error);
+    return [];
+  }
+}

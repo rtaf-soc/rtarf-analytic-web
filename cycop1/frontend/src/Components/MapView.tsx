@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { GetAllNode } from "../services/defensiveService";
+import { GetAllNode, GetAllConnectionsWithNodes, type NetworkConnection } from "../services/defensiveService";
 import type { NodeGet } from "../types/defensive";
 import {
   MapContainer,
@@ -27,12 +27,16 @@ const yellowIcon = new L.Icon({
 
 const MapView = () => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
+  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
 
   useEffect(() => {
     const loadNodeData = async () => {
       const nodes = await GetAllNode();
+      const connecteds = await GetAllConnectionsWithNodes();
       console.log("Show Node:", nodes)
+      console.log("Show Cn:", connecteds)
       setNodeData(nodes);
+      setConnectionsData(connecteds);
     };
     loadNodeData();
   }, []);
@@ -48,19 +52,52 @@ const MapView = () => {
 
   const threatDatas =
     nodeData?.map((item, i) => ({
-        id: item.id,
-        name: item.name,
-        coords: [item.latitude, item.longitude] as [number, number],
-        color: "red"
-      })) || [];
+      id: item.id,
+      name: item.name,
+      coords: [item.latitude, item.longitude] as [number, number],
+      color: "red"
+    })) || [];
+
+
+  // Create polylines from connection data
+  const connectionLines = connectionsData
+    .filter(conn => conn.source_node && conn.destination_node)
+    .map(conn => ({
+      id: conn.id,
+      positions: [
+        [conn.source_node!.latitude, conn.source_node!.longitude] as [number, number],
+        [conn.destination_node!.latitude, conn.destination_node!.longitude] as [number, number],
+      ],
+      status: conn.connection_status || "unknown",
+    }));
+
+  // Determine icon color (you can customize this logic)
+  const getNodeIcon = (node: NodeGet) => {
+    // Example: first node is red, others are yellow
+    return node.id === 1 ? redIcon : yellowIcon;
+  };
+
+  // Determine line color based on connection status
+  const getLineColor = (status: string) => {
+    switch (status) {
+      case "running":
+        return "#32CD32"; // Green
+      case "warning":
+        return "#FFA500"; // Orange
+      case "error":
+        return "#FF0000"; // Red
+      default:
+        return "#32CD32";
+    }
+  };
 
   // เส้นเชื่อม (polyline)
-  const connections = [
-    [threats[0].coords, threats[1].coords],
-    [threats[0].coords, threats[3].coords],
-    [threats[3].coords, threats[4].coords],
-    [threats[0].coords, threats[2].coords],
-  ];
+  // const connections = [
+  //   [threats[0].coords, threats[1].coords],
+  //   [threats[0].coords, threats[3].coords],
+  //   [threats[3].coords, threats[4].coords],
+  //   [threats[0].coords, threats[2].coords],
+  // ];
 
   // const connections =
   // threatDatas.length > 1
@@ -86,23 +123,35 @@ const MapView = () => {
 
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
-      {/* 🔴 วาง Threat จุดต่าง ๆ */}
-      {threatDatas.map((t, idx) => (
+      {/* Render nodes as markers */}
+      {nodeData.map((node) => (
         <Marker
-          key={idx}
-          position={t.coords}
-          icon={t.color === "red" ? redIcon : yellowIcon}
+          key={node.id}
+          position={[node.latitude, node.longitude]}
+          icon={getNodeIcon(node)}
         >
-          <Popup>{t.name}</Popup>
+          <Popup>
+            <div className="text-sm">
+              <strong>{node.name}</strong>
+              <br />
+              IP: {node.ip_address || "N/A"}
+              <br />
+              Type: {node.node_type}
+            </div>
+          </Popup>
         </Marker>
       ))}
 
       {/* วาดเส้นเชื่อมโยง */}
-      {connections.map((line, idx) => (
+     {connectionLines.map((line) => (
         <Polyline
-          key={idx}
-          positions={line}
-          pathOptions={{ color: "#32CD32", weight: 2 }}
+          key={line.id}
+          positions={line.positions}
+          pathOptions={{
+            color: getLineColor(line.status),
+            weight: 2,
+            opacity: 0.7,
+          }}
         />
       ))}
     </MapContainer>
