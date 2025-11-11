@@ -10,7 +10,7 @@ import logging
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 import ipaddress
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from . import models
 from . import schemas
@@ -451,6 +451,8 @@ async def insert_rtarf_event_into_postgres(db: Session, es_client):
             "bool": {
                 "should": [
                     {"exists": {"field": "palo-xsiam.mitre_tactics_ids_and_names"}},
+                    # {"exists": {"field": "suricata.classification"}},
+#                   # {"exists": {"field": "crowdstrike.event.MitreAttack.Tactic"}},
                 ],
                 "minimum_should_match": 1
             }
@@ -516,87 +518,12 @@ async def insert_rtarf_event_into_postgres(db: Session, es_client):
         logger.error(f"Unexpected error: {e}")
         return {"status": "error", "message": str(e)}
 
-# async def insert_rtarf_event_into_postgres(db: Session, es_client):
-#     """
-#     Fetch events from Elasticsearch and insert into PostgreSQL
-#     Returns a summary of the operation
-#     """
-#     query = {
-#         "query": {
-#             "bool": {
-#                 "should": [
-#                     # {"exists": {"field": "suricata.classification"}},
-#                     # {"exists": {"field": "crowdstrike.event.MitreAttack.Tactic"}},
-#                     {"exists": {"field": "palo-xsiam.mitre_tactics_ids_and_names"}},
-#                 ],
-#                 "minimum_should_match": 1
-#             }
-#         }
-#     }
-    
-#     try:
-#         resp = await es_client.search(index="rtarf-events-beat*", body=query, size=250)
-#     except Exception as e:
-#         logger.error(f"Elasticsearch query failed: {e}")
-#         raise
-    
-#     record_batch = []
-    
-#     for hit in resp["hits"]["hits"]:
-#         source = hit.get("_source", {})
-#         es_id = hit.get("_id")
-#         fields = _extract_fields(source)
-        
-#         ts = source.get("@timestamp") or source.get("timestamp")
-#         parsed_ts = None
-#         if ts:
-#             try:
-#                 parsed_ts = dateparser.parse(ts)
-#             except Exception:
-#                 parsed_ts = None
-        
-#         record = {
-#             "event_id": es_id,
-#             "mitre_tactics_ids_and_names": fields["palo_tactics"],
-#             "mitre_techniques_ids_and_names": fields["palo_techniques"],
-#             "description": fields["description"],
-#             "severity": fields["severity"],
-#             "alert_categories": fields["alert_categories"],
-#             "crowdstrike_tactics": fields["cs_tactics"],
-#             "crowdstrike_tactics_ids": fields["cs_tactics_ids"],
-#             "crowdstrike_techniques": fields["cs_techniques"],
-#             "crowdstrike_techniques_ids": fields["cs_techniques_ids"],
-#             "crowdstrike_severity": fields["cs_severity"],  
-#             "crowdstrike_event_name": fields["cs_event_name"],
-#             "crowdstrike_event_objective": fields["cs_event_objective"],
-#             "suricata_classification": fields["suricata_classification"],
-#             "timestamp": parsed_ts
-#         }
-#         record_batch.append(record)
-    
-#     try:
-#         inserted, updated = _bulk_upsert_records(db, record_batch)
-#         return {
-#             "status": "success",
-#             "total_processed": len(record_batch),
-#             "inserted": inserted,
-#             "updated": updated
-#         }
-#     except IntegrityError as e:
-#         db.rollback()
-#         logger.error(f"Integrity error: {e}")
-#         return {"status": "error", "message": "Integrity error inserting records"}
-#     except Exception as e:
-#         db.rollback()
-#         logger.error(f"Unexpected error: {e}")
-#         return {"status": "error", "message": str(e)}
-    
-    
+
 def get_rtarf_event(db: Session, event_id: str):
     """
-    ดึงข้อมูล RTARF Event ด้วย event_id
+    ดึงข้อมูล RTARF Event ด้วย id ของ Event not event_id
     """
-    return db.query(models.RtarfEvent).filter(models.RtarfEvent.event_id == event_id).first()
+    return db.query(models.RtarfEvent).filter(models.RtarfEvent.id == event_id).first()
 
 
 def get_rtarf_events(db: Session, skip: int = 0, limit: int = 100, severity: Optional[str] = None):
@@ -836,3 +763,363 @@ def delete_old_alerts(db: Session, days: int = 30):
     
     db.commit()
     return deleted_count
+
+# ===============================================================
+# CRUD Functions for NodeEvent
+# ===============================================================
+
+def get_node_event(db: Session, node_event_id: int):
+    """
+    ดึงข้อมูล NodeEvent 1 รายการจาก ID
+    """
+    return db.query(models.NodeEvent).filter(models.NodeEvent.id == node_event_id).first()
+
+
+def get_node_event_by_ids(db: Session, node_id: int, rtarf_event_id: int):
+    """
+    ดึงข้อมูล NodeEvent จาก node_id และ rtarf_event_id
+    """
+    return db.query(models.NodeEvent).filter(
+        and_(
+            models.NodeEvent.node_id == node_id,
+            models.NodeEvent.rtarf_event_id == rtarf_event_id
+        )
+    ).first()
+
+
+def get_node_events(db: Session, skip: int = 0, limit: int = 100):
+    """
+    ดึงข้อมูล NodeEvent ทั้งหมด พร้อม pagination
+    """
+    return db.query(models.NodeEvent).order_by(
+        desc(models.NodeEvent.detected_at)
+    ).offset(skip).limit(limit).all()
+
+
+def get_events_by_node(
+    db: Session, 
+    node_id: int, 
+    skip: int = 0, 
+    limit: int = 100,
+    node_role: Optional[str] = None
+):
+    """
+    ดึง RtarfEvents ทั้งหมดที่เกี่ยวข้องกับ Node นั้น ๆ
+    """
+    query = db.query(models.NodeEvent).filter(models.NodeEvent.node_id == node_id)
+    
+    if node_role:
+        query = query.filter(models.NodeEvent.node_role == node_role)
+    
+    return query.order_by(desc(models.NodeEvent.detected_at)).offset(skip).limit(limit).all()
+
+
+def get_events_by_node_ip(
+    db: Session, 
+    ip_address: str, 
+    skip: int = 0, 
+    limit: int = 100
+):
+    """
+    ดึง Events จาก IP address
+    """
+    return db.query(models.NodeEvent).filter(
+        models.NodeEvent.node_ip == ip_address
+    ).order_by(desc(models.NodeEvent.detected_at)).offset(skip).limit(limit).all()
+
+
+def get_nodes_by_event(
+    db: Session, 
+    rtarf_event_id: int, 
+    skip: int = 0, 
+    limit: int = 100,
+    node_role: Optional[str] = None
+):
+    """
+    ดึง Nodes ทั้งหมดที่เกี่ยวข้องกับ RtarfEvent นั้น ๆ
+    """
+    query = db.query(models.NodeEvent).filter(models.NodeEvent.rtarf_event_id == rtarf_event_id)
+    
+    if node_role:
+        query = query.filter(models.NodeEvent.node_role == node_role)
+    
+    return query.order_by(desc(models.NodeEvent.detected_at)).offset(skip).limit(limit).all()
+
+
+def create_node_event(db: Session, node_event: schemas.NodeEventCreate):
+    """
+    สร้าง NodeEvent ใหม่
+    """
+    try:
+        db_node_event = models.NodeEvent(
+            node_id=node_event.node_id,
+            rtarf_event_id=node_event.rtarf_event_id,
+            node_role=node_event.node_role,
+            node_ip=node_event.node_ip,
+            relevance_score=node_event.relevance_score or 100,
+            involvement_metadata=node_event.involvement_metadata or {}
+        )
+        
+        db.add(db_node_event)
+        db.commit()
+        db.refresh(db_node_event)
+        
+        return db_node_event
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(f"Integrity error creating NodeEvent: {e}")
+        # Return existing if duplicate
+        return get_node_event_by_ids(db, node_event.node_id, node_event.rtarf_event_id)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating NodeEvent: {e}")
+        raise
+
+
+def create_node_events_bulk(db: Session, node_events: List[schemas.NodeEventCreate]):
+    """
+    สร้าง NodeEvent หลายรายการพร้อมกัน (bulk insert)
+    """
+    records = []
+    for ne in node_events:
+        records.append({
+            "node_id": ne.node_id,
+            "rtarf_event_id": ne.rtarf_event_id,
+            "node_role": ne.node_role,
+            "node_ip": ne.node_ip,
+            "relevance_score": ne.relevance_score or 100,
+            "involvement_metadata": ne.involvement_metadata or {}
+        })
+    
+    if not records:
+        return 0, 0
+    
+    try:
+        stmt = insert(models.NodeEvent).values(records)
+        
+        # Update on conflict (if needed)
+        update_dict = {
+            'node_role': stmt.excluded.node_role,
+            'relevance_score': stmt.excluded.relevance_score,
+            'involvement_metadata': stmt.excluded.involvement_metadata,
+            'detected_at': func.now()
+        }
+        
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['node_id', 'rtarf_event_id'],
+            set_=update_dict
+        )
+        
+        result = db.execute(stmt)
+        db.commit()
+        
+        return len(records), 0
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Bulk insert failed: {e}")
+        raise
+
+
+def update_node_event(db: Session, node_event_id: int, node_event: schemas.NodeEventUpdate):
+    """
+    อัพเดท NodeEvent
+    """
+    db_node_event = get_node_event(db, node_event_id)
+    if db_node_event is None:
+        return None
+    
+    update_data = node_event.dict(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        setattr(db_node_event, field, value)
+    
+    db.commit()
+    db.refresh(db_node_event)
+    
+    return db_node_event
+
+
+def delete_node_event(db: Session, node_event_id: int):
+    """
+    ลบ NodeEvent
+    """
+    db_node_event = get_node_event(db, node_event_id)
+    if db_node_event is None:
+        return False
+    
+    db.delete(db_node_event)
+    db.commit()
+    return True
+
+
+def delete_node_events_by_node(db: Session, node_id: int):
+    """
+    ลบ NodeEvent ทั้งหมดของ Node นั้น ๆ
+    """
+    deleted_count = db.query(models.NodeEvent).filter(
+        models.NodeEvent.node_id == node_id
+    ).delete()
+    
+    db.commit()
+    return deleted_count
+
+
+def delete_node_events_by_event(db: Session, rtarf_event_id: int):
+    """
+    ลบ NodeEvent ทั้งหมดของ RtarfEvent นั้น ๆ
+    """
+    deleted_count = db.query(models.NodeEvent).filter(
+        models.NodeEvent.rtarf_event_id == rtarf_event_id
+    ).delete()
+    
+    db.commit()
+    return deleted_count
+
+
+# ===============================================================
+# Helper Functions
+# ===============================================================
+
+def link_event_to_nodes_by_ip(db: Session, rtarf_event_id: int, source_ip: Optional[str] = None, 
+                               destination_ip: Optional[str] = None):
+    """
+    เชื่อมโยง RtarfEvent กับ Nodes โดยอัตโนมัติจาก IP addresses
+    """
+    created_links = []
+    
+    # Link source node
+    if source_ip:
+        source_node = db.query(models.NodePosition).filter(
+            models.NodePosition.ip_address == source_ip
+        ).first()
+        
+        if source_node:
+            try:
+                link = create_node_event(db, schemas.NodeEventCreate(
+                    node_id=source_node.id,
+                    rtarf_event_id=rtarf_event_id,
+                    node_role="source",
+                    node_ip=source_ip
+                ))
+                if link:
+                    created_links.append(link)
+            except Exception as e:
+                logger.warning(f"Failed to link source node: {e}")
+    
+    # Link destination node
+    if destination_ip:
+        dest_node = db.query(models.NodePosition).filter(
+            models.NodePosition.ip_address == destination_ip
+        ).first()
+        
+        if dest_node:
+            try:
+                link = create_node_event(db, schemas.NodeEventCreate(
+                    node_id=dest_node.id,
+                    rtarf_event_id=rtarf_event_id,
+                    node_role="destination",
+                    node_ip=destination_ip
+                ))
+                if link:
+                    created_links.append(link)
+            except Exception as e:
+                logger.warning(f"Failed to link destination node: {e}")
+    
+    return created_links
+
+
+def get_node_event_summary(db: Session, node_id: int) -> Dict:
+    """
+    สร้างสรุปข้อมูล RtarfEvents ของ Node
+    """
+    # Get total events
+    total = db.query(func.count(models.NodeEvent.id)).filter(
+        models.NodeEvent.node_id == node_id
+    ).scalar()
+    
+    # Events by role
+    role_stats = db.query(
+        models.NodeEvent.node_role,
+        func.count(models.NodeEvent.id)
+    ).filter(
+        models.NodeEvent.node_id == node_id
+    ).group_by(models.NodeEvent.node_role).all()
+    
+    # Events by severity (join with RtarfEvent)
+    severity_stats = db.query(
+        models.RtarfEvent.severity,
+        func.count(models.NodeEvent.id)
+    ).join(
+        models.NodeEvent, models.NodeEvent.rtarf_event_id == models.RtarfEvent.id
+    ).filter(
+        models.NodeEvent.node_id == node_id
+    ).group_by(models.RtarfEvent.severity).all()
+    
+    # Latest event
+    latest = db.query(models.NodeEvent).filter(
+        models.NodeEvent.node_id == node_id
+    ).order_by(desc(models.NodeEvent.detected_at)).first()
+    
+    return {
+        "total_events": total,
+        "events_by_role": {role: count for role, count in role_stats},
+        "events_by_severity": {sev: count for sev, count in severity_stats},
+        "latest_event_time": latest.detected_at if latest else None
+    }
+
+
+def get_event_nodes_summary(db: Session, rtarf_event_id: int) -> Dict:
+    """
+    สร้างสรุปข้อมูล Nodes ที่เกี่ยวข้องกับ RtarfEvent
+    """
+    # Get total nodes
+    total = db.query(func.count(models.NodeEvent.id)).filter(
+        models.NodeEvent.rtarf_event_id == rtarf_event_id
+    ).scalar()
+    
+    # Nodes by role
+    role_stats = db.query(
+        models.NodeEvent.node_role,
+        func.count(models.NodeEvent.id)
+    ).filter(
+        models.NodeEvent.rtarf_event_id == rtarf_event_id
+    ).group_by(models.NodeEvent.node_role).all()
+    
+    # Get affected IPs
+    ips = db.query(models.NodeEvent.node_ip).filter(
+        models.NodeEvent.rtarf_event_id == rtarf_event_id,
+        models.NodeEvent.node_ip.isnot(None)
+    ).distinct().all()
+    
+    return {
+        "total_nodes": total,
+        "nodes_by_role": {role: count for role, count in role_stats},
+        "affected_ips": [ip[0] for ip in ips if ip[0]]
+    }
+
+
+def sync_events_with_nodes(db: Session, batch_size: int = 100):
+    """
+    ซิงค์ RtarfEvents กับ Nodes โดยอัตโนมัติ
+    สร้างลิงก์สำหรับ events ที่ยังไม่ได้เชื่อมกับ nodes
+    """
+    # Get events that might not be linked yet
+    events = db.query(models.RtarfEvent).limit(batch_size).all()
+    
+    total_links_created = 0
+    
+    for event in events:
+        links = link_event_to_nodes_by_ip(
+            db, 
+            event.id, 
+            event.source_ip, 
+            event.destination_ip
+        )
+        total_links_created += len(links)
+    
+    return {
+        "status": "success",
+        "events_processed": len(events),
+        "links_created": total_links_created
+    }

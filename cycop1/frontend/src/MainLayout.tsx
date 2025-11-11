@@ -1,14 +1,12 @@
-import React, { useState } from "react";
-import { Routes, Route, Outlet, Navigate } from "react-router-dom";
+import { useState } from "react";
+import { Outlet, Navigate} from "react-router-dom";
 import Defcon from "./components/Defcon";
-import MapView from "./components/MapView";
 import OverlayList from "./components/OverlayList";
 import CreateNode from "./components/CreateNode";
 import { CirclePlus, X } from 'lucide-react';
 
 import "./index.css";
 
-// Layout หลัก (Sidebar ซ้าย + Defcon ขวา)
 const MainLayout = () => {
   const [isNodeOpen, setIsNodeOpen] = useState(false);
 

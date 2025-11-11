@@ -4,11 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 import time
 import logging
 from . import elastic_client, database, models
-from .routers import nodes, connections, rtarf_events, alerts, dashboard, network_graph
+from .routers import nodes, connections, rtarf_events, alerts, dashboard, network_graph, node_events
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    force=True
+)
+logger = logging.getLogger("app.main")
+
 
 # สร้างตารางในฐานข้อมูล
 models.Base.metadata.create_all(bind=database.engine)
@@ -53,7 +58,7 @@ app.add_middleware(
 
 # Lifecycle event handlers
 @app.on_event("startup")
-async def startup_event():
+async def startup_initialize():
     """Initialize connections on startup"""
     pass
 
@@ -69,10 +74,11 @@ app.include_router(rtarf_events.router, prefix="/rtarf-events", tags=["RTARF Eve
 app.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(network_graph.router, prefix="/network-graph", tags=["Network Graph"])
+app.include_router(node_events.router, prefix="/node-events", tags=["Node Events"])
 
 # Optional: Print all registered routes on startup
 @app.on_event("startup")
-async def startup_event():
+async def startup_print_routes():
     """Initialize connections on startup"""
     print("\n" + "="*50)
     print("🚀 API Routes Registered:")

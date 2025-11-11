@@ -1,6 +1,6 @@
 // services/postgresService.ts
 import axios from "axios";
-import { type  AlertBase } from "../types/defensive";
+import type { AlertBase, NodeGet } from "../types/defensive";
 
 const POSTGRES_API_URL =
   import.meta.env.VITE_POSTGRES_API_URL || "http://localhost:8000";
@@ -59,8 +59,9 @@ export interface NodePayload {
   longitude: string,
   ip_address?: string,
   additional_ips?: string[],
-  network_metadata?: string,
+  network_metadata?: string[],
 }
+
 
 export async function createNode(payload: NodePayload): Promise<NodePayload> {
   try{
@@ -74,3 +75,16 @@ export async function createNode(payload: NodePayload): Promise<NodePayload> {
     throw error
   }
 }
+
+export async function GetAllNode(): Promise<NodeGet[]> {
+  try {
+    const response = await axios.get<NodeGet[]>(
+      `${POSTGRES_API_URL}/nodes/`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all nodes:", error);
+    return [];
+  }
+}
+
