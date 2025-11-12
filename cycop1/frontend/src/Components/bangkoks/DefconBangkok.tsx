@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../services/defensiveService";
-import { type AlertBase } from "../types/defensive";
+import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../../services/defensiveService";
+import { type AlertBase } from "../../types/defensive";
 import * as Chart from "chart.js";
 
 Chart.Chart.register(
@@ -27,11 +27,6 @@ const DevConBangkok = () => {
       const threat = await fetchLatestAlert();
       const severity = await fetchRtarfAverageSummary();
       const severityRanking = await fetchRtarfSeverityStatistics();
-
-      console.log("Show alert:", summary);
-      console.log("Show threat:", threat);
-      console.log("Show severity average:", severity);
-      console.log("Show severity ranking:", severityRanking);
 
       setAlertData(summary);
       setThreatData(threat);
@@ -109,16 +104,6 @@ const DevConBangkok = () => {
     };
   }, [severityStats]);
 
-
-  function getSeverityColor(severity?: string): string {
-    switch (severity) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-blue-500';
-      default: return 'bg-gray-300';
-    }
-  }
 
   // Get color based on DEFCON level
   function getDefconColor(level: number): {
@@ -215,12 +200,15 @@ const DevConBangkok = () => {
   return (
     <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-start gap-1 overflow-hidden">
       {/* DEFCON Status */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
-        <div className="text-[15px] text-white font-bold mb-3 tracking-wider text-center">
+      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col group hover:border-gray-400 transition-all duration-300">
+        {/* ชื่อ DEFCON ให้อยู่ตรงกลาง */}
+        <div className="text-[15px] text-white font-bold mb-3 tracking-wider text-center group-hover:text-cyan-300 transition-colors duration-300">
           สถานการณ์ทางไซเบอร์
         </div>
 
+        {/* ส่วน DEFCON Level */}
         <div className="flex items-center justify-between">
+          {/* กรอบด้านซ้าย 4 ช่อง */}
           <div className="flex flex-col justify-center gap-1.5">
             {[4, 3, 2, 1].map((level) => {
               const colors = getDefconColor(level);
@@ -228,26 +216,34 @@ const DevConBangkok = () => {
               return (
                 <div
                   key={level}
-                  className={`w-12 h-4 border-2 transition-all duration-300 ${
+                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${
                     isActive
                       ? `${colors.border} ${colors.bg} ${colors.glow}`
-                      : "border-gray-600 bg-transparent"
+                      : "border-gray-600 bg-transparent hover:border-gray-400"
                   }`}
-                ></div>
+                >
+                  {isActive && (
+                    <div className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}></div>
+                  )}
+                </div>
               );
             })}
           </div>
 
-          <div className="relative">
+          {/* วงกลม Defcon Level */}
+          <div className="relative group/circle cursor-pointer">
             <div
-              className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300`}
+              className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300 group-hover/circle:scale-110 group-hover/circle:border-[10px]`}
             >
-              <span className={`text-7xl font-bold leading-none ${defconColors.text}`}>
+              <span className={`text-7xl font-bold leading-none ${defconColors.text} group-hover/circle:scale-110 transition-transform duration-300`}>
                 {defconLevel}
               </span>
             </div>
             <div
-              className={`absolute -inset-1 rounded-full border-4 ${defconColors.border} opacity-30 animate-pulse`}
+              className={`absolute -inset-1 rounded-full border-4 ${defconColors.border} opacity-30 animate-pulse group-hover/circle:opacity-50`}
+            ></div>
+            <div
+              className={`absolute -inset-2 rounded-full border-2 ${defconColors.border} opacity-0 group-hover/circle:opacity-20 group-hover/circle:animate-ping`}
             ></div>
           </div>
         </div>

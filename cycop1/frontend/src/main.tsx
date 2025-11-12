@@ -2,11 +2,11 @@ import "./index.css";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import CreateNode from "./Components/CreateNode.tsx";
+import CreateNode from "./components/CreateNode.tsx";
 import MainLayout from "./MainLayout.tsx";
 import BangkokLayout from "./BangkokLayout.tsx";
-import MapView from "./Components/MapView.tsx";
-import MapViewBangkok from "./Components/MapViewBangkok.tsx"
+import MapView from "./components/MapView.tsx";
+import MapViewBangkok from "./components/bangkoks/MapViewBangkok.tsx"
 import MitreAttackNavigator from "./pages/mitre-framework/index.tsx";
 import App from "./App.tsx";
 

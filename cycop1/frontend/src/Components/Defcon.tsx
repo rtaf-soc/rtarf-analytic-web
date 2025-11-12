@@ -222,9 +222,9 @@ const DevConDashboard = () => {
   return (
      <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
       {/* DEFCON Status */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
+      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col group hover:border-gray-400 transition-all duration-300">
         {/* ชื่อ DEFCON ให้อยู่ตรงกลาง */}
-        <div className="text-[15px] text-white font-bold mb-3 tracking-wider text-center">
+        <div className="text-[15px] text-white font-bold mb-3 tracking-wider text-center group-hover:text-cyan-300 transition-colors duration-300">
           สถานการณ์ทางไซเบอร์
         </div>
 
@@ -238,27 +238,34 @@ const DevConDashboard = () => {
               return (
                 <div
                   key={level}
-                  className={`w-12 h-4 border-2 transition-all duration-300 ${
+                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${
                     isActive
                       ? `${colors.border} ${colors.bg} ${colors.glow}`
-                      : "border-gray-600 bg-transparent"
+                      : "border-gray-600 bg-transparent hover:border-gray-400"
                   }`}
-                ></div>
+                >
+                  {isActive && (
+                    <div className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}></div>
+                  )}
+                </div>
               );
             })}
           </div>
 
           {/* วงกลม Defcon Level */}
-          <div className="relative">
+          <div className="relative group/circle cursor-pointer">
             <div
-              className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300`}
+              className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300 group-hover/circle:scale-110 group-hover/circle:border-[10px]`}
             >
-              <span className={`text-7xl font-bold leading-none ${defconColors.text}`}>
+              <span className={`text-7xl font-bold leading-none ${defconColors.text} group-hover/circle:scale-110 transition-transform duration-300`}>
                 {defconLevel}
               </span>
             </div>
             <div
-              className={`absolute -inset-1 rounded-full border-4 ${defconColors.border} opacity-30 animate-pulse`}
+              className={`absolute -inset-1 rounded-full border-4 ${defconColors.border} opacity-30 animate-pulse group-hover/circle:opacity-50`}
+            ></div>
+            <div
+              className={`absolute -inset-2 rounded-full border-2 ${defconColors.border} opacity-0 group-hover/circle:opacity-20 group-hover/circle:animate-ping`}
             ></div>
           </div>
         </div>
@@ -358,31 +365,48 @@ const DevConDashboard = () => {
       </div>
 
       {/* Threat Alert List */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500">
-        <div className="text-[15px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
+      <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500 shadow-lg">
+        <div className="text-[14px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
+          <span className="animate-pulse text-red-500">⚠</span>
           THREAT ALERT LIST
+          <span className="animate-pulse text-red-500">⚠</span>
         </div>
 
         <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
           {threats.map((threat, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-2 bg-black rounded-md"
+              className="flex items-center gap-2 bg-black rounded-md hover:bg-gray-900 transition-all duration-300 cursor-pointer group relative overflow-hidden"
             >
-              {/* แถบสีทางซ้าย */}
-              <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
+              {/* Glowing animated background on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
+                <div className={`absolute inset-0 ${threat.color} blur-xl animate-pulse`}></div>
+              </div>
+
+              {/* แถบสีทางซ้าย with glow effect */}
+              <div className={`${threat.color} w-4 h-8 flex-shrink-0 relative group-hover:shadow-lg transition-all duration-300`}>
+                <div className={`absolute inset-0 ${threat.color} blur-md opacity-0 group-hover:opacity-75 transition-opacity duration-300`}></div>
+              </div>
 
               {/* ข้อความ Threat ID และ Code */}
-              <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight">
+              <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight z-10">
                 <span
-                  className="text-white font-semibold truncate"
-                  title={threat.description} // full text on hover
+                  className="text-white font-semibold truncate group-hover:text-gray-200 transition-colors duration-300"
+                  title={threat.description}
                 >
                   {threat.description}
                 </span>
-                <span className="text-white font-mono text-[12px] truncate" title={threat.code}>
+                <span 
+                  className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300" 
+                  title={threat.code}
+                >
                   {threat.code}
                 </span>
+              </div>
+
+              {/* Pulse indicator on right side */}
+              <div className="flex-shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className={`w-2 h-2 rounded-full ${threat.color} animate-pulse`}></div>
               </div>
             </div>
           ))}
