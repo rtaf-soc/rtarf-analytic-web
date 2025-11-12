@@ -6,6 +6,7 @@ import CreateNode from "./Components/CreateNode.tsx";
 import MainLayout from "./MainLayout.tsx";
 import BangkokLayout from "./BangkokLayout.tsx";
 import MapView from "./Components/MapView.tsx";
+import MapViewBangkok from "./Components/MapViewBangkok.tsx"
 import MitreAttackNavigator from "./pages/mitre-framework/index.tsx";
 import App from "./App.tsx";
 
@@ -32,7 +33,7 @@ const router = createBrowserRouter([
     path: "/bangkok",
     element: <BangkokLayout />,
     children: [
-      {index: true, element: <MapView />},
+      {index: true, element: <MapViewBangkok />},
     ]
   }
   

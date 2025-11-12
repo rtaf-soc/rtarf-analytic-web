@@ -11,7 +11,7 @@ Chart.Chart.register(
   Chart.Tooltip
 );
 
-const DevConDashboard = () => {
+const DevConBangkok = () => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
   const [threatData, setThreatData] = useState<AlertBase[]>([]);
   const [avgSeverity, setAvgSeverity] = useState<RtarfAverageSeverityPayload | null>(null);
@@ -22,34 +22,34 @@ const DevConDashboard = () => {
 
  
   useEffect(() => {
-  const loadAllData = async () => {
-    const summary = await fetchAlertSummary();
-    const threat = await fetchLatestAlert();
-    const severity = await fetchRtarfAverageSummary();
-    const severityRanking = await fetchRtarfSeverityStatistics();
+    const loadAllData = async () => {
+      const summary = await fetchAlertSummary();
+      const threat = await fetchLatestAlert();
+      const severity = await fetchRtarfAverageSummary();
+      const severityRanking = await fetchRtarfSeverityStatistics();
 
-    console.log("Show alert:", summary);
-    console.log("Show threat:", threat);
-    console.log("Show severity average:", severity);
-    console.log("Show severity ranking:", severityRanking);
+      console.log("Show alert:", summary);
+      console.log("Show threat:", threat);
+      console.log("Show severity average:", severity);
+      console.log("Show severity ranking:", severityRanking);
 
-    setAlertData(summary);
-    setThreatData(threat);
-    setAvgSeverity(severity);
-    setSeverityStats(severityRanking);
+      setAlertData(summary);
+      setThreatData(threat);
+      setAvgSeverity(severity);
+      setSeverityStats(severityRanking);
 
-    if (severity && severity.average_severity_level > 0) {
-      setDefconLevel(severity.average_severity_level);
-    }
-  };
+      if (severity && severity.average_severity_level > 0) {
+        setDefconLevel(severity.average_severity_level);
+      }
+    };
 
-  loadAllData();
+    loadAllData();
 
-  const interval = setInterval(loadAllData, 30000);
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(loadAllData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-// Create Chart.js chart when severity stats change
+  // Create Chart.js chart when severity stats change
   useEffect(() => {
     if (severityStats?.severity_distribution && chartRef.current) {
       const dist = severityStats.severity_distribution;
@@ -160,13 +160,6 @@ const DevConDashboard = () => {
     }
   }
 
-  const threats = threatData?.map((item) => ({
-    description: item.description,
-    code: item.incident_id,
-    color: getSeverityColor(item.severity),
-  })
-  )
-
   const pieData =
     alertData?.alert_summarys
       ?.slice(0, 5) // top 5 categories for pie
@@ -220,17 +213,14 @@ const DevConDashboard = () => {
   const defconColors = getDefconColor(defconLevel);
 
   return (
-     <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
+    <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-start gap-1 overflow-hidden">
       {/* DEFCON Status */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
-        {/* ชื่อ DEFCON ให้อยู่ตรงกลาง */}
         <div className="text-[15px] text-white font-bold mb-3 tracking-wider text-center">
           สถานการณ์ทางไซเบอร์
         </div>
 
-        {/* ส่วน DEFCON Level */}
         <div className="flex items-center justify-between">
-          {/* กรอบด้านซ้าย 4 ช่อง */}
           <div className="flex flex-col justify-center gap-1.5">
             {[4, 3, 2, 1].map((level) => {
               const colors = getDefconColor(level);
@@ -248,7 +238,6 @@ const DevConDashboard = () => {
             })}
           </div>
 
-          {/* วงกลม Defcon Level */}
           <div className="relative">
             <div
               className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300`}
@@ -262,67 +251,16 @@ const DevConDashboard = () => {
             ></div>
           </div>
         </div>
-
-        {/* Severity Info */}
-        {/* {avgSeverity && (
-          <div className="mt-3 text-center">
-            <div className="text-xs text-gray-400">ระดับภัยคุกคาม</div>
-            <div className={`text-lg font-bold ${defconColors.text} uppercase`}>
-              {avgSeverity.danger_level}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {avgSeverity.events_with_severity} / {avgSeverity.total_events} events
-            </div>
-          </div>
-        )} */}
       </div>
 
-      {/* ActivityChart */}
-      {/* <div
-        className="relative bg-black p-[6px] 
-        bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1"
-      >
-        <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
-          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
-            Top 3 ประเทศ ลาดตระเวนมายังเครือข่ายประจำสัปดาห์
-          </div>
-
-          <div
-            className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] 
-            shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]"
-          >
-            <div className="h-14 flex items-end justify-center gap-3">
-              <div
-                className="w-10 bg-pink-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                style={{ height: "55%" }}
-              ></div>
-              <div
-                className="w-10 bg-orange-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                style={{ height: "40%" }}
-              ></div>
-              <div
-                className="w-10 bg-cyan-400 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                style={{ height: "75%" }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div> */}
-
       {/* Severity amount Chart */}
-      <div
-        className="relative bg-black p-[6px] 
-        bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1"
-      >
+      <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)]">
         <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
-          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
+          <div className="text-[9px] text-white mb-2 tracking-wide text-center font-bold">
             จำนวนการแจ้งเตือนแยกตามระดับความรุนแรง
           </div>
 
-          <div
-            className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] 
-            shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]"
-          >
+          <div className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]">
             {severityStats?.severity_distribution ? (
               <>
                 <div className="h-16 relative">
@@ -345,23 +283,13 @@ const DevConDashboard = () => {
       </div>
 
       {/* Pie Chart */}
-      <div
-        className="relative bg-black p-[6px] 
-  bg-gradient-to-b from-[#b0c4de] to-[#4a5568] 
-  shadow-[0_0_10px_rgba(0,150,255,0.25)] mt-[2px] mb-[2px]"
-      >
-        <div
-          className="bg-black rounded-lg p-[6px] 
-    shadow-[inset_0_1px_3px_rgba(255,255,255,0.15),inset_0_-2px_4px_rgba(0,0,0,0.7)]"
-        >
+      <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_10px_rgba(0,150,255,0.25)]">
+        <div className="bg-black rounded-lg p-[6px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.15),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
           <div className="text-[9px] text-white mb-[4px] tracking-wide text-center font-bold">
             THREAT DISTRIBUTION
           </div>
 
-          <div
-            className="bg-gray-900/70 p-[6px] rounded-lg border-[1.5px] border-[#5c6e87]
-      shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_2px_3px_rgba(0,0,0,0.5)]"
-          >
+          <div className="bg-gray-900/70 p-[6px] rounded-lg border-[1.5px] border-[#5c6e87] shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_2px_3px_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-[6px]">
               <div className="relative w-20 h-20 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="transform -rotate-90">
@@ -371,10 +299,7 @@ const DevConDashboard = () => {
 
               <div className="flex-1 space-y-[2px]">
                 {pieData.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-[4px] text-[8px]"
-                  >
+                  <div key={idx} className="flex items-center gap-[4px] text-[8px]">
                     <div className={`w-2 h-2 rounded-sm ${item.color}`}></div>
                     <span className="text-gray-300 line-clamp-2">
                       {item.label}
@@ -387,40 +312,8 @@ const DevConDashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Threat Alert List */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500">
-        <div className="text-[15px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
-          THREAT ALERT LIST
-        </div>
-
-        <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
-          {threats.map((threat, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-2 bg-black rounded-md"
-            >
-              {/* แถบสีทางซ้าย */}
-              <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
-
-              {/* ข้อความ Threat ID และ Code */}
-              <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight">
-                <span
-                  className="text-white font-semibold truncate"
-                  title={threat.description} // full text on hover
-                >
-                  {threat.description}
-                </span>
-                <span className="text-white font-mono text-[12px] truncate" title={threat.code}>
-                  {threat.code}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
 
-export default DevConDashboard;
+export default DevConBangkok;

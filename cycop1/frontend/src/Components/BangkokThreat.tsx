@@ -55,7 +55,7 @@ const BangkokThreat = ({ title = "THREAT ALERT LIST", filterSeverity, logoPath }
   }
   
   return (
-    <div className="w-66 h-66 bg-black p-2 rounded-2xl shadow-2xl">  
+    <div className="w-66 h-59 bg-black rounded-2xl shadow-2xl">  
       {/* Threat Alert List */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-2 border-8 border-gray-500">
         {/* Header with Logo and Title */}
