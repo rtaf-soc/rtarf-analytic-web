@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { GetAllConnectionsWithNodes, type NetworkConnection, GetNodeWithMapScope } from "../services/defensiveService";
-import type { NodeGet } from "../types/defensive";
+import { GetAllConnectionsWithNodes, type NetworkConnection, GetNodeWithMapScope } from "../../services/defensiveService";
+import type { NodeGet } from "../../types/defensive";
 import {
   MapContainer,
   TileLayer,
@@ -11,9 +11,8 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "../index.css";
+import "../../index.css";
 import { color } from "chart.js/helpers";
-// import bangkokGeoJSON from "../data/ฺbangkok-districts.geojson";
 
 
 // ไอคอน threat สีแดง/เหลือง

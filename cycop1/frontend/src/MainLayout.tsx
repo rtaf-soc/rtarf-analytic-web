@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Outlet, Navigate} from "react-router-dom";
-import Defcon from "./Components/Defcon";
-import OverlayList from "./Components/OverlayList";
-import CreateNode from "./Components/CreateNode";
+import Defcon from "./components/Defcon";
+import OverlayList from "./components/OverlayList";
+import CreateNode from "./components/CreateNode";
 import { CirclePlus, X } from 'lucide-react';
 
 import "./index.css";

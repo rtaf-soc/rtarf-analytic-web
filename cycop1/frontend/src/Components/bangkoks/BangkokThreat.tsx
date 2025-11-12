@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { fetchAlertSummary, type AlertSummary, fetchLatestAlert } from "../services/defensiveService";
-import { type AlertBase } from "../types/defensive";
+import { fetchAlertSummary, type AlertSummary, fetchLatestAlert } from "../../services/defensiveService";
+import { type AlertBase } from "../../types/defensive";
 
 interface BangkokThreatProps {
   title?: string;
@@ -45,7 +45,7 @@ const BangkokThreat = ({ title = "THREAT ALERT LIST", filterSeverity, logoPath }
     color: getSeverityColor(item.severity),
   }));
 
-  // ✅ Fallback while loading
+  // Fallback while loading
   if (!alertData) {
     return (
       <div className="flex justify-center items-center h-full bg-black text-white text-sm">
