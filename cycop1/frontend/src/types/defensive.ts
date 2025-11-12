@@ -23,6 +23,7 @@ export interface NodeGet {
     ip_address?: string,
     additional_ips?: string[],
     network_metadata?: string[],
+    map_scope: string,
     created_at: string,
     updated_at: string,
 }

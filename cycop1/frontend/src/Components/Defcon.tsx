@@ -277,38 +277,7 @@ const DevConDashboard = () => {
         )} */}
       </div>
 
-      {/* ActivityChart */}
-      {/* <div
-        className="relative bg-black p-[6px] 
-        bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1"
-      >
-        <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
-          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
-            Top 3 ประเทศ ลาดตระเวนมายังเครือข่ายประจำสัปดาห์
-          </div>
-
-          <div
-            className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] 
-            shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]"
-          >
-            <div className="h-14 flex items-end justify-center gap-3">
-              <div
-                className="w-10 bg-pink-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                style={{ height: "55%" }}
-              ></div>
-              <div
-                className="w-10 bg-orange-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                style={{ height: "40%" }}
-              ></div>
-              <div
-                className="w-10 bg-cyan-400 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                style={{ height: "75%" }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div> */}
-
+    
       {/* Severity amount Chart */}
       <div
         className="relative bg-black p-[6px] 

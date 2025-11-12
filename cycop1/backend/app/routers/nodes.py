@@ -28,6 +28,7 @@ def create_new_node(node: schemas.NodeCreate, db: Session = Depends(get_db)):
     - **ip_address**: IP address หลัก (optional)
     - **additional_ips**: IP addresses เพิ่มเติม (optional)
     - **network_metadata**: ข้อมูลเครือข่ายเพิ่มเติม (optional)
+    - **map_scope**: ประเภทที่ใช้ในแผนที่ (required)
     """
     if node.ip_address:
         existing_node = crud.get_node_by_ip(db, ip_address=node.ip_address)
@@ -137,6 +138,28 @@ def search_nodes_in_area(
         max_lat=area.max_latitude,
         max_lng=area.max_longitude
     )
+    return [schemas.Node.from_orm_with_location(node) for node in nodes]
+
+@router.get("/map_scope/{map_scope}", response_model=List[schemas.Node])
+def read_nodes_by_map_scope(
+    map_scope: str,
+    skip: int = Query(0, ge=0, description="จำนวนแถวที่ข้ามไป"),
+    limit: int = Query(100, ge=1, le=1000, description="จำนวนแถวสูงสุดที่จะดึง"),
+    db: Session = Depends(get_db)
+):
+    """
+    ดึงโหนดทั้งหมดตาม `map_scope` พร้อม pagination
+    - map_scope: 'global' หรือ 'bangkok'
+    """
+    nodes = crud.get_nodes_by_map_scope(db, skip=skip, limit=limit, map_scope=map_scope)
+    
+    if not nodes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No nodes found for map_scope '{map_scope}'"
+        )
+    
+    # แปลง geometry เป็น lat/lon สำหรับ response
     return [schemas.Node.from_orm_with_location(node) for node in nodes]
 
 @router.get("/{node_id}/connections", response_model=schemas.NodeWithConnections)

@@ -15,6 +15,9 @@ class NodePosition(Base):
     description = Column(Text, nullable=True) 
     node_type = Column(String(50), index=True, nullable=False)
     
+    # แยก Global / Province (Bangkok)
+    map_scope = Column(String(50), nullable=False, default="global", index=True)
+    
     # IP Address field - ใช้ INET type ของ PostgreSQL
     ip_address = Column(INET, index=True, nullable=True)
     
