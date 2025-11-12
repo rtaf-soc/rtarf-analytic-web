@@ -22,7 +22,7 @@ const MainLayout = () => {
       {/*เนื้อหากลาง*/}
       <div className="ml-59 mr-58 h-full pb-[240px]">
         {" "}
-        {/* เพิ่ม pb-64 เพื่อเว้นพื้นที่ให้ bottom bar */}
+        {/*เพิ่ม pb-64 เพื่อเว้นพื้นที่ให้ bottom bar */}
         <Outlet />
       </div>
 
