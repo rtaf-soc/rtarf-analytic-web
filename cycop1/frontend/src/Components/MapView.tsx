@@ -33,8 +33,8 @@ const MapView = () => {
     const loadNodeData = async () => {
       const nodes = await GetAllNode();
       const connecteds = await GetAllConnectionsWithNodes();
-      console.log("Show Node:", nodes)
-      console.log("Show Cn:", connecteds)
+      console.log("Show Nodes:", nodes)
+      console.log("Show Connections:", connecteds)
       setNodeData(nodes);
       setConnectionsData(connecteds);
     };
@@ -90,19 +90,6 @@ const MapView = () => {
         return "#32CD32";
     }
   };
-
-  // เส้นเชื่อม (polyline)
-  // const connections = [
-  //   [threats[0].coords, threats[1].coords],
-  //   [threats[0].coords, threats[3].coords],
-  //   [threats[3].coords, threats[4].coords],
-  //   [threats[0].coords, threats[2].coords],
-  // ];
-
-  // const connections =
-  // threatDatas.length > 1
-  //   ? threatDatas.slice(1).map(t => [threatDatas[0].coords, t.coords])
-  //   : [];
 
   return (
     <MapContainer

@@ -6,6 +6,67 @@ const POSTGRES_API_URL =
   import.meta.env.VITE_POSTGRES_API_URL || "http://localhost:8000";
 
 // ==============================
+// Rtarf Services
+// ==============================
+
+export interface RtarfAverageSeverityPayload {
+  average_severity_level: number,
+  danger_level: string,
+  total_events: number,
+  events_with_severity: number,
+  raw_average: number
+}
+
+export interface RtarfSeverityStatistics {
+  total_events: number,
+  severity_distribution: {
+    critical: number,
+    high: number,
+    medium: number,
+    low: number,
+    unknown: number
+  },
+  percentages: {
+    critical: number,
+    high: number,
+    medium: number,
+    low: number,
+    unknown: number
+  }
+}
+
+export async function fetchRtarfAverageSummary(): Promise<RtarfAverageSeverityPayload> {
+  try {
+    const response = await axios.get<RtarfAverageSeverityPayload>(
+      `${POSTGRES_API_URL}/rtarf-events/severity/average`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching Rtarf average summary from PostgreSQL:", error);
+    return {
+      average_severity_level: 0,
+      danger_level: "Unknown",
+      total_events: 0,
+      events_with_severity: 0,
+      raw_average: 0
+    };
+  }
+}
+
+export async function fetchRtarfSeverityStatistics(): Promise<RtarfSeverityStatistics | null> {
+  try {
+    const response = await axios.get<RtarfSeverityStatistics>(
+      `${POSTGRES_API_URL}/rtarf-events/severity/statistics`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching Rtarf average summary from PostgreSQL:", error);
+    return null;
+    };
+  }
+
+
+// ==============================
 // Alert Services
 // ==============================
 
@@ -60,6 +121,15 @@ export interface NodePayload {
   ip_address?: string,
   additional_ips?: string[],
   network_metadata?: string[],
+}
+
+export interface NodeSummary {
+  node_id: number,
+  node_name: string,
+  total_events: number,
+  events_by_role: string[],
+  events_by_severity: string[],
+  latest_event_time: string,
 }
 
 
