@@ -11,7 +11,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../index.css";
-import { color } from "chart.js/helpers";
+
 
 // ไอคอน threat สีแดง/เหลือง
 const redIcon = new L.Icon({
@@ -21,7 +21,7 @@ const redIcon = new L.Icon({
 });
 
 const yellowIcon = new L.Icon({
-  iconUrl: "/img/warning.png",
+  iconUrl: "/img/wifi-router.png",
   iconSize: [24, 24],
 });
 
@@ -73,7 +73,6 @@ const MapView = () => {
 
   // Determine icon color (you can customize this logic)
   const getNodeIcon = (node: NodeGet) => {
-    // Example: first node is red, others are yellow
     return node.id === 1 ? redIcon : yellowIcon;
   };
 

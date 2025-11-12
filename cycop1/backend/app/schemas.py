@@ -18,6 +18,9 @@ class NodeBase(BaseModel):
     additional_ips: Optional[List[str]] = Field(default=[], description="IP addresses เพิ่มเติม")
     network_metadata: Optional[Dict[str, Any]] = Field(default={}, description="ข้อมูล metadata เพิ่มเติม")
     
+     # ✅ เพิ่ม map_scope เพื่อแยก global/province (เช่น global, bangkok)
+    map_scope: str = Field("global", description="ขอบเขตของแผนที่ เช่น global หรือ bangkok")
+    
     @field_validator('ip_address')
     @classmethod
     def validate_ip_address(cls, v):
@@ -56,6 +59,9 @@ class NodeUpdate(BaseModel):
     additional_ips: Optional[List[str]] = None
     network_metadata: Optional[Dict[str, Any]] = None
     
+     # ✅ สามารถอัพเดต map_scope ได้
+    map_scope: Optional[str] = Field(None, description="ขอบเขตของแผนที่ เช่น global หรือ bangkok")
+    
     @field_validator('ip_address')
     @classmethod
     def validate_ip_address(cls, v):
@@ -78,12 +84,13 @@ class Node(BaseModel):
     ip_address: Optional[str] = None
     additional_ips: List[str] = []
     network_metadata: Dict[str, Any] = {}
+    map_scope: str = Field(..., description="ขอบเขตของแผนที่ เช่น global หรือ bangkok")
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
-    
+
     @classmethod
     def from_orm_with_location(cls, db_node):
         """
@@ -92,7 +99,6 @@ class Node(BaseModel):
         """
         from geoalchemy2.shape import to_shape
         
-        # แปลง WKBElement เป็น Shapely Point
         point = to_shape(db_node.location)
         
         return cls(
@@ -105,6 +111,7 @@ class Node(BaseModel):
             ip_address=str(db_node.ip_address) if db_node.ip_address else None,
             additional_ips=db_node.additional_ips or [],
             network_metadata=db_node.network_metadata or {},
+            map_scope=db_node.map_scope,  # ✅ include new field
             created_at=db_node.created_at,
             updated_at=db_node.updated_at
         )

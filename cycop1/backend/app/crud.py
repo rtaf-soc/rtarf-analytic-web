@@ -47,6 +47,25 @@ def get_nodes(db: Session, skip: int = 0, limit: int = 100, node_type: Optional[
     return query.offset(skip).limit(limit).all()
 
 
+def get_nodes_by_map_scope(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100, 
+    map_scope: Optional[str] = None
+):
+    """
+    ดึงข้อมูลโหนดจากฐานข้อมูลตาม map_scope พร้อม pagination
+    หาก map_scope เป็น None จะดึงทุก map_scope
+    """
+    query = db.query(models.NodePosition)
+    
+    if map_scope:
+        query = query.filter(models.NodePosition.map_scope == map_scope)
+    
+    return query.offset(skip).limit(limit).all()
+
+
+
 def create_node(db: Session, node: schemas.NodeCreate):
     """
     สร้างโหนดใหม่ในฐานข้อมูล
@@ -66,6 +85,7 @@ def create_node(db: Session, node: schemas.NodeCreate):
         ip_address=node.ip_address,
         additional_ips=node.additional_ips or [],
         network_metadata=node.network_metadata or {},
+        map_scope=node.map_scope,
         location=wkb_point
     )
     
