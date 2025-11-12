@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Outlet, Navigate} from "react-router-dom";
-import Defcon from "./components/Defcon";
-import OverlayList from "./components/OverlayList";
-import CreateNode from "./components/CreateNode";
+import Defcon from "./Components/Defcon";
+import OverlayList from "./Components/OverlayList";
+import CreateNode from "./Components/CreateNode";
 import { CirclePlus, X } from 'lucide-react';
 
 import "./index.css";
@@ -21,7 +21,7 @@ const MainLayout = () => {
       </div>
 
        {/* ปุ่มสำหรับเพิ่ม Node */}
-      <div className="fixed right-6 top-6 z-50">
+      {/* <div className="fixed right-6 top-6 z-50">
         <button
           onClick={() => setIsNodeOpen(true)}
           className="flex items-center justify-center h-6 w-6 bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all duration-300 group"
@@ -29,7 +29,7 @@ const MainLayout = () => {
         >
           <CirclePlus className="text-white w-6 h-6 group-hover:scale-110 transition-transform" />
         </button>
-      </div>
+      </div> */}
 
       {/* Modal สำหรับ Create Node */}
       {isNodeOpen && (

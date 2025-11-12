@@ -17,7 +17,6 @@ import { color } from "chart.js/helpers";
 const redIcon = new L.Icon({
   iconUrl: "/img/warning.png",
   iconSize: [24, 24],
-
 });
 
 const yellowIcon = new L.Icon({
@@ -25,7 +24,7 @@ const yellowIcon = new L.Icon({
   iconSize: [24, 24],
 });
 
-const MapView = () => {
+const MapViewBangkok = () => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
 
@@ -93,8 +92,10 @@ const MapView = () => {
 
   return (
     <MapContainer
-      center={[15.87, 100.9925]} // Thailand center
-      zoom={6}
+      center={[13.7563, 100.5018]} // กรุงเทพมหานคร
+      zoom={11} // ซูมเข้าไปที่กรุงเทพ (11-13 สำหรับเมือง)
+      minZoom={10} // จำกัดการซูมออกไม่ให้เห็นทั้งโลก
+      maxZoom={18}
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
@@ -145,4 +146,4 @@ const MapView = () => {
   );
 };
 
-export default MapView;
+export default MapViewBangkok;
