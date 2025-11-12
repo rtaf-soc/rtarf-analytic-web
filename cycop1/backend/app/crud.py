@@ -1,5 +1,6 @@
 # app/crud.py
 from datetime import datetime
+import math
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, func
 from geoalchemy2.shape import from_shape, to_shape
@@ -10,7 +11,7 @@ import logging
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 import ipaddress
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import models
 from . import schemas
@@ -596,6 +597,540 @@ def delete_event(db: Session, event_id: str):
     return True
 
 # ===============================================================
+# SEVERITY MAPPING CONFIGURATIONS
+# ===============================================================
+
+PALO_SEVERITY_MAP = {
+    "critical": 4,
+    "high": 3,
+    "medium": 2,
+    "low": 1,
+    "informational": 1,
+    "unknown": 1
+}
+
+CROWDSTRIKE_SEVERITY_MAP = {
+    "critical": 4,
+    "high": 3,
+    "medium": 2,
+    "low": 1,
+    "informational": 1,
+    "unknown": 1
+}
+
+SEVERITY_LEVEL_TO_DANGER = {
+    4: "critical",
+    3: "high",
+    2: "medium",
+    1: "low"
+}
+
+# ===============================================================
+# CORE HELPER FUNCTIONS
+# ===============================================================
+
+def _normalize_severity_value(severity_str, mapping: Dict[str, int]) -> int:
+    """
+    Normalize severity string to numeric value (1-4)
+    Returns 0 if None or invalid
+    """
+    if severity_str is None or severity_str == "":
+        return 0
+    
+    try:
+        severity_lower = str(severity_str).lower().strip()
+        return mapping.get(severity_lower, 0)
+    except Exception as e:
+        logger.warning(f"Error normalizing severity value '{severity_str}': {e}")
+        return 0
+
+
+def calculate_average_severity(
+    palo_severity: Optional[str],
+    crowdstrike_severity: Optional[str]
+) -> Tuple[Optional[int], Optional[str]]:
+    """
+    Calculate average severity from Palo Alto and CrowdStrike sources
+    This is the MAIN function used throughout the codebase
+    
+    Args:
+        palo_severity: Severity from Palo Alto XSIAM
+        crowdstrike_severity: Severity from CrowdStrike
+        
+    Returns:
+        Tuple of (severity_level, danger_level)
+        - severity_level: Integer from 1-4 or None
+        - danger_level: String 'critical', 'high', 'medium', 'low' or None
+    """
+    try:
+        palo_value = _normalize_severity_value(palo_severity, PALO_SEVERITY_MAP)
+        cs_value = _normalize_severity_value(crowdstrike_severity, CROWDSTRIKE_SEVERITY_MAP)
+        
+        # If both are 0/None, return None
+        if palo_value == 0 and cs_value == 0:
+            return None, None
+        
+        # If only one source has severity, use that value
+        if palo_value == 0:
+            severity_level = cs_value
+        elif cs_value == 0:
+            severity_level = palo_value
+        else:
+            # Both sources have severity, calculate average and round up
+            severity_level = math.ceil((palo_value + cs_value) / 2)
+        
+        # Ensure severity_level is within bounds
+        severity_level = max(1, min(4, severity_level))
+        
+        danger_level = SEVERITY_LEVEL_TO_DANGER.get(severity_level)
+        
+        return severity_level, danger_level
+        
+    except Exception as e:
+        logger.warning(f"Error calculating average severity: {e}")
+        return None, None
+
+
+# ===============================================================
+# CRUD FUNCTIONS FOR SINGLE EVENT
+# ===============================================================
+
+def get_rtarf_event_with_severity(db: Session, event_id: str) -> Optional[Dict]:
+    """
+    Get single RTARF Event with calculated average severity
+    
+    Args:
+        db: Database session
+        event_id: Event ID (database primary key)
+        
+    Returns:
+        Dictionary with event data and calculated severity
+    """
+    event = db.query(models.RtarfEvent).filter(models.RtarfEvent.id == event_id).first()
+    
+    if not event:
+        return None
+    
+    severity_level, danger_level = calculate_average_severity(
+        event.severity,
+        event.crowdstrike_severity
+    )
+    
+    return {
+        "id": event.id,
+        "event_id": event.event_id,
+        "incident_id": event.incident_id,
+        "status": event.status,
+        "palo_severity": event.severity,
+        "crowdstrike_severity": event.crowdstrike_severity,
+        "calculated_severity_level": severity_level,
+        "calculated_danger_level": danger_level,
+        "description": event.description,
+        "timestamp": event.timestamp,
+        "mitre_tactics": event.mitre_tactics_ids_and_names,
+        "mitre_techniques": event.mitre_techniques_ids_and_names,
+        "alert_categories": event.alert_categories
+    }
+
+
+def update_event_with_severity(
+    db: Session,
+    event_id: str,
+    palo_severity: Optional[str] = None,
+    crowdstrike_severity: Optional[str] = None
+) -> Optional[Dict]:
+    """
+    Update event severity and return recalculated values
+    
+    Args:
+        db: Database session
+        event_id: Event ID (database primary key)
+        palo_severity: New Palo Alto severity value
+        crowdstrike_severity: New CrowdStrike severity value
+        
+    Returns:
+        Updated event with calculated severity
+    """
+    event = db.query(models.RtarfEvent).filter(models.RtarfEvent.id == event_id).first()
+    
+    if not event:
+        return None
+    
+    if palo_severity is not None:
+        event.severity = palo_severity
+    
+    if crowdstrike_severity is not None:
+        event.crowdstrike_severity = crowdstrike_severity
+    
+    db.commit()
+    db.refresh(event)
+    
+    return get_rtarf_event_with_severity(db, event_id)
+
+
+# ===============================================================
+# CRUD FUNCTIONS FOR MULTIPLE EVENTS
+# ===============================================================
+
+def get_rtarf_events_with_severity(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    severity_level: Optional[int] = None,
+    danger_level: Optional[str] = None
+) -> list:
+    """
+    Get RTARF Events with calculated average severity
+    
+    Args:
+        db: Database session
+        skip: Number of records to skip
+        limit: Maximum number of records to return
+        severity_level: Filter by calculated severity level (1-4)
+        danger_level: Filter by danger level ('critical', 'high', 'medium', 'low')
+        
+    Returns:
+        List of events with calculated severity
+    """
+    events = db.query(models.RtarfEvent).order_by(
+        desc(models.RtarfEvent.timestamp)
+    ).offset(skip).limit(limit).all()
+    
+    results = []
+    
+    for event in events:
+        calc_severity_level, calc_danger_level = calculate_average_severity(
+            event.severity,
+            event.crowdstrike_severity
+        )
+        
+        # Apply filters if specified
+        if severity_level is not None and calc_severity_level != severity_level:
+            continue
+        
+        if danger_level is not None and calc_danger_level != danger_level:
+            continue
+        
+        results.append({
+            "id": event.id,
+            "event_id": event.event_id,
+            "incident_id": event.incident_id,
+            "status": event.status,
+            "palo_severity": event.severity,
+            "crowdstrike_severity": event.crowdstrike_severity,
+            "calculated_severity_level": calc_severity_level,
+            "calculated_danger_level": calc_danger_level,
+            "description": event.description,
+            "timestamp": event.timestamp,
+            "crowdstrike_event_name": event.crowdstrike_event_name,
+            "suricata_classification": event.suricata_classification
+        })
+    
+    return results
+
+
+# ===============================================================
+# STATISTICS AND ANALYTICS
+# ===============================================================
+
+def get_severity_statistics(db: Session) -> Dict:
+    """
+    Get statistics about severity levels across all events
+    Uses calculated average severity from both Palo and CrowdStrike
+    
+    Returns:
+        Dictionary with severity distribution statistics
+    """
+    events = db.query(models.RtarfEvent).all()
+    
+    severity_counts = {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "unknown": 0
+    }
+    
+    total_events = len(events)
+    
+    for event in events:
+        try:
+            _, danger_level = calculate_average_severity(
+                event.severity,
+                event.crowdstrike_severity
+            )
+            
+            if danger_level:
+                severity_counts[danger_level] += 1
+            else:
+                severity_counts["unknown"] += 1
+                
+        except Exception as e:
+            logger.warning(f"Error processing event {event.id} in statistics: {e}")
+            severity_counts["unknown"] += 1
+            continue
+    
+    return {
+        "total_events": total_events,
+        "severity_distribution": severity_counts,
+        "percentages": {
+            level: round((count / total_events * 100), 2) if total_events > 0 else 0
+            for level, count in severity_counts.items()
+        }
+    }
+
+
+def get_overall_average_severity_level(db: Session) -> Dict:
+    """
+    Calculate the overall average severity level across ALL events
+    *** USE THIS FOR DEFCON DISPLAY ***
+    
+    Returns:
+        {
+            "average_severity_level": int (1-4),
+            "danger_level": str ("critical", "high", "medium", "low"),
+            "total_events": int,
+            "events_with_severity": int,
+            "raw_average": float
+        }
+    """
+    try:
+        events = db.query(models.RtarfEvent).all()
+        
+        logger.info(f"Processing {len(events)} events for overall severity calculation")
+        
+        if not events:
+            return {
+                "average_severity_level": 1,
+                "danger_level": "low",
+                "total_events": 0,
+                "events_with_severity": 0,
+                "raw_average": 0.0
+            }
+        
+        severity_values = []
+        skipped_count = 0
+        
+        for event in events:
+            try:
+                palo_sev = getattr(event, 'severity', None)
+                cs_sev = getattr(event, 'crowdstrike_severity', None)
+                
+                severity_level, _ = calculate_average_severity(palo_sev, cs_sev)
+                
+                if severity_level is not None:
+                    severity_values.append(severity_level)
+                else:
+                    skipped_count += 1
+                    
+            except Exception as e:
+                logger.warning(f"Error processing event {event.id}: {e}")
+                skipped_count += 1
+                continue
+        
+        total_events = len(events)
+        events_with_severity = len(severity_values)
+        
+        logger.info(f"Processed: {events_with_severity} events with severity, {skipped_count} skipped")
+        
+        if not severity_values:
+            logger.warning("No events with valid severity found")
+            return {
+                "average_severity_level": 1,
+                "danger_level": "low",
+                "total_events": total_events,
+                "events_with_severity": 0,
+                "raw_average": 0.0
+            }
+        
+        raw_average = sum(severity_values) / len(severity_values)
+        average_level = round(raw_average)
+        average_level = max(1, min(4, average_level))
+        
+        danger_level = SEVERITY_LEVEL_TO_DANGER.get(average_level, "low")
+        
+        logger.info(f"Calculated average severity: {average_level} ({danger_level})")
+        
+        return {
+            "average_severity_level": average_level,
+            "danger_level": danger_level,
+            "total_events": total_events,
+            "events_with_severity": events_with_severity,
+            "raw_average": round(raw_average, 2)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating overall average severity: {e}", exc_info=True)
+        raise
+
+
+def get_recent_average_severity_level(
+    db: Session,
+    hours: int = 24
+) -> Dict:
+    """
+    Calculate average severity level for recent events only
+    Useful for showing current threat level
+    
+    Args:
+        db: Database session
+        hours: Number of hours to look back (default 24)
+    
+    Returns:
+        Same structure as get_overall_average_severity_level
+        plus "time_window_hours" field
+    """
+    from datetime import datetime, timedelta
+    
+    try:
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        
+        events = db.query(models.RtarfEvent).filter(
+            models.RtarfEvent.timestamp >= cutoff_time
+        ).all()
+        
+        if not events:
+            return {
+                "average_severity_level": 1,
+                "danger_level": "low",
+                "total_events": 0,
+                "events_with_severity": 0,
+                "raw_average": 0.0,
+                "time_window_hours": hours
+            }
+        
+        severity_values = []
+        
+        for event in events:
+            try:
+                severity_level, _ = calculate_average_severity(
+                    event.severity,
+                    event.crowdstrike_severity
+                )
+                
+                if severity_level is not None:
+                    severity_values.append(severity_level)
+                    
+            except Exception as e:
+                logger.warning(f"Error processing event {event.id}: {e}")
+                continue
+        
+        total_events = len(events)
+        events_with_severity = len(severity_values)
+        
+        if not severity_values:
+            return {
+                "average_severity_level": 1,
+                "danger_level": "low",
+                "total_events": total_events,
+                "events_with_severity": 0,
+                "raw_average": 0.0,
+                "time_window_hours": hours
+            }
+        
+        raw_average = sum(severity_values) / len(severity_values)
+        average_level = round(raw_average)
+        average_level = max(1, min(4, average_level))
+        
+        danger_level = SEVERITY_LEVEL_TO_DANGER.get(average_level, "low")
+        
+        return {
+            "average_severity_level": average_level,
+            "danger_level": danger_level,
+            "total_events": total_events,
+            "events_with_severity": events_with_severity,
+            "raw_average": round(raw_average, 2),
+            "time_window_hours": hours
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating recent average severity: {e}")
+        raise
+
+
+def get_severity_trend(db: Session, hours: int = 24) -> Dict:
+    """
+    Get severity trend over time
+    Compares current period vs previous period
+    
+    Args:
+        db: Database session
+        hours: Length of each comparison period
+    
+    Returns:
+        {
+            "current_level": int,
+            "previous_level": int,
+            "trend": str ("increasing", "decreasing", "stable"),
+            "change": int (difference)
+        }
+    """
+    from datetime import datetime, timedelta
+    
+    try:
+        now = datetime.utcnow()
+        
+        # Current period
+        current_start = now - timedelta(hours=hours)
+        current_events = db.query(models.RtarfEvent).filter(
+            models.RtarfEvent.timestamp >= current_start
+        ).all()
+        
+        # Previous period
+        previous_start = now - timedelta(hours=hours * 2)
+        previous_end = current_start
+        previous_events = db.query(models.RtarfEvent).filter(
+            models.RtarfEvent.timestamp >= previous_start,
+            models.RtarfEvent.timestamp < previous_end
+        ).all()
+        
+        def calc_avg_level(events):
+            if not events:
+                return 1
+            
+            severities = []
+            for e in events:
+                try:
+                    severity_level, _ = calculate_average_severity(
+                        e.severity,
+                        e.crowdstrike_severity
+                    )
+                    if severity_level is not None:
+                        severities.append(severity_level)
+                except Exception as ex:
+                    logger.warning(f"Error processing event in trend: {ex}")
+                    continue
+            
+            if not severities:
+                return 1
+            return round(sum(severities) / len(severities))
+        
+        current_level = calc_avg_level(current_events)
+        previous_level = calc_avg_level(previous_events)
+        
+        change = current_level - previous_level
+        
+        if change > 0:
+            trend = "increasing"
+        elif change < 0:
+            trend = "decreasing"
+        else:
+            trend = "stable"
+        
+        return {
+            "current_level": current_level,
+            "previous_level": previous_level,
+            "trend": trend,
+            "change": change,
+            "current_period_events": len(current_events),
+            "previous_period_events": len(previous_events)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating severity trend: {e}")
+        raise
+    
+# ===============================================================
 # CRUD Functions for Alert
 # ===============================================================
 
@@ -978,7 +1513,7 @@ def delete_node_events_by_event(db: Session, rtarf_event_id: int):
 
 
 # ===============================================================
-# Helper Functions
+# Node Helper Functions
 # ===============================================================
 
 def link_event_to_nodes_by_ip(db: Session, rtarf_event_id: int, source_ip: Optional[str] = None, 
