@@ -1,6 +1,37 @@
+import L from "leaflet";
 import { useState, useEffect } from "react";
+import { MapContainer, Marker, Rectangle, TileLayer, useMap } from "react-leaflet";
 
-const OverlayListBangkok = () => {
+
+// Component สำหรับแสดง viewport rectangle บน minimap
+const MinimapBounds = ({ parentBounds }: { parentBounds: L.LatLngBounds | null | undefined }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (parentBounds) {
+      // ปรับ minimap ให้เห็นทั้ง bounds ของ main map
+      map.fitBounds(parentBounds, { padding: [10, 10] });
+    }
+  }, [parentBounds, map]);
+
+  return parentBounds ? (
+    <Rectangle
+      bounds={parentBounds}
+      pathOptions={{
+        color: '#10b981',
+        weight: 2,
+        fillOpacity: 0.15,
+        fillColor: '#10b981',
+      }}
+    />
+  ) : null;
+};
+
+interface OverlayListProps {
+  mainMapBounds?: L.LatLngBounds | null;
+}
+
+const OverlayListBangkok: React.FC<OverlayListProps> = ({ mainMapBounds }) => {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -24,14 +55,21 @@ const OverlayListBangkok = () => {
       "NOV",
       "DEC",
     ];
-    return `${days[date.getDay()]} ${date.getDate()} ${
-      months[date.getMonth()]
-    } ${date.getFullYear()}`;
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]
+      } ${date.getFullYear()}`;
   };
 
   const formatTime = (date: Date): string => {
     return date.toLocaleTimeString("en-US", { hour12: false });
   };
+
+  // Thailand marker สำหรับ minimap
+  const thailandIcon = new L.DivIcon({
+    className: 'custom-marker',
+    html: `<div style="width: 10px; height: 10px; background: #10b981; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 10px #10b981;"></div>`,
+    iconSize: [10, 10],
+  });
+
 
   return (
     <div className="fixed left-0 top-0 h-auto w-60 bg-black text-white p-1 border-r-2 border-black flex flex-col">
@@ -54,38 +92,44 @@ const OverlayListBangkok = () => {
         </div>
       </div>
 
-      {/* World Map */}
+      {/* Minimap แสดง bounds ของ main map */}
       <div className="bg-slate-700 rounded p-1 relative overflow-hidden border-8 border-gray-500 mb-1">
-        <img
-          src="img/world.svg"
-          alt="World Map"
-          className="w-full h-24 object-contain rounded"
-        />
+        <MapContainer
+          center={[15.87, 100.99]}
+          zoom={5}
+          className="w-full h-24 rounded"
+          style={{ backgroundColor: "#1e293b" }}
+          zoomControl={false}
+          attributionControl={false}
+          dragging={false}
+          scrollWheelZoom={false}
+          doubleClickZoom={false}
+        >
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            opacity={0.5}
+          />
 
-        {/* Thailand Marker */}
-        <div
-          className="absolute border-3 border-green-500 animate-pulse"
-          style={{
-            left: "72%",
-            top: "40%",
-            width: "25px",
-            height: "25px",
-          }}
-        />
+          {/* Thailand marker */}
+          <Marker position={[13.7563, 100.5018]} icon={thailandIcon} />
 
-        {/* Glow Effect */}
-        <div
-          className="absolute rounded-full bg-green-400 opacity-50 blur-sm"
-          style={{
-            left: "calc(73% - 3px)",
-            top: "calc(48% - 3px)",
-            width: "12px",
-            height: "12px",
-          }}
-        />
+          {/* แสดงกรอบ viewport ของ main map */}
+          <MinimapBounds parentBounds={mainMapBounds} />
+        </MapContainer>
       </div>
 
+      {/* Glow Effect */}
+      <div
+        className="absolute rounded-full bg-green-400 opacity-50 blur-sm"
+        style={{
+          left: "calc(73% - 3px)",
+          top: "calc(48% - 3px)",
+          width: "12px",
+          height: "12px",
+        }}
+      />
     </div>
+
   );
 };
 

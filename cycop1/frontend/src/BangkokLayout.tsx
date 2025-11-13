@@ -1,22 +1,24 @@
 import { Outlet } from "react-router-dom";
-import OverlayList from "./components/OverlayList";
 import DefconBangkok from "./components/bangkoks/DefconBangkok"
 import BangkokThreat from "./components/bangkoks/BangkokThreat";
+import MapViewBangkok from "./components/bangkoks/MapViewBangkok";
 
 import "./index.css";
 import OverlayListBangkok from "./components/bangkoks/OverLaylistBangkok";
+import { useState } from "react";
 
 const BangkokLayout = () => {
+  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
   return (
     <div className="bg-black h-screen relative overflow-hidden">
       {/*ซ้าย*/}
       <div className="fixed left-0 top-0 h-auto z-40 w-60">
-        <OverlayListBangkok />
+        <OverlayListBangkok mainMapBounds={mapBounds} />
       </div>
 
       {/*เนื้อหากลาง*/}
       <div className="ml-60 mr-60 h-full pb-[260px] overflow-auto">
-        <Outlet />
+        <MapViewBangkok onBoundsChange={setMapBounds} />
       </div>
 
       {/* ขวา */}

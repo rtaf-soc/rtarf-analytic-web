@@ -16,7 +16,7 @@ const router = createBrowserRouter([
     path: "/",
     element: <MainLayout />,
     children: [
-      { index: true, element: <MapView /> },
+      { index: true, element: <MainLayout /> },
       { path: "/node-create", element: <CreateNode/>} ,
     ],
   },
@@ -33,7 +33,7 @@ const router = createBrowserRouter([
     path: "/bangkok",
     element: <BangkokLayout />,
     children: [
-      {index: true, element: <MapViewBangkok />},
+      {index: true, element: <BangkokLayout />},
     ]
   }
   

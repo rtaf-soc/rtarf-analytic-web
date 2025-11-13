@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchAlertSummary, type AlertSummary, fetchLatestAlert } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
+import SeverityStatistics from "./SeverityStatistics";
 
 interface BangkokThreatProps {
   title?: string;
@@ -66,18 +67,22 @@ const BangkokThreat = ({
   }
 
   return (
-    <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl`}>
-      {/* Threat Alert List */}
-      <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor}`}>
+    <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col`}>
+      <div className="p-1">
+        <SeverityStatistics threats={filteredThreats} />
+      </div>
+
+      {/* Threat Alert List - adjust to fill remaining space */}
+      <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor} flex-1 flex flex-col overflow-hidden`}>
         {/* Header */}
-        <div className="text-[15px] mb-2 text-white flex items-center gap-1 justify-center font-bold">
+        <div className="text-[15px] mb-1 text-white flex items-center gap-1 justify-center font-bold">
           {logoPath && (
             <img src={logoPath} alt={title} className="w-8 h-8 object-contain" />
           )}
           <span>{title}</span>
         </div>
 
-        <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+        <div className="space-y-1 overflow-y-auto flex-1 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
           {threats.length > 0 ? (
             threats.map((threat, idx) => (
               <div

@@ -8,27 +8,40 @@ import {
   Polyline,
   Popup,
   GeoJSON,
+  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../../index.css";
-import { color } from "chart.js/helpers";
 import { Router } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 
-// ไอคอน threat สีแดง/เหลือง
-const redIcon = new L.Icon({
-  iconUrl: "/img/warning.png",
-  iconSize: [24, 24],
-});
+// Component สำหรับติดตาม bounds ของแผนที่
+const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBounds) => void }) => {
+  const map = useMapEvents({
+    moveend: () => {
+      onBoundsChange(map.getBounds());
+    },
+    zoomend: () => {
+      onBoundsChange(map.getBounds());
+    },
+  });
+  
+  useEffect(() => {
+    // ส่ง bounds ครั้งแรกตอน load
+    onBoundsChange(map.getBounds());
+  }, []);
+  
+  return null;
+};
 
-const yellowIcon = new L.Icon({
-  iconUrl: "/img/wifi-router.png",
-  iconSize: [24, 24],
-});
+interface MapViewProps {
+  onBoundsChange?: (bounds: L.LatLngBounds) => void;
+}
 
-const MapViewBangkok = () => {
+
+const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
   const mapSelect = "bangkok";
@@ -54,23 +67,15 @@ const MapViewBangkok = () => {
   }, []);
 
   // พิกัดตัวอย่าง threat (กรุงเทพ, เชียงใหม่, สงขลา, โคราช, ขอนแก่น)
-  const threats: { name: string; coords: [number, number]; color: string }[] = [
-    { name: "THREAT 1", coords: [13.7563, 100.5018], color: "red" }, // กรุงเทพ
-    { name: "THREAT 2", coords: [18.7883, 98.9853], color: "yellow" }, // เชียงใหม่
-    { name: "THREAT 3", coords: [7.0096, 100.4762], color: "yellow" }, // สงขลา
-    { name: "THREAT 4", coords: [14.9799, 102.0977], color: "yellow" }, // โคราช
-    { name: "THREAT 5", coords: [16.4419, 102.835], color: "yellow" }, // ขอนแก่น
-  ];
+  // const threats: { name: string; coords: [number, number]; color: string }[] = [
+  //   { name: "THREAT 1", coords: [13.7563, 100.5018], color: "red" }, // กรุงเทพ
+  //   { name: "THREAT 2", coords: [18.7883, 98.9853], color: "yellow" }, // เชียงใหม่
+  //   { name: "THREAT 3", coords: [7.0096, 100.4762], color: "yellow" }, // สงขลา
+  //   { name: "THREAT 4", coords: [14.9799, 102.0977], color: "yellow" }, // โคราช
+  //   { name: "THREAT 5", coords: [16.4419, 102.835], color: "yellow" }, // ขอนแก่น
+  // ];
 
-  const threatDatas =
-    nodeData?.map((item, i) => ({
-      id: item.id,
-      name: item.name,
-      coords: [item.latitude, item.longitude] as [number, number],
-      color: "red"
-    })) || [];
-
-
+  
   // สร้างเซ็ตของ node IDs ที่อยู่ใน map_scope ปัจจุบัน
   const nodeIdsInMap = new Set(nodeData.map(node => node.id));
 
@@ -165,6 +170,9 @@ const MapViewBangkok = () => {
       />
 
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
+
+       {/* ติดตาม bounds และส่งออกไป */}
+      {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
       {/* Render nodes as markers */}
       {nodeData.map((node) => (

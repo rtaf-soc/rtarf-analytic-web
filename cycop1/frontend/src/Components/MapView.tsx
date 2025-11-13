@@ -7,17 +7,16 @@ import {
   Marker,
   Polyline,
   Popup,
+  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../index.css";
 
-
 // ไอคอน threat สีแดง/เหลือง
 const redIcon = new L.Icon({
   iconUrl: "/img/warning.png",
   iconSize: [24, 24],
-
 });
 
 const yellowIcon = new L.Icon({
@@ -25,7 +24,30 @@ const yellowIcon = new L.Icon({
   iconSize: [24, 24],
 });
 
-const MapView = () => {
+// Component สำหรับติดตาม bounds ของแผนที่
+const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBounds) => void }) => {
+  const map = useMapEvents({
+    moveend: () => {
+      onBoundsChange(map.getBounds());
+    },
+    zoomend: () => {
+      onBoundsChange(map.getBounds());
+    },
+  });
+  
+  useEffect(() => {
+    // ส่ง bounds ครั้งแรกตอน load
+    onBoundsChange(map.getBounds());
+  }, []);
+  
+  return null;
+};
+
+interface MapViewProps {
+  onBoundsChange?: (bounds: L.LatLngBounds) => void;
+}
+
+const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
 
@@ -33,31 +55,13 @@ const MapView = () => {
     const loadNodeData = async () => {
       const nodes = await GetAllNode();
       const connecteds = await GetAllConnectionsWithNodes();
-      console.log("Show Nodes:", nodes)
-      console.log("Show Connections:", connecteds)
+      console.log("Show Nodes:", nodes);
+      console.log("Show Connections:", connecteds);
       setNodeData(nodes);
       setConnectionsData(connecteds);
     };
     loadNodeData();
   }, []);
-
-  // พิกัดตัวอย่าง threat (กรุงเทพ, เชียงใหม่, สงขลา, โคราช, ขอนแก่น)
-  const threats: { name: string; coords: [number, number]; color: string }[] = [
-    { name: "THREAT 1", coords: [13.7563, 100.5018], color: "red" }, // กรุงเทพ
-    { name: "THREAT 2", coords: [18.7883, 98.9853], color: "yellow" }, // เชียงใหม่
-    { name: "THREAT 3", coords: [7.0096, 100.4762], color: "yellow" }, // สงขลา
-    { name: "THREAT 4", coords: [14.9799, 102.0977], color: "yellow" }, // โคราช
-    { name: "THREAT 5", coords: [16.4419, 102.835], color: "yellow" }, // ขอนแก่น
-  ];
-
-  const threatDatas =
-    nodeData?.map((item, i) => ({
-      id: item.id,
-      name: item.name,
-      coords: [item.latitude, item.longitude] as [number, number],
-      color: "red"
-    })) || [];
-
 
   // Create polylines from connection data
   const connectionLines = connectionsData
@@ -71,7 +75,7 @@ const MapView = () => {
       status: conn.connection_status || "unknown",
     }));
 
-  // Determine icon color (you can customize this logic)
+  // Determine icon color
   const getNodeIcon = (node: NodeGet) => {
     return node.id === 1 ? redIcon : yellowIcon;
   };
@@ -97,7 +101,7 @@ const MapView = () => {
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-      {/* 🌊 พื้นหลังกรมท่าเข้ม */}
+      {/* พื้นหลังกรมท่าเข้ม */}
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -106,8 +110,10 @@ const MapView = () => {
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
         opacity={0.1}
       />
-
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
+
+      {/* ติดตาม bounds และส่งออกไป */}
+      {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
       {/* Render nodes as markers */}
       {nodeData.map((node) => (
@@ -129,7 +135,7 @@ const MapView = () => {
       ))}
 
       {/* วาดเส้นเชื่อมโยง */}
-     {connectionLines.map((line) => (
+      {connectionLines.map((line) => (
         <Polyline
           key={line.id}
           positions={line.positions}
