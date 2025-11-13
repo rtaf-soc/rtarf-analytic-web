@@ -1,7 +1,7 @@
 import L from "leaflet";
+import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { MapContainer, Marker, Rectangle, TileLayer, useMap } from "react-leaflet";
-
 
 // Component สำหรับแสดง viewport rectangle บน minimap
 const MinimapBounds = ({ parentBounds }: { parentBounds: L.LatLngBounds | null | undefined }) => {
@@ -58,6 +58,14 @@ const OverlayListBangkok: React.FC<OverlayListProps> = ({ mainMapBounds }) => {
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]
       } ${date.getFullYear()}`;
   };
+
+  const overlayItems = [
+    { name: "RTARF INTERNAL NETWORK", color: "bg-blue-500", checked: true },
+    { name: "EXTERNAL NETWORK", color: "bg-blue-600", checked: false },
+    { name: "THAILAND INFRASTRUCTURE", color: "bg-blue-700", checked: false },
+    { name: "OPPOSITE INFRASTRUCTURE", color: "bg-purple-500", checked: false },
+    
+  ];
 
   const formatTime = (date: Date): string => {
     return date.toLocaleTimeString("en-US", { hour12: false });
@@ -128,6 +136,41 @@ const OverlayListBangkok: React.FC<OverlayListProps> = ({ mainMapBounds }) => {
           height: "12px",
         }}
       />
+
+      {/* Overlay List */}
+      <div className="bg-black rounded-lg p-2 mb-1 border-8 border-gray-500 flex-shrink-0 w-57">
+        <div className="text-[15px] font-bold mb-1.5 text-white border-b border-gray-600 pb-1 flex justify-center">
+          OVERLAY LIST
+        </div>
+        <div className="space-y-1">
+          {overlayItems.map((item, idx) => (
+            <div key={idx} className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 ${item.color}`}>
+                {item.checked && <Check className="w-2 h-2 text-white" />}
+              </div>
+              <span className="text-[12px] text-gray-300 flex-1 font-bold">
+                {item.name}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Control buttons */}
+        <div className="flex gap-1 mt-2 pt-2 border-t border-gray-600">
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px]">
+            <span>🔍</span>
+          </button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px]">
+            <span>📁</span>
+          </button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px]">
+            <span>💾</span>
+          </button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px]">
+            <span>🗑️</span>
+          </button>
+        </div>
+      </div>
     </div>
 
   );

@@ -5,8 +5,6 @@ import ReactDOM from "react-dom/client";
 import CreateNode from "./components/CreateNode.tsx";
 import MainLayout from "./MainLayout.tsx";
 import BangkokLayout from "./BangkokLayout.tsx";
-import MapView from "./components/MapView.tsx";
-import MapViewBangkok from "./components/bangkoks/MapViewBangkok.tsx"
 import MitreAttackNavigator from "./pages/mitre-framework/index.tsx";
 import App from "./App.tsx";
 
@@ -19,6 +17,14 @@ const router = createBrowserRouter([
       { index: true, element: <MainLayout /> },
       { path: "/node-create", element: <CreateNode/>} ,
     ],
+  },
+
+  {
+    path: "/node-create",
+    element: <App />,
+    children: [
+      {index: true, element: <CreateNode />},
+    ]
   },
 
   {

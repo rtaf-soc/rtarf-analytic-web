@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { fetchAlertSummary, type AlertSummary, fetchLatestAlert } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import SeverityStatistics from "./SeverityStatistics";
+import "./BangkokThreat.css"
 
 interface BangkokThreatProps {
   title?: string;
-  filterSeverity?: 'critical' | 'high' | 'medium' | 'low';
+  filterSeverity?: 'all' | 'critical' | 'high' | 'medium' | 'low';
   logoPath?: string;
   backgroundColor?: string; // ✅ เพิ่ม props สีพื้นหลัง
   borderColor?: string; // ✅ เพิ่ม props สีขอบ border
@@ -48,7 +49,7 @@ const BangkokThreat = ({
     }
   }
 
-  const filteredThreats = filterSeverity
+  const filteredThreats = filterSeverity && filterSeverity !== 'all'
     ? threatData.filter((item) => item.severity === filterSeverity)
     : threatData;
 
@@ -75,13 +76,20 @@ const BangkokThreat = ({
       {/* Threat Alert List - adjust to fill remaining space */}
       <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor} flex-1 flex flex-col overflow-hidden`}>
         {/* Header */}
-        <div className="text-[15px] mb-1 text-white flex items-center gap-1 justify-center font-bold">
-          {logoPath && (
-            <img src={logoPath} alt={title} className="w-8 h-8 object-contain" />
-          )}
-          <span>{title}</span>
+        <div className="text-[15px] mb-1 text-white flex items-center justify-between font-bold px-2">
+          <div className="w-8 flex-shrink-0">
+            {logoPath && (
+              <img src={logoPath} alt={title} className="w-8 h-8 object-contain" />
+            )}
+          </div>
+          <div className="flex-1 overflow-hidden px-1">
+            <div className="animate-scroll-left whitespace-nowrap">
+              <span className="inline-block">{title}</span>
+              <span className="inline-block ml-8">{title}</span>
+            </div>
+          </div>
+          <div className="w-8 flex-shrink-0"></div>
         </div>
-
         <div className="space-y-1 overflow-y-auto flex-1 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
           {threats.length > 0 ? (
             threats.map((threat, idx) => (

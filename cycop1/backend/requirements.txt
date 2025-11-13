@@ -24,6 +24,9 @@ pydantic==2.9.0
 aiohttp
 python-dateutil
 
+# for automatic sync
+apscheduler==3.10.4
+
 # Database ProgreSQL
 psycopg2-binary
 sqlalchemy
