@@ -32,7 +32,7 @@ const BangkokLayout = () => {
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองบัญชาการกองทัพไทย"
-              filterSeverity="high"
+              filterSeverity="all"
               logoPath="../public/img/บก.ทท.png"
               backgroundColor="bg-yellow-700"
               borderColor="border-gray-700"
@@ -41,7 +41,7 @@ const BangkokLayout = () => {
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพบก"
-              filterSeverity="high"
+              filterSeverity="medium"
               logoPath="../public/img/ทบ.png"
               backgroundColor="bg-green-700"
               borderColor="border-gray-700"
@@ -59,7 +59,7 @@ const BangkokLayout = () => {
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพเรือ"
-              filterSeverity="high"
+              filterSeverity="low"
               logoPath="../public/img/ทร.png"
               backgroundColor="bg-blue-900"
               borderColor="border-gray-700"
@@ -68,7 +68,7 @@ const BangkokLayout = () => {
           <div className="flex-shrink-0">
             <BangkokThreat
               title="สำนักงานตำรวจแห่งชาติ"
-              filterSeverity="high"
+              filterSeverity="all"
               logoPath="../public/img/ตอ.png"
               backgroundColor="bg-red-800"
               borderColor="border-gray-700"

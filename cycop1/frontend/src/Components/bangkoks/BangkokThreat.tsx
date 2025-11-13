@@ -6,7 +6,7 @@ import "./BangkokThreat.css"
 
 interface BangkokThreatProps {
   title?: string;
-  filterSeverity?: 'critical' | 'high' | 'medium' | 'low';
+  filterSeverity?: 'all' | 'critical' | 'high' | 'medium' | 'low';
   logoPath?: string;
   backgroundColor?: string; // ✅ เพิ่ม props สีพื้นหลัง
   borderColor?: string; // ✅ เพิ่ม props สีขอบ border
@@ -49,7 +49,7 @@ const BangkokThreat = ({
     }
   }
 
-  const filteredThreats = filterSeverity
+  const filteredThreats = filterSeverity && filterSeverity !== 'all'
     ? threatData.filter((item) => item.severity === filterSeverity)
     : threatData;
 
