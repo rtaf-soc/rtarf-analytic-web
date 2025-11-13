@@ -106,7 +106,7 @@ const MapViewBangkok = () => {
     case "ทร.":
       color = "blue";
       break;
-    case "บช.สอท":
+    case "ตร.":
       color = "#800000";
       break;
   }

@@ -369,7 +369,7 @@ const DevConDashboard = () => {
         </div>
       </div> */}
 
-      <ThreatAlertList />
+      {/* <ThreatAlertList /> */}
       {/* Threat Alert List */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500 shadow-lg">
         <div className="text-[14px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">

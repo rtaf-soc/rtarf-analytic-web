@@ -80,10 +80,26 @@ const BangkokThreat = ({
         <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
           {threats.length > 0 ? (
             threats.map((threat, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-black rounded-md">
-                <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
-                <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight">
-                  <span className="text-white font-semibold truncate" title={threat.description}>
+              <div
+                key={idx}
+                className="flex items-center gap-2 bg-black rounded-md hover:bg-gray-900 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+              >
+                {/* Glowing animated background on hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
+                  <div className={`absolute inset-0 ${threat.color} blur-xl animate-pulse`}></div>
+                </div>
+
+                {/* แถบสีทางซ้าย with glow effect */}
+                <div className={`${threat.color} w-4 h-8 flex-shrink-0 relative group-hover:shadow-lg transition-all duration-300`}>
+                  <div className={`absolute inset-0 ${threat.color} blur-md opacity-0 group-hover:opacity-75 transition-opacity duration-300`}></div>
+                </div>
+
+                {/* ข้อความ Threat ID และ Code */}
+                <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight z-10">
+                  <span
+                    className="text-white font-semibold truncate group-hover:text-gray-200 transition-colors duration-300"
+                    title={threat.description}
+                  >
                     {threat.description}
                   </span>
                   <span
@@ -95,7 +111,7 @@ const BangkokThreat = ({
                 </div>
 
                 {/* Pulse indicator on right side */}
-                <div className="shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="flex-shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className={`w-2 h-2 rounded-full ${threat.color} animate-pulse`}></div>
                 </div>
               </div>
