@@ -66,7 +66,7 @@ const BangkokThreat = ({
   }
 
   return (
-    <div className={`w-63 h-59 ${backgroundColor} rounded-2xl shadow-2xl`}>
+    <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl`}>
       {/* Threat Alert List */}
       <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor}`}>
         {/* Header */}
@@ -86,9 +86,17 @@ const BangkokThreat = ({
                   <span className="text-white font-semibold truncate" title={threat.description}>
                     {threat.description}
                   </span>
-                  <span className="text-white font-mono text-[12px] truncate" title={threat.code}>
+                  <span
+                    className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300"
+                    title={threat.code}
+                  >
                     {threat.code}
                   </span>
+                </div>
+
+                {/* Pulse indicator on right side */}
+                <div className="shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className={`w-2 h-2 rounded-full ${threat.color} animate-pulse`}></div>
                 </div>
               </div>
             ))

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const OverlayList = () => {
+const OverlayListBangkok = () => {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -219,4 +219,4 @@ const OverlayList = () => {
   );
 };
 
-export default OverlayList;
+export default OverlayListBangkok;

@@ -120,7 +120,7 @@ export interface NodePayload {
   longitude: string,
   ip_address?: string,
   additional_ips?: string[],
-  network_metadata?: string,
+  network_metadata?: Record<string, any>,
   map_scope:string
 }
 

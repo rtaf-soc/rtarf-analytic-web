@@ -10,6 +10,7 @@ import {
 } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import * as Chart from "chart.js";
+import Sitrep from "./Sitrep";
 
 Chart.Chart.register(
   Chart.BarController,

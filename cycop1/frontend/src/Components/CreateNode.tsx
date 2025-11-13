@@ -67,6 +67,17 @@ const CreateNode: React.FC = () => {
   e.preventDefault();
   if (validate()) {
     try {
+      let parsedMetadata: Record<string, any> | undefined = undefined;
+
+      if (formData.network_metadata.trim()) {
+        try {
+          parsedMetadata = JSON.parse(formData.network_metadata);
+        } catch (error) {
+          alert("รูปแบบข้อมูลเครือข่ายไม่ถูกต้อง ต้องเป็น JSON ที่ถูกต้อง เช่น {\"bandwidth\": \"1Gbps\"}");
+          return;
+        }
+      }
+
       const submissionData: NodePayload = {
         name: formData.name,
         description: formData.description || undefined,
@@ -75,7 +86,7 @@ const CreateNode: React.FC = () => {
         longitude: formData.longitude,
         ip_address: formData.ip_address || undefined,
         additional_ips: formData.additional_ips.filter(ip => ip.trim() !== ""),
-        network_metadata: formData.network_metadata || undefined,
+        network_metadata: parsedMetadata, // ✅ now an object
         map_scope: formData.map_scope,
       };
       
