@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../../services/defensiveService";
+import {
+  fetchAlertSummary,
+  type AlertSummary,
+  fetchLatestAlert,
+  type RtarfAverageSeverityPayload,
+  fetchRtarfAverageSummary,
+  type RtarfSeverityStatistics,
+  fetchRtarfSeverityStatistics,
+} from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import * as Chart from "chart.js";
 
@@ -14,13 +22,14 @@ Chart.Chart.register(
 const DevConBangkok = () => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
   const [threatData, setThreatData] = useState<AlertBase[]>([]);
-  const [avgSeverity, setAvgSeverity] = useState<RtarfAverageSeverityPayload | null>(null);
+  const [avgSeverity, setAvgSeverity] =
+    useState<RtarfAverageSeverityPayload | null>(null);
   const [defconLevel, setDefconLevel] = useState(1);
-  const [severityStats, setSeverityStats] = useState<RtarfSeverityStatistics | null>(null);
+  const [severityStats, setSeverityStats] =
+    useState<RtarfSeverityStatistics | null>(null);
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart.Chart | null>(null);
 
- 
   useEffect(() => {
     const loadAllData = async () => {
       const summary = await fetchAlertSummary();
@@ -48,51 +57,48 @@ const DevConBangkok = () => {
   useEffect(() => {
     if (severityStats?.severity_distribution && chartRef.current) {
       const dist = severityStats.severity_distribution;
-      
+
       // Destroy previous chart if exists
       if (chartInstance.current) {
         chartInstance.current.destroy();
       }
 
-      const ctx = chartRef.current.getContext('2d');
+      const ctx = chartRef.current.getContext("2d");
       if (ctx) {
         chartInstance.current = new Chart.Chart(ctx, {
-          type: 'bar',
+          type: "bar",
           data: {
-            labels: ['Critical', 'High', 'Medium', 'Low'],
-            datasets: [{
-              data: [dist.critical, dist.high, dist.medium, dist.low],
-              backgroundColor: [
-                '#ef4444',
-                '#f97316',
-                '#facc15',
-                '#60a5fa'
-              ],
-              borderRadius: 4,
-              barThickness: 28
-            }]
+            labels: ["Critical", "High", "Medium", "Low"],
+            datasets: [
+              {
+                data: [dist.critical, dist.high, dist.medium, dist.low],
+                backgroundColor: ["#ef4444", "#f97316", "#facc15", "#60a5fa"],
+                borderRadius: 4,
+                barThickness: 28,
+              },
+            ],
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
-              tooltip: { enabled: false }
+              tooltip: { enabled: false },
             },
             scales: {
               x: {
                 grid: { display: false },
-                ticks: { 
-                  color: '#9ca3af',
-                  font: { size: 8 }
-                }
+                ticks: {
+                  color: "#9ca3af",
+                  font: { size: 8 },
+                },
               },
               y: {
                 display: false,
-                beginAtZero: true
-              }
-            }
-          }
+                beginAtZero: true,
+              },
+            },
+          },
         });
       }
     }
@@ -104,7 +110,6 @@ const DevConBangkok = () => {
     };
   }, [severityStats]);
 
-
   // Get color based on DEFCON level
   function getDefconColor(level: number): {
     border: string;
@@ -115,32 +120,32 @@ const DevConBangkok = () => {
     switch (level) {
       case 4: // Critical
         return {
-          border: 'border-red-500',
-          bg: 'bg-red-400',
-          text: 'text-red-400',
-          glow: 'shadow-[0_0_15px_rgba(255,0,0,0.7)]'
+          border: "border-red-500",
+          bg: "bg-red-400",
+          text: "text-red-400",
+          glow: "shadow-[0_0_15px_rgba(255,0,0,0.7)]",
         };
       case 3: // High
         return {
-          border: 'border-orange-500',
-          bg: 'bg-orange-400',
-          text: 'text-orange-400',
-          glow: 'shadow-[0_0_15px_rgba(255,165,0,0.7)]'
+          border: "border-orange-500",
+          bg: "bg-orange-400",
+          text: "text-orange-400",
+          glow: "shadow-[0_0_15px_rgba(255,165,0,0.7)]",
         };
       case 2: // Medium
         return {
-          border: 'border-yellow-500',
-          bg: 'bg-yellow-400',
-          text: 'text-yellow-400',
-          glow: 'shadow-[0_0_15px_rgba(255,255,0,0.7)]'
+          border: "border-yellow-500",
+          bg: "bg-yellow-400",
+          text: "text-yellow-400",
+          glow: "shadow-[0_0_15px_rgba(255,255,0,0.7)]",
         };
       case 1: // Low
       default:
         return {
-          border: 'border-green-500',
-          bg: 'bg-green-400',
-          text: 'text-green-400',
-          glow: 'shadow-[0_0_15px_rgba(0,255,0,0.7)]'
+          border: "border-green-500",
+          bg: "bg-green-400",
+          text: "text-green-400",
+          glow: "shadow-[0_0_15px_rgba(0,255,0,0.7)]",
         };
     }
   }
@@ -223,7 +228,9 @@ const DevConBangkok = () => {
                   }`}
                 >
                   {isActive && (
-                    <div className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}></div>
+                    <div
+                      className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}
+                    ></div>
                   )}
                 </div>
               );
@@ -235,7 +242,9 @@ const DevConBangkok = () => {
             <div
               className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300 group-hover/circle:scale-110 group-hover/circle:border-[10px]`}
             >
-              <span className={`text-7xl font-bold leading-none ${defconColors.text} group-hover/circle:scale-110 transition-transform duration-300`}>
+              <span
+                className={`text-7xl font-bold leading-none ${defconColors.text} group-hover/circle:scale-110 transition-transform duration-300`}
+              >
                 {defconLevel}
               </span>
             </div>
@@ -263,10 +272,18 @@ const DevConBangkok = () => {
                   <canvas ref={chartRef}></canvas>
                 </div>
                 <div className="flex justify-center gap-3 mt-1">
-                  <div className="text-[7px] text-red-400 font-bold">{severityStats.severity_distribution.critical}</div>
-                  <div className="text-[7px] text-orange-400 font-bold">{severityStats.severity_distribution.high}</div>
-                  <div className="text-[7px] text-yellow-400 font-bold">{severityStats.severity_distribution.medium}</div>
-                  <div className="text-[7px] text-blue-400 font-bold">{severityStats.severity_distribution.low}</div>
+                  <div className="text-[7px] text-red-400 font-bold">
+                    {severityStats.severity_distribution.critical}
+                  </div>
+                  <div className="text-[7px] text-orange-400 font-bold">
+                    {severityStats.severity_distribution.high}
+                  </div>
+                  <div className="text-[7px] text-yellow-400 font-bold">
+                    {severityStats.severity_distribution.medium}
+                  </div>
+                  <div className="text-[7px] text-blue-400 font-bold">
+                    {severityStats.severity_distribution.low}
+                  </div>
                 </div>
               </>
             ) : (
@@ -295,7 +312,10 @@ const DevConBangkok = () => {
 
               <div className="flex-1 space-y-[2px]">
                 {pieData.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-[4px] text-[8px]">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-[4px] text-[8px]"
+                  >
                     <div className={`w-2 h-2 rounded-sm ${item.color}`}></div>
                     <span className="text-gray-300 line-clamp-2">
                       {item.label}
@@ -304,6 +324,64 @@ const DevConBangkok = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* SITREP */}
+      <div className="bg-black rounded-lg p-2 border-8 border-gray-500 flex-1 overflow-hidden">
+        <div className="text-[15px] font-bold mb-1.5 text-white border-b border-black pb-2 flex justify-center">
+          SITREP
+        </div>
+
+        <div className="bg-cyan-50 rounded p-2 space-y-1.5 text-[15px] h-full overflow-y-auto">
+          {/* H/W Information */}
+          <div>
+            <div className="text-black font-semibold mb-0.5">
+              H/W Information
+            </div>
+            <div className="space-y-0 text-black ml-1 text-[12px]">
+              <div>
+                • Name: DESKTOP <span className="text-blue-700">-AUH446P</span>
+              </div>
+              <div>
+                • Location:{" "}
+                <span className="text-blue-700">13.7563, 100.5018</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Network Information */}
+          <div>
+            <div className="text-black font-semibold mb-0.5">
+              Network Information
+            </div>
+            <div className="space-y-0 text-black ml-1 text-[12px]">
+              <div>• IP: 192.168.1.14/26</div>
+              <div>• G/W: 192.168.101.1</div>
+            </div>
+          </div>
+
+          {/* Owner Information */}
+          <div>
+            <div className="text-black font-semibold mb-0.5">
+              Owner Information
+            </div>
+            <div className="space-y-0 text-black ml-1 text-[12px]">
+              <div>• Owner name: Unknown</div>
+            </div>
+          </div>
+
+          {/* Used Application */}
+          <div>
+            <div className="text-black font-semibold mb-0.5">
+              Used Application
+            </div>
+            <div className="space-y-0 text-black ml-1 text-[12px]">
+              <div>• Slack Messenger v4.27.154</div>
+              <div>• Word 97/PC v6.32.10.1</div>
+              <div>• Microsoft Excel 2019 v1.23.41</div>
+              <div className="text-blue-400">+ 32 applications</div>
             </div>
           </div>
         </div>
