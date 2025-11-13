@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import Base, engine
 from app import models  # Important: Import models so they're registered with Base
-
+W
 def drop_all_tables():
     """Drop all tables defined in models"""
     print("🗑️  Dropping all tables...")
