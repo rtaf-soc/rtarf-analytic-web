@@ -10,7 +10,7 @@ const BangkokLayout = () => {
   return (
     <div className="bg-black h-screen relative overflow-hidden">
       {/*ซ้าย*/}
-      <div className="fixed left-0 top-0 h-full z-40 w-60">
+      <div className="fixed left-0 top-0 h-auto z-40 w-60">
         <OverlayListBangkok />
       </div>
 
@@ -25,9 +25,17 @@ const BangkokLayout = () => {
       </div>
 
       {/* ล่าง - Bangkok Threat แนวนอน */}
-      <div className="fixed bottom-0 left-60 right-60 z-30 bg-black border-t border-gray-800 p-1 h-[260px]">
-        <div className="flex items-center justify-center gap-1 overflow-x-auto h-full">
-          
+      <div className="fixed bottom-0 right-60 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
+        <div className="flex items-center gap-1 overflow-x-auto h-full">
+          <div className="flex-shrink-0">
+            <BangkokThreat
+              title="บก.ทท."
+              filterSeverity="high"
+              logoPath="../public/img/บก.ทท.png"
+              backgroundColor="bg-yellow-700"
+              borderColor="border-gray-700"
+            />
+          </div>
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพบก"
