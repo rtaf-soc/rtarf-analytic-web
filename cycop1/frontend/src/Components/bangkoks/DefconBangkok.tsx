@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import * as Chart from "chart.js";
+import Sitrep from "./Sitrep";
 
 Chart.Chart.register(
   Chart.BarController,
@@ -308,6 +309,8 @@ const DevConBangkok = () => {
           </div>
         </div>
       </div>
+
+      <Sitrep />
     </div>
   );
 };

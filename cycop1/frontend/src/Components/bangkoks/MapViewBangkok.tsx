@@ -13,6 +13,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../../index.css";
 import { color } from "chart.js/helpers";
+import { Router } from "lucide-react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 
 // ไอคอน threat สีแดง/เหลือง
@@ -89,11 +91,34 @@ const MapViewBangkok = () => {
       status: conn.connection_status || "unknown",
     }));
 
-  // Determine icon color (you can customize this logic)
   const getNodeIcon = (node: NodeGet) => {
-    // Example: first node is red, others are yellow
-    return node.id === 1 ? redIcon : yellowIcon;
-  };
+  let color = "white";
+  switch (node.name) {
+    case "บก.ทท.":
+      color = "yellow";
+      break;
+    case "ทบ.":
+      color = "green";
+      break;
+    case "ทอ.":
+      color = "skyblue";
+      break;
+    case "ทร.":
+      color = "blue";
+      break;
+    case "บช.สอท":
+      color = "#800000";
+      break;
+  }
+
+  // แปลง React component เป็น HTML string
+  const iconHtml = renderToStaticMarkup(<Router size={24} color={color} />);
+  return L.divIcon({
+    html: iconHtml,
+    className: "", // ปิด className default ของ Leaflet
+    iconSize: [30, 30], // ขนาดของ icon
+  });
+};
 
   // Determine line color based on connection status
   const getLineColor = (status: string) => {
@@ -118,14 +143,14 @@ const MapViewBangkok = () => {
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-       {bangkokGeoJSON && (
+      {bangkokGeoJSON && (
         <GeoJSON
           data={bangkokGeoJSON}
           style={{
-            color: "red",
-            weight: 2,
-            fillColor: "red",
-            fillOpacity: 0.1,
+            color: "orange",
+            weight: 1,
+            fillColor: "orange",
+            fillOpacity: 0.03,
           }}
         />
       )}
