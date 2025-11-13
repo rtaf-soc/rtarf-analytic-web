@@ -11,7 +11,8 @@ const CreateNode: React.FC = () => {
     longitude: "",
     ip_address: "",
     additional_ips: [""],
-    network_metadata: ""
+    network_metadata: "",
+    map_scope:""
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,6 +67,17 @@ const CreateNode: React.FC = () => {
   e.preventDefault();
   if (validate()) {
     try {
+      let parsedMetadata: Record<string, any> | undefined = undefined;
+
+      if (formData.network_metadata.trim()) {
+        try {
+          parsedMetadata = JSON.parse(formData.network_metadata);
+        } catch (error) {
+          alert("รูปแบบข้อมูลเครือข่ายไม่ถูกต้อง ต้องเป็น JSON ที่ถูกต้อง เช่น {\"bandwidth\": \"1Gbps\"}");
+          return;
+        }
+      }
+
       const submissionData: NodePayload = {
         name: formData.name,
         description: formData.description || undefined,
@@ -74,7 +86,8 @@ const CreateNode: React.FC = () => {
         longitude: formData.longitude,
         ip_address: formData.ip_address || undefined,
         additional_ips: formData.additional_ips.filter(ip => ip.trim() !== ""),
-        network_metadata: formData.network_metadata || undefined,
+        network_metadata: parsedMetadata, // ✅ now an object
+        map_scope: formData.map_scope,
       };
       
       const result = await createNode(submissionData);
@@ -88,11 +101,11 @@ const CreateNode: React.FC = () => {
 };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8 relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-3xl"></div>
+          <div className="absolute inset-0 bg-linear-to-r from-cyan-500/20 to-blue-500/20 blur-3xl"></div>
           <div className="relative bg-slate-800/50 border border-cyan-500/30 rounded-lg p-6 backdrop-blur-sm">
             <div className="flex items-center gap-3">
               <Shield className="w-8 h-8 text-cyan-400" />
@@ -157,6 +170,24 @@ const CreateNode: React.FC = () => {
                 <option value="defense">Defense Point</option>
               </select>
               {errors.node_type && <p className="text-red-400 text-sm mt-1">{errors.node_type}</p>}
+            </div>
+
+            {/* Map Scope */}
+            <div className="mb-6">
+              <label className="block text-cyan-400 text-sm font-semibold mb-2 tracking-wide">
+                แผนที่ของโหนด <span className="text-red-400">*</span>
+              </label>
+              <select
+                name="map_scope"
+                value={formData.map_scope}
+                onChange={handleChange}
+                className="w-full bg-slate-900/50 border border-slate-600 text-slate-200 rounded px-4 py-3 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
+              >
+                <option value="">Select Map Scope</option>
+                <option value="global">Global</option>
+                <option value="bangkok">Bangkok</option>
+              </select>
+              {errors.map_scope && <p className="text-red-400 text-sm mt-1">{errors.map_scope}</p>}
             </div>
 
             {/* Coordinates */}
@@ -266,7 +297,7 @@ const CreateNode: React.FC = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-lg shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all duration-300 tracking-wider text-lg"
+            className="w-full bg-linear-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-lg shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 transition-all duration-300 tracking-wider text-lg"
           >
             CREATE NODE
           </button>

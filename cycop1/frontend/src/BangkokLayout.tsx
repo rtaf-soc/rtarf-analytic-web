@@ -1,16 +1,11 @@
-import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import Defcon from "./Components/Defcon";
-import OverlayList from "./Components/OverlayList";
-import CreateNode from "./Components/CreateNode";
-import DefconBangkok from "./Components/DefconBangkok"
-import BangkokThreat from "./Components/BangkokThreat";
-import { CirclePlus, X } from "lucide-react";
+import OverlayList from "./components/OverlayList";
+import DefconBangkok from "./components/bangkoks/DefconBangkok"
+import BangkokThreat from "./components/bangkoks/BangkokThreat";
 
 import "./index.css";
 
 const MainLayout = () => {
-  const [isNodeOpen, setIsNodeOpen] = useState(false);
 
   return (
     <div className="bg-black h-screen relative">
@@ -22,7 +17,7 @@ const MainLayout = () => {
       {/*เนื้อหากลาง*/}
       <div className="ml-59 mr-58 h-full pb-[240px]">
         {" "}
-        {/* เพิ่ม pb-64 เพื่อเว้นพื้นที่ให้ bottom bar */}
+        {/*เพิ่ม pb-64 เพื่อเว้นพื้นที่ให้ bottom bar */}
         <Outlet />
       </div>
 

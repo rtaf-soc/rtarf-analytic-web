@@ -120,7 +120,8 @@ export interface NodePayload {
   longitude: string,
   ip_address?: string,
   additional_ips?: string[],
-  network_metadata?: string[],
+  network_metadata?: Record<string, any>,
+  map_scope:string
 }
 
 export interface NodeSummary {
@@ -158,6 +159,17 @@ export async function GetAllNode(): Promise<NodeGet[]> {
   }
 }
 
+export async function GetNodeWithMapScope(map_scope: string): Promise<NodeGet[]> {
+  try {
+    const response = await axios.get<NodeGet[]>(
+      `${POSTGRES_API_URL}/nodes/map_scope/${map_scope}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all nodes:", error);
+    return [];
+  }
+}
 // ==============================
 // Network Connection Services
 // ==============================

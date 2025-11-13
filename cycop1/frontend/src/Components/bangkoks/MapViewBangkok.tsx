@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { GetAllNode, GetAllConnectionsWithNodes, type NetworkConnection } from "../services/defensiveService";
-import type { NodeGet } from "../types/defensive";
+import { GetAllConnectionsWithNodes, type NetworkConnection, GetNodeWithMapScope } from "../../services/defensiveService";
+import type { NodeGet } from "../../types/defensive";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Polyline,
   Popup,
+  GeoJSON,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "../index.css";
+import "../../index.css";
 import { color } from "chart.js/helpers";
+import { Router } from "lucide-react";
+import { renderToStaticMarkup } from "react-dom/server";
+
 
 // ไอคอน threat สีแดง/เหลือง
 const redIcon = new L.Icon({
@@ -20,17 +24,26 @@ const redIcon = new L.Icon({
 });
 
 const yellowIcon = new L.Icon({
-  iconUrl: "/img/warning.png",
+  iconUrl: "/img/wifi-router.png",
   iconSize: [24, 24],
 });
 
 const MapViewBangkok = () => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
+  const mapSelect = "bangkok";
+
+  const [bangkokGeoJSON, setBangkokGeoJSON] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/data/bangkok-districts.geojson")
+      .then(res => res.json())
+      .then(data => setBangkokGeoJSON(data));
+  }, []);
 
   useEffect(() => {
     const loadNodeData = async () => {
-      const nodes = await GetAllNode();
+      const nodes = await GetNodeWithMapScope(mapSelect);
       const connecteds = await GetAllConnectionsWithNodes();
       console.log("Show Nodes:", nodes)
       console.log("Show Connections:", connecteds)
@@ -58,9 +71,17 @@ const MapViewBangkok = () => {
     })) || [];
 
 
+  // สร้างเซ็ตของ node IDs ที่อยู่ใน map_scope ปัจจุบัน
+  const nodeIdsInMap = new Set(nodeData.map(node => node.id));
+
   // Create polylines from connection data
   const connectionLines = connectionsData
-    .filter(conn => conn.source_node && conn.destination_node)
+    .filter(conn =>
+      conn.source_node &&
+      conn.destination_node &&
+      nodeIdsInMap.has(conn.source_node.id) &&
+      nodeIdsInMap.has(conn.destination_node.id)
+    )
     .map(conn => ({
       id: conn.id,
       positions: [
@@ -70,11 +91,34 @@ const MapViewBangkok = () => {
       status: conn.connection_status || "unknown",
     }));
 
-  // Determine icon color (you can customize this logic)
   const getNodeIcon = (node: NodeGet) => {
-    // Example: first node is red, others are yellow
-    return node.id === 1 ? redIcon : yellowIcon;
-  };
+  let color = "white";
+  switch (node.name) {
+    case "บก.ทท.":
+      color = "yellow";
+      break;
+    case "ทบ.":
+      color = "green";
+      break;
+    case "ทอ.":
+      color = "skyblue";
+      break;
+    case "ทร.":
+      color = "blue";
+      break;
+    case "บช.สอท":
+      color = "#800000";
+      break;
+  }
+
+  // แปลง React component เป็น HTML string
+  const iconHtml = renderToStaticMarkup(<Router size={24} color={color} />);
+  return L.divIcon({
+    html: iconHtml,
+    className: "", // ปิด className default ของ Leaflet
+    iconSize: [30, 30], // ขนาดของ icon
+  });
+};
 
   // Determine line color based on connection status
   const getLineColor = (status: string) => {
@@ -99,6 +143,17 @@ const MapViewBangkok = () => {
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
+      {bangkokGeoJSON && (
+        <GeoJSON
+          data={bangkokGeoJSON}
+          style={{
+            color: "orange",
+            weight: 1,
+            fillColor: "orange",
+            fillOpacity: 0.03,
+          }}
+        />
+      )}
       {/* 🌊 พื้นหลังกรมท่าเข้ม */}
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
@@ -131,7 +186,7 @@ const MapViewBangkok = () => {
       ))}
 
       {/* วาดเส้นเชื่อมโยง */}
-     {connectionLines.map((line) => (
+      {connectionLines.map((line) => (
         <Polyline
           key={line.id}
           positions={line.positions}
