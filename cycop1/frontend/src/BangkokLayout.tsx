@@ -27,11 +27,11 @@ const BangkokLayout = () => {
       </div>
 
       {/* ล่าง - Bangkok Threat แนวนอน */}
-      <div className="fixed bottom-0 right-60 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
-        <div className="flex items-center gap-1 h-full">
+      <div className="fixed bottom-0 right-59 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
+        <div className="flex items-center gap-2 h-full">
           <div className="flex-shrink-0">
             <BangkokThreat
-              title="บก.ทท."
+              title="กองบัญชาการกองทัพไทย"
               filterSeverity="high"
               logoPath="../public/img/บก.ทท.png"
               backgroundColor="bg-yellow-700"
