@@ -53,7 +53,7 @@ const OverlayList = () => {
   ];
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-60 bg-black text-white p-1 border-r-2 border-black flex flex-col">
+    <div className="fixed left-0 top-0 h-screen w-60 bg-blue text-white p-1 border-r-2 border-black flex flex-col">
       {/* Logo and DateTime */}
       <div className="bg-black rounded-lg p-2 mb-2 border border-black">
         <div className="flex justify-center mb-1">

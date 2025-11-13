@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../services/defensiveService";
 import { type AlertBase } from "../types/defensive";
 import * as Chart from "chart.js";
+import SeveritySummaryCard from "./SeveritySummaryCard";
+import ThreatPieChart from "./ThreatPieChart";
+import ThreatAlertList from "./ThreatAlertList";
+
 
 Chart.Chart.register(
   Chart.BarController,
@@ -284,9 +288,9 @@ const DevConDashboard = () => {
         )} */}
       </div>
 
-    
+      <SeveritySummaryCard />
       {/* Severity amount Chart */}
-      <div
+      {/* <div
         className="relative bg-black p-[6px] 
         bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1"
       >
@@ -318,10 +322,11 @@ const DevConDashboard = () => {
             )}
           </div>
         </div>
-      </div>
+      </div> */}
 
+      <ThreatPieChart />
       {/* Pie Chart */}
-      <div
+      {/* <div
         className="relative bg-black p-[6px] 
   bg-gradient-to-b from-[#b0c4de] to-[#4a5568] 
   shadow-[0_0_10px_rgba(0,150,255,0.25)] mt-[2px] mb-[2px]"
@@ -362,8 +367,9 @@ const DevConDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
+      <ThreatAlertList />
       {/* Threat Alert List */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500 shadow-lg">
         <div className="text-[14px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">

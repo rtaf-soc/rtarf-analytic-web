@@ -5,10 +5,11 @@ import { type AlertBase } from "../../types/defensive";
 interface BangkokThreatProps {
   title?: string;
   filterSeverity?: 'critical' | 'high' | 'medium' | 'low';
-  logoPath?: string; // เพิ่ม props สำหรับ logo
+  logoPath?: string;
+  bgColor?: string;
 }
 
-const BangkokThreat = ({ title = "THREAT ALERT LIST", filterSeverity, logoPath }: BangkokThreatProps) => {
+const BangkokThreat = ({ title = "THREAT ALERT LIST", filterSeverity, logoPath, bgColor }: BangkokThreatProps) => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
   const [threatData, setThreatData] = useState<AlertBase[]>([]);
 
@@ -57,7 +58,7 @@ const BangkokThreat = ({ title = "THREAT ALERT LIST", filterSeverity, logoPath }
   return (
     <div className="w-66 h-59 bg-black rounded-2xl shadow-2xl">
       {/* Threat Alert List */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-2 border-8 border-gray-500">
+      <div className="backdrop-blur-sm rounded-lg p-2 border-8 border-gray-500" style={{ backgroundColor: bgColor }}>
         {/* Header with Logo and Title */}
         <div className="text-[15px] mb-2 text-white flex items-center gap-2 justify-center font-bold">
           {logoPath && (

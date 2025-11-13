@@ -1,6 +1,5 @@
 import React from "react";
 
-
 const Sitrep: React.FC = () => {
     return (
         <>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import * as Chart from "chart.js";
-import Sitrep from "./Sitrep";
+import Sitrep from "../SitrepCard";
 
 Chart.Chart.register(
   Chart.BarController,
