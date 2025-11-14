@@ -302,7 +302,18 @@ def start_scheduler():
     )
     logger.info("📅 Scheduled: Elasticsearch sync every 5 minutes")
     
-    # ===== Job 2: Cleanup old events daily at 2 AM =====
+    # ===== Job 2: Sync Alerts every 10 minutes =====
+    scheduler.add_job(
+        sync_alerts_from_events,
+        trigger=IntervalTrigger(minutes=10),
+        id="alert_sync",
+        name="Sync RtarfEvents to Alerts",
+        replace_existing=True,
+        max_instances=1
+    )
+    logger.info("📅 Scheduled: Alert sync every 10 minutes")
+    
+    # ===== Job 3: Cleanup old events daily at 2 AM =====
     scheduler.add_job(
         cleanup_old_events,
         trigger=CronTrigger(hour=2, minute=0),
@@ -312,7 +323,7 @@ def start_scheduler():
     )
     logger.info("📅 Scheduled: Cleanup old events daily at 2:00 AM")
     
-    # ===== Job 3: Daily report at 8 AM =====
+    # ===== Job 4: Daily report at 8 AM =====
     scheduler.add_job(
         generate_daily_report,
         trigger=CronTrigger(hour=8, minute=0),
@@ -376,6 +387,13 @@ async def trigger_cleanup_now():
     """
     logger.info("🔧 Manual cleanup triggered")
     await cleanup_old_events()
+
+async def trigger_alert_sync_now():
+    """
+    Manually trigger alert sync
+    """
+    logger.info("🔧 Manual alert sync triggered")
+    await sync_alerts_from_events()
 
 # ===============================================================
 # Health Check
