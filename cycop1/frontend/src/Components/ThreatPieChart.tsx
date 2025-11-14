@@ -7,6 +7,7 @@ const ThreatPieChart: React.FC = () => {
     useEffect(() => {
         const loadAllData = async () => {
             const summary = await fetchAlertSummary();
+            console.log("PIEEEE:", summary)
             setAlertData(summary);
         };
 
@@ -17,7 +18,7 @@ const ThreatPieChart: React.FC = () => {
     }, []);
 
     const pieData =
-        alertData?.alert_summarys
+        alertData?.alert_summaries
             ?.slice(0, 5) // top 5 categories for pie
             .map((item, i) => ({
                 label: item.alert_name,

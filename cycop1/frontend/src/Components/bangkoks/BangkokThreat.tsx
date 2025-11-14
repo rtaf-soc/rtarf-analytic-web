@@ -60,12 +60,45 @@ const BangkokThreat = ({
   }));
 
   if (!alertData) {
-    return (
-      <div className="flex justify-center items-center h-full bg-black text-white text-sm">
-        Loading...
+  return (
+    <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4`}>
+      <div className="relative">
+        {/* Spinning border rings */}
+        <div className="w-16 h-16 rounded-full border-3 border-gray-700 border-t-cyan-400 animate-spin"></div>
+        <div className="absolute inset-0 w-16 h-16 rounded-full border-3 border-gray-700 border-b-blue-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}></div>
+        
+        {/* Center glow */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 animate-pulse shadow-[0_0_15px_rgba(6,182,212,0.5)]"></div>
+        </div>
+        
+        {/* Alert icon */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-white text-lg animate-pulse">⚠</div>
+        </div>
       </div>
-    );
-  }
+      
+      {/* Loading text */}
+      <div className="mt-4 text-center">
+        <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse">
+          LOADING DATA
+        </div>
+        <div className="flex justify-center gap-1 mt-2">
+          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+        </div>
+      </div>
+      
+      {/* Optional logo display during loading */}
+      {logoPath && (
+        <div className="mt-3 opacity-50">
+          <img src={logoPath} alt="Loading" className="w-10 h-10 object-contain grayscale animate-pulse" />
+        </div>
+      )}
+    </div>
+  );
+}
 
   return (
     <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col`}>

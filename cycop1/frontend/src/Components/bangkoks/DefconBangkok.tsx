@@ -152,7 +152,7 @@ const DevConBangkok = () => {
   }
 
   const pieData =
-    alertData?.alert_summarys
+    alertData?.alert_summaries
       ?.slice(0, 5) // top 5 categories for pie
       .map((item, i) => ({
         label: item.alert_name,
@@ -169,8 +169,39 @@ const DevConBangkok = () => {
 
   if (!alertData) {
     return (
-      <div className="flex justify-center items-center h-screen bg-black text-white">
-        Loading Threat Dashboard...
+      <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col items-center justify-center">
+        <div className="relative">
+          {/* Outer rotating ring */}
+          <div className="w-24 h-24 rounded-full border-4 border-gray-700 border-t-cyan-500 animate-spin"></div>
+
+          {/* Middle rotating ring (opposite direction) */}
+          <div className="absolute inset-0 w-24 h-24 rounded-full border-4 border-gray-700 border-b-blue-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+
+          {/* Inner pulsing circle */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.6)]"></div>
+          </div>
+
+          {/* Center icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-white text-xl animate-pulse">⚠</div>
+          </div>
+
+          {/* Loading text */}
+          <div className="absolute top-32 left-1/2 transform -translate-x-1/2 w-48">
+            <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse text-center">
+              INITIALIZING
+            </div>
+            <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse text-center">
+              THREAT DASHBOARD
+            </div>
+            <div className="flex justify-center gap-1 mt-3">
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -222,11 +253,10 @@ const DevConBangkok = () => {
               return (
                 <div
                   key={level}
-                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${
-                    isActive
+                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${isActive
                       ? `${colors.border} ${colors.bg} ${colors.glow}`
                       : "border-gray-600 bg-transparent hover:border-gray-400"
-                  }`}
+                    }`}
                 >
                   {isActive && (
                     <div
@@ -329,7 +359,7 @@ const DevConBangkok = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Sitrep Section */}
       <Sitrep />
     </div>
