@@ -77,7 +77,7 @@ export interface AlertItem {
 
 export interface AlertSummary {
   total_alerts: number;
-  alert_summarys: AlertItem[];
+  alert_summaries: AlertItem[];  // Changed from alert_summarys
 }
 
 export async function fetchAlertSummary(): Promise<AlertSummary> {
@@ -85,12 +85,13 @@ export async function fetchAlertSummary(): Promise<AlertSummary> {
     const response = await axios.get<AlertSummary>(
       `${POSTGRES_API_URL}/alerts/summary`
     );
+    console.log("Alert Summary Response:", response.data); // Debug log
     return response.data;
   } catch (error) {
     console.error("Error fetching alert summary from PostgreSQL:", error);
     return {
       total_alerts: 0,
-      alert_summarys: [],
+      alert_summaries: [],
     };
   }
 }

@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import logging
-from . import elastic_client, database, models
+from . import elastic_client, database, models, scheduler
 from .routers import nodes, connections, rtarf_events, alerts, dashboard, network_graph, node_events
 
 # Configure logging
@@ -14,9 +14,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("app.main")
 
-
-# สร้างตารางในฐานข้อมูล
+# สร้างตารางในฐานข้อมูล (รวม sync_metadata table)
 models.Base.metadata.create_all(bind=database.engine)
+scheduler.SyncMetadata.__table__.create(bind=database.engine, checkfirst=True)
 
 # สร้าง FastAPI instance
 app = FastAPI(
@@ -56,18 +56,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Lifecycle event handlers
+# ===============================================================
+# Lifecycle Event Handlers
+# ===============================================================
+
 @app.on_event("startup")
 async def startup_initialize():
-    """Initialize connections on startup"""
-    pass
+    """Initialize connections and start scheduler on startup"""
+    logger.info("🚀 Starting application...")
+    
+    # Start background scheduler
+    scheduler.start_scheduler()
+    
+    # Optional: Run initial sync immediately
+    # await scheduler.trigger_sync_now()
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Close connections on shutdown"""
+    """Close connections and stop scheduler on shutdown"""
+    logger.info("🛑 Shutting down application...")
+    
+    # Stop scheduler
+    scheduler.stop_scheduler()
+    
+    # Close Elasticsearch connection
     await elastic_client.es.close()
+    
+    logger.info("✅ Shutdown complete")
 
-# Include routers (they will show in terminal and /docs)
+# ===============================================================
+# Include Routers
+# ===============================================================
+
 app.include_router(nodes.router, prefix="/nodes", tags=["Nodes"])
 app.include_router(connections.router, prefix="/connections", tags=["Network Connections"])
 app.include_router(rtarf_events.router, prefix="/rtarf-events", tags=["RTARF Events"])
@@ -76,10 +96,13 @@ app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(network_graph.router, prefix="/network-graph", tags=["Network Graph"])
 app.include_router(node_events.router, prefix="/node-events", tags=["Node Events"])
 
-# Optional: Print all registered routes on startup
+# ===============================================================
+# Print Registered Routes
+# ===============================================================
+
 @app.on_event("startup")
 async def startup_print_routes():
-    """Initialize connections on startup"""
+    """Print all registered routes on startup"""
     print("\n" + "="*50)
     print("🚀 API Routes Registered:")
     print("="*50)
@@ -90,7 +113,7 @@ async def startup_print_routes():
     print("="*50 + "\n")
 
 # ===============================================================
-# Health Check
+# Health Check & Scheduler Status
 # ===============================================================
 
 @app.get("/health", tags=["Health"])
@@ -99,3 +122,43 @@ def health_check():
     ตรวจสอบสถานะของ API
     """
     return {"status": "healthy", "message": "API is running"}
+
+@app.get("/scheduler/status", tags=["Scheduler"])
+def get_scheduler_status():
+    """
+    Get scheduler status and scheduled jobs
+    """
+    return scheduler.get_scheduler_status()
+
+@app.post("/scheduler/trigger-sync", tags=["Scheduler"])
+async def trigger_manual_sync():
+    """
+    Manually trigger Elasticsearch sync
+    """
+    try:
+        await scheduler.trigger_sync_now()
+        return {"status": "success", "message": "Sync triggered successfully"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/scheduler/trigger-cleanup", tags=["Scheduler"])
+async def trigger_manual_cleanup():
+    """
+    Manually trigger old events cleanup
+    """
+    try:
+        await scheduler.trigger_cleanup_now()
+        return {"status": "success", "message": "Cleanup triggered successfully"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/scheduler/trigger-alert-sync", tags=["Scheduler"])
+async def trigger_manual_alert_sync():
+    """
+    Manually trigger alert sync from RtarfEvents
+    """
+    try:
+        await scheduler.trigger_alert_sync_now()
+        return {"status": "success", "message": "Alert sync triggered successfully"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
