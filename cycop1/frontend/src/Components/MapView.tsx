@@ -34,12 +34,12 @@ const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLn
       onBoundsChange(map.getBounds());
     },
   });
-  
+
   useEffect(() => {
     // ส่ง bounds ครั้งแรกตอน load
     onBoundsChange(map.getBounds());
   }, []);
-  
+
   return null;
 };
 
@@ -98,6 +98,8 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
     <MapContainer
       center={[15.87, 100.9925]} // Thailand center
       zoom={6}
+      minZoom={4}
+      maxZoom={18}
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
