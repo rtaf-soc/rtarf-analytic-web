@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../../services/defensiveService";
+import {
+  fetchAlertSummary,
+  type AlertSummary,
+  fetchLatestAlert,
+  type RtarfAverageSeverityPayload,
+  fetchRtarfAverageSummary,
+  type RtarfSeverityStatistics,
+  fetchRtarfSeverityStatistics,
+} from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import * as Chart from "chart.js";
-import Sitrep from "./Sitrep";
+import Sitrep from "../SitrepCard";
 
 Chart.Chart.register(
   Chart.BarController,
@@ -15,13 +23,14 @@ Chart.Chart.register(
 const DevConBangkok = () => {
   const [alertData, setAlertData] = useState<AlertSummary | null>(null);
   const [threatData, setThreatData] = useState<AlertBase[]>([]);
-  const [avgSeverity, setAvgSeverity] = useState<RtarfAverageSeverityPayload | null>(null);
+  const [avgSeverity, setAvgSeverity] =
+    useState<RtarfAverageSeverityPayload | null>(null);
   const [defconLevel, setDefconLevel] = useState(1);
-  const [severityStats, setSeverityStats] = useState<RtarfSeverityStatistics | null>(null);
+  const [severityStats, setSeverityStats] =
+    useState<RtarfSeverityStatistics | null>(null);
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart.Chart | null>(null);
 
- 
   useEffect(() => {
     const loadAllData = async () => {
       const summary = await fetchAlertSummary();
@@ -49,51 +58,48 @@ const DevConBangkok = () => {
   useEffect(() => {
     if (severityStats?.severity_distribution && chartRef.current) {
       const dist = severityStats.severity_distribution;
-      
+
       // Destroy previous chart if exists
       if (chartInstance.current) {
         chartInstance.current.destroy();
       }
 
-      const ctx = chartRef.current.getContext('2d');
+      const ctx = chartRef.current.getContext("2d");
       if (ctx) {
         chartInstance.current = new Chart.Chart(ctx, {
-          type: 'bar',
+          type: "bar",
           data: {
-            labels: ['Critical', 'High', 'Medium', 'Low'],
-            datasets: [{
-              data: [dist.critical, dist.high, dist.medium, dist.low],
-              backgroundColor: [
-                '#ef4444',
-                '#f97316',
-                '#facc15',
-                '#60a5fa'
-              ],
-              borderRadius: 4,
-              barThickness: 28
-            }]
+            labels: ["Critical", "High", "Medium", "Low"],
+            datasets: [
+              {
+                data: [dist.critical, dist.high, dist.medium, dist.low],
+                backgroundColor: ["#ef4444", "#f97316", "#facc15", "#60a5fa"],
+                borderRadius: 4,
+                barThickness: 28,
+              },
+            ],
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
-              tooltip: { enabled: false }
+              tooltip: { enabled: false },
             },
             scales: {
               x: {
                 grid: { display: false },
-                ticks: { 
-                  color: '#9ca3af',
-                  font: { size: 8 }
-                }
+                ticks: {
+                  color: "#9ca3af",
+                  font: { size: 8 },
+                },
               },
               y: {
                 display: false,
-                beginAtZero: true
-              }
-            }
-          }
+                beginAtZero: true,
+              },
+            },
+          },
         });
       }
     }
@@ -105,7 +111,6 @@ const DevConBangkok = () => {
     };
   }, [severityStats]);
 
-
   // Get color based on DEFCON level
   function getDefconColor(level: number): {
     border: string;
@@ -116,38 +121,38 @@ const DevConBangkok = () => {
     switch (level) {
       case 4: // Critical
         return {
-          border: 'border-red-500',
-          bg: 'bg-red-400',
-          text: 'text-red-400',
-          glow: 'shadow-[0_0_15px_rgba(255,0,0,0.7)]'
+          border: "border-red-500",
+          bg: "bg-red-400",
+          text: "text-red-400",
+          glow: "shadow-[0_0_15px_rgba(255,0,0,0.7)]",
         };
       case 3: // High
         return {
-          border: 'border-orange-500',
-          bg: 'bg-orange-400',
-          text: 'text-orange-400',
-          glow: 'shadow-[0_0_15px_rgba(255,165,0,0.7)]'
+          border: "border-orange-500",
+          bg: "bg-orange-400",
+          text: "text-orange-400",
+          glow: "shadow-[0_0_15px_rgba(255,165,0,0.7)]",
         };
       case 2: // Medium
         return {
-          border: 'border-yellow-500',
-          bg: 'bg-yellow-400',
-          text: 'text-yellow-400',
-          glow: 'shadow-[0_0_15px_rgba(255,255,0,0.7)]'
+          border: "border-yellow-500",
+          bg: "bg-yellow-400",
+          text: "text-yellow-400",
+          glow: "shadow-[0_0_15px_rgba(255,255,0,0.7)]",
         };
       case 1: // Low
       default:
         return {
-          border: 'border-green-500',
-          bg: 'bg-green-400',
-          text: 'text-green-400',
-          glow: 'shadow-[0_0_15px_rgba(0,255,0,0.7)]'
+          border: "border-green-500",
+          bg: "bg-green-400",
+          text: "text-green-400",
+          glow: "shadow-[0_0_15px_rgba(0,255,0,0.7)]",
         };
     }
   }
 
   const pieData =
-    alertData?.alert_summarys
+    alertData?.alert_summaries
       ?.slice(0, 5) // top 5 categories for pie
       .map((item, i) => ({
         label: item.alert_name,
@@ -164,8 +169,39 @@ const DevConBangkok = () => {
 
   if (!alertData) {
     return (
-      <div className="flex justify-center items-center h-screen bg-black text-white">
-        Loading Threat Dashboard...
+      <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col items-center justify-center">
+        <div className="relative">
+          {/* Outer rotating ring */}
+          <div className="w-24 h-24 rounded-full border-4 border-gray-700 border-t-cyan-500 animate-spin"></div>
+
+          {/* Middle rotating ring (opposite direction) */}
+          <div className="absolute inset-0 w-24 h-24 rounded-full border-4 border-gray-700 border-b-blue-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+
+          {/* Inner pulsing circle */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.6)]"></div>
+          </div>
+
+          {/* Center icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-white text-xl animate-pulse">⚠</div>
+          </div>
+
+          {/* Loading text */}
+          <div className="absolute top-32 left-1/2 transform -translate-x-1/2 w-48">
+            <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse text-center">
+              INITIALIZING
+            </div>
+            <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse text-center">
+              THREAT DASHBOARD
+            </div>
+            <div className="flex justify-center gap-1 mt-3">
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -217,14 +253,15 @@ const DevConBangkok = () => {
               return (
                 <div
                   key={level}
-                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${
-                    isActive
+                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${isActive
                       ? `${colors.border} ${colors.bg} ${colors.glow}`
                       : "border-gray-600 bg-transparent hover:border-gray-400"
-                  }`}
+                    }`}
                 >
                   {isActive && (
-                    <div className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}></div>
+                    <div
+                      className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}
+                    ></div>
                   )}
                 </div>
               );
@@ -236,7 +273,9 @@ const DevConBangkok = () => {
             <div
               className={`w-28 h-28 rounded-full border-8 ${defconColors.border} flex items-center justify-center bg-black ${defconColors.glow} transition-all duration-300 group-hover/circle:scale-110 group-hover/circle:border-[10px]`}
             >
-              <span className={`text-7xl font-bold leading-none ${defconColors.text} group-hover/circle:scale-110 transition-transform duration-300`}>
+              <span
+                className={`text-7xl font-bold leading-none ${defconColors.text} group-hover/circle:scale-110 transition-transform duration-300`}
+              >
                 {defconLevel}
               </span>
             </div>
@@ -264,10 +303,18 @@ const DevConBangkok = () => {
                   <canvas ref={chartRef}></canvas>
                 </div>
                 <div className="flex justify-center gap-3 mt-1">
-                  <div className="text-[7px] text-red-400 font-bold">{severityStats.severity_distribution.critical}</div>
-                  <div className="text-[7px] text-orange-400 font-bold">{severityStats.severity_distribution.high}</div>
-                  <div className="text-[7px] text-yellow-400 font-bold">{severityStats.severity_distribution.medium}</div>
-                  <div className="text-[7px] text-blue-400 font-bold">{severityStats.severity_distribution.low}</div>
+                  <div className="text-[7px] text-red-400 font-bold">
+                    {severityStats.severity_distribution.critical}
+                  </div>
+                  <div className="text-[7px] text-orange-400 font-bold">
+                    {severityStats.severity_distribution.high}
+                  </div>
+                  <div className="text-[7px] text-yellow-400 font-bold">
+                    {severityStats.severity_distribution.medium}
+                  </div>
+                  <div className="text-[7px] text-blue-400 font-bold">
+                    {severityStats.severity_distribution.low}
+                  </div>
                 </div>
               </>
             ) : (
@@ -296,7 +343,10 @@ const DevConBangkok = () => {
 
               <div className="flex-1 space-y-[2px]">
                 {pieData.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-[4px] text-[8px]">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-[4px] text-[8px]"
+                  >
                     <div className={`w-2 h-2 rounded-sm ${item.color}`}></div>
                     <span className="text-gray-300 line-clamp-2">
                       {item.label}
@@ -310,6 +360,7 @@ const DevConBangkok = () => {
         </div>
       </div>
 
+      {/* Sitrep Section */}
       <Sitrep />
     </div>
   );

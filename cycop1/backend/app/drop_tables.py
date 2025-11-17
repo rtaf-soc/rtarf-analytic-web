@@ -7,11 +7,10 @@ Run from backend directory: python drop_tables.py
 import sys
 import os
 
-# Add the parent directory to the path so we can import app
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import Base, engine
-from app import models  # Important: Import models so they're registered with Base
+from app import models
 
 def drop_all_tables():
     """Drop all tables defined in models"""

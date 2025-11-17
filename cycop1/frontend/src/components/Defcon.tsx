@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { fetchAlertSummary, type AlertSummary, fetchLatestAlert, type RtarfAverageSeverityPayload, fetchRtarfAverageSummary, type RtarfSeverityStatistics, fetchRtarfSeverityStatistics } from "../services/defensiveService";
 import { type AlertBase } from "../types/defensive";
 import * as Chart from "chart.js";
+import SeveritySummaryCard from "./SeveritySummaryCard";
+import ThreatPieChart from "./ThreatPieChart";
+import ThreatAlertList from "./ThreatAlertList";
+
 
 Chart.Chart.register(
   Chart.BarController,
@@ -20,40 +24,40 @@ const DevConDashboard = () => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart.Chart | null>(null);
 
- 
+
   useEffect(() => {
-  const loadAllData = async () => {
-    const summary = await fetchAlertSummary();
-    const threat = await fetchLatestAlert();
-    const severity = await fetchRtarfAverageSummary();
-    const severityRanking = await fetchRtarfSeverityStatistics();
+    const loadAllData = async () => {
+      const summary = await fetchAlertSummary();
+      const threat = await fetchLatestAlert();
+      const severity = await fetchRtarfAverageSummary();
+      const severityRanking = await fetchRtarfSeverityStatistics();
 
-    console.log("Show alert:", summary);
-    console.log("Show threat:", threat);
-    console.log("Show severity average:", severity);
-    console.log("Show severity ranking:", severityRanking);
+      console.log("Show alert:", summary);
+      console.log("Show threat:", threat);
+      console.log("Show severity average:", severity);
+      console.log("Show severity ranking:", severityRanking);
 
-    setAlertData(summary);
-    setThreatData(threat);
-    setAvgSeverity(severity);
-    setSeverityStats(severityRanking);
+      setAlertData(summary);
+      setThreatData(threat);
+      setAvgSeverity(severity);
+      setSeverityStats(severityRanking);
 
-    if (severity && severity.average_severity_level > 0) {
-      setDefconLevel(severity.average_severity_level);
-    }
-  };
+      if (severity && severity.average_severity_level > 0) {
+        setDefconLevel(severity.average_severity_level);
+      }
+    };
 
-  loadAllData();
+    loadAllData();
 
-  const interval = setInterval(loadAllData, 30000);
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(loadAllData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-// Create Chart.js chart when severity stats change
+  // Create Chart.js chart when severity stats change
   useEffect(() => {
     if (severityStats?.severity_distribution && chartRef.current) {
       const dist = severityStats.severity_distribution;
-      
+
       // Destroy previous chart if exists
       if (chartInstance.current) {
         chartInstance.current.destroy();
@@ -87,7 +91,7 @@ const DevConDashboard = () => {
             scales: {
               x: {
                 grid: { display: false },
-                ticks: { 
+                ticks: {
                   color: '#9ca3af',
                   font: { size: 8 }
                 }
@@ -168,7 +172,7 @@ const DevConDashboard = () => {
   )
 
   const pieData =
-    alertData?.alert_summarys
+    alertData?.alert_summaries
       ?.slice(0, 5) // top 5 categories for pie
       .map((item, i) => ({
         label: item.alert_name,
@@ -185,8 +189,39 @@ const DevConDashboard = () => {
 
   if (!alertData) {
     return (
-      <div className="flex justify-center items-center h-screen bg-black text-white">
-        Loading Threat Dashboard...
+      <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col items-center justify-center">
+        <div className="relative">
+          {/* Outer rotating ring */}
+          <div className="w-24 h-24 rounded-full border-4 border-gray-700 border-t-cyan-500 animate-spin"></div>
+
+          {/* Middle rotating ring (opposite direction) */}
+          <div className="absolute inset-0 w-24 h-24 rounded-full border-4 border-gray-700 border-b-blue-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+
+          {/* Inner pulsing circle */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.6)]"></div>
+          </div>
+
+          {/* Center icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-white text-xl animate-pulse">⚠</div>
+          </div>
+
+          {/* Loading text */}
+          <div className="absolute top-32 left-1/2 transform -translate-x-1/2 w-48">
+            <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse text-center">
+              INITIALIZING
+            </div>
+            <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse text-center">
+              THREAT DASHBOARD
+            </div>
+            <div className="flex justify-center gap-1 mt-3">
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -220,7 +255,7 @@ const DevConDashboard = () => {
   const defconColors = getDefconColor(defconLevel);
 
   return (
-     <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
+    <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden">
       {/* DEFCON Status */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col group hover:border-gray-400 transition-all duration-300">
         {/* ชื่อ DEFCON ให้อยู่ตรงกลาง */}
@@ -238,11 +273,10 @@ const DevConDashboard = () => {
               return (
                 <div
                   key={level}
-                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${
-                    isActive
+                  className={`w-12 h-4 border-2 transition-all duration-300 hover:scale-110 cursor-pointer relative ${isActive
                       ? `${colors.border} ${colors.bg} ${colors.glow}`
                       : "border-gray-600 bg-transparent hover:border-gray-400"
-                  }`}
+                    }`}
                 >
                   {isActive && (
                     <div className={`absolute inset-0 ${colors.bg} opacity-50 animate-pulse`}></div>
@@ -284,9 +318,9 @@ const DevConDashboard = () => {
         )} */}
       </div>
 
-    
+      <SeveritySummaryCard />
       {/* Severity amount Chart */}
-      <div
+      {/* <div
         className="relative bg-black p-[6px] 
         bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1"
       >
@@ -318,10 +352,11 @@ const DevConDashboard = () => {
             )}
           </div>
         </div>
-      </div>
+      </div> */}
 
+      <ThreatPieChart />
       {/* Pie Chart */}
-      <div
+      {/* <div
         className="relative bg-black p-[6px] 
   bg-gradient-to-b from-[#b0c4de] to-[#4a5568] 
   shadow-[0_0_10px_rgba(0,150,255,0.25)] mt-[2px] mb-[2px]"
@@ -362,8 +397,9 @@ const DevConDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
+      {/* <ThreatAlertList /> */}
       {/* Threat Alert List */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500 shadow-lg">
         <div className="text-[14px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
@@ -396,8 +432,8 @@ const DevConDashboard = () => {
                 >
                   {threat.description}
                 </span>
-                <span 
-                  className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300" 
+                <span
+                  className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300"
                   title={threat.code}
                 >
                   {threat.code}

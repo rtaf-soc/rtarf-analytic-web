@@ -13,32 +13,86 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/create-alert-from-rtarf", response_model=List[schemas.Alert])
-async def create_alert_from_rtarf(db: Session = Depends(get_db)):
-    """
-    สร้าง alerts จาก RTARF events
-    """
-    try:
-        result = await crud.get_all_event_and_insert_into_alert(db)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create alert lists: {str(e)}"
-        )
-
 @router.get("/summary")
-async def get_alert_summary(db: Session = Depends(get_db)):
+def get_alert_summary(db: Session = Depends(get_db)):
     """
-    Get total alert count and grouped counts by alert_name.
+    Get alert summary statistics
     """
     try:
-        result = crud.alert_summary(db)
-        return result
+        return crud.alert_summary(db)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get alert summary: {str(e)}"
+        )
+
+@router.get("/statistics")
+def get_comprehensive_alert_stats(db: Session = Depends(get_db)):
+    """
+    Get comprehensive alert statistics including:
+    - Total alerts
+    - Recent alerts (24h)
+    - Breakdown by severity, status, and source
+    """
+    try:
+        return crud.get_alert_statistics(db)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get alert statistics: {str(e)}"
+        )
+
+@router.post("/sync-from-events")
+async def sync_all_events_to_alerts(db: Session = Depends(get_db)):
+    """
+    Manually sync ALL RtarfEvents to Alerts table.
+    Only creates alerts for events that don't already have them.
+    
+    Use this for:
+    - Initial setup
+    - After database issues
+    - Manual catch-up sync
+    
+    Note: For large datasets, this may take several minutes.
+    """
+    try:
+        result = await crud.sync_rtarf_events_to_alerts(db)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync events to alerts: {str(e)}"
+        )
+
+@router.post("/sync-new-events")
+async def sync_new_events_to_alerts(
+    last_sync_hours: Optional[int] = Query(None, description="Hours to look back (optional)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Sync only NEW RtarfEvents to Alerts (much faster than full sync).
+    
+    Query Parameters:
+    - last_sync_hours: Only sync events from last N hours (optional)
+    
+    If last_sync_hours is not provided, syncs based on last successful sync timestamp.
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        last_sync_time = None
+        if last_sync_hours:
+            last_sync_time = datetime.utcnow() - timedelta(hours=last_sync_hours)
+        
+        result = await crud.sync_new_rtarf_events_to_alerts(
+            db=db,
+            last_sync_time=last_sync_time
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync new events: {str(e)}"
         )
 
 @router.get("/", response_model=List[schemas.Alert])

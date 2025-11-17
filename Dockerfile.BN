@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install build tools (optional but useful)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Backend Setup
+COPY cycop1/backend/requirements.txt /app/cycop1/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/cycop1/backend/requirements.txt
+
+COPY cycop1/backend /app/cycop1/backend
+
+WORKDIR /app/cycop1/backend
+
+EXPOSE 8000
+
+# ใช้ command เดิมจาก supervisor
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

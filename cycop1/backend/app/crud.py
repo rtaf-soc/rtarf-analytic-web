@@ -1,5 +1,5 @@
 # app/crud.py
-from datetime import datetime
+from datetime import datetime, timedelta
 import math
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, func
@@ -10,8 +10,8 @@ from dateutil import parser as dateparser
 import logging
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
-import ipaddress
 from typing import Dict, List, Optional, Tuple
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from . import models
 from . import schemas
@@ -416,6 +416,9 @@ def _extract_fields(source):
         "cs_event_objective": cs_event_objective,
         "suricata_classification": suricata_class
     }
+    
+# {"exists": {"field": "suricata.classification"}},
+# {"exists": {"field": "crowdstrike.event.MitreAttack.Tactic"}},
 
 def _bulk_upsert_records(db: Session, records: list):
     """
@@ -462,82 +465,182 @@ def _bulk_upsert_records(db: Session, records: list):
         logger.error(f"Bulk upsert failed: {e}")
         raise
     
-async def insert_rtarf_event_into_postgres(db: Session, es_client):
+async def insert_rtarf_event_into_postgres(db: Session, es_client, last_sync_time=None, batch_size=250):
     """
-    Fetch events from Elasticsearch and insert into PostgreSQL
-    Returns a summary of the operation
+    Fetch events from Elasticsearch using Scroll API and insert into PostgreSQL
+    Handles unlimited records by scrolling through all results
+    
+    Args:
+        db: Database session
+        es_client: Elasticsearch client
+        last_sync_time: DateTime of last successful sync (optional)
+        batch_size: Number of records per scroll batch (default 250)
+    
+    Returns:
+        Summary of the operation with latest_timestamp for next sync
     """
     query = {
         "query": {
             "bool": {
                 "should": [
                     {"exists": {"field": "palo-xsiam.mitre_tactics_ids_and_names"}},
-                    # {"exists": {"field": "suricata.classification"}},
-#                   # {"exists": {"field": "crowdstrike.event.MitreAttack.Tactic"}},
                 ],
                 "minimum_should_match": 1
             }
-        }
+        },
+        "sort": [{"@timestamp": {"order": "asc"}}]
     }
     
-    try:
-        resp = await es_client.search(index="rtarf-events-beat*", body=query, size=250)
-    except Exception as e:
-        logger.error(f"Elasticsearch query failed: {e}")
-        raise
-    
-    record_batch = []
-    
-    for hit in resp["hits"]["hits"]:
-        source = hit.get("_source", {})
-        es_id = hit.get("_id")
-        fields = _extract_fields(source)
+    # Add time filter if last_sync_time is provided
+    if last_sync_time:
+        if not query["query"]["bool"].get("filter"):
+            query["query"]["bool"]["filter"] = []
         
-        ts = source.get("@timestamp") or source.get("timestamp")
-        parsed_ts = None
-        if ts:
-            try:
-                parsed_ts = dateparser.parse(ts)
-            except Exception:
+        # Convert datetime to ISO format string if needed
+        if isinstance(last_sync_time, datetime):
+            time_str = last_sync_time.isoformat()
+        else:
+            time_str = last_sync_time
+            
+        query["query"]["bool"]["filter"].append({
+            "range": {
+                "@timestamp": {
+                    "gt": time_str  # Greater than last sync time
+                }
+            }
+        })
+        logger.info(f"🔍 Fetching events after {time_str}")
+    else:
+        logger.info("🔍 Fetching all events (first sync)")
+    
+    total_processed = 0
+    total_inserted = 0
+    total_updated = 0
+    latest_timestamp = None
+    scroll_id = None
+    
+    try:
+        # Initialize scroll
+        resp = await es_client.search(
+            index="rtarf-events-beat*",
+            body=query,
+            size=batch_size,
+            scroll='5m'  # Keep scroll context alive for 5 minutes
+        )
+        
+        scroll_id = resp.get('_scroll_id')
+        hits = resp['hits']['hits']
+        total_hits = resp['hits']['total']['value'] if isinstance(resp['hits']['total'], dict) else resp['hits']['total']
+        
+        logger.info(f"📊 Total events to process: {total_hits}")
+        
+        # Process all batches
+        batch_number = 0
+        while hits:
+            batch_number += 1
+            record_batch = []
+            
+            logger.info(f"⚙️ Processing batch {batch_number} ({len(hits)} events)...")
+            
+            for hit in hits:
+                source = hit.get("_source", {})
+                es_id = hit.get("_id")
+                fields = _extract_fields(source)
+                
+                ts = source.get("@timestamp") or source.get("timestamp")
                 parsed_ts = None
+                if ts:
+                    try:
+                        parsed_ts = dateparser.parse(ts)
+                        # Track latest timestamp
+                        if parsed_ts:
+                            if latest_timestamp is None or parsed_ts > latest_timestamp:
+                                latest_timestamp = parsed_ts
+                    except Exception:
+                        parsed_ts = None
+                
+                record = {
+                    "event_id": es_id,
+                    "incident_id": fields["incident_id"],
+                    "status": fields["status"],
+                    "mitre_tactics_ids_and_names": fields["palo_tactics"],
+                    "mitre_techniques_ids_and_names": fields["palo_techniques"],
+                    "description": fields["description"],
+                    "severity": fields["severity"],
+                    "alert_categories": fields["alert_categories"],
+                    "crowdstrike_tactics": fields["cs_tactics"],
+                    "crowdstrike_tactics_ids": fields["cs_tactics_ids"],
+                    "crowdstrike_techniques": fields["cs_techniques"],
+                    "crowdstrike_techniques_ids": fields["cs_techniques_ids"],
+                    "crowdstrike_severity": fields["cs_severity"],
+                    "crowdstrike_event_name": fields["cs_event_name"],
+                    "crowdstrike_event_objective": fields["cs_event_objective"],
+                    "suricata_classification": fields["suricata_classification"],
+                    "timestamp": parsed_ts
+                }
+                record_batch.append(record)
+            
+            # Bulk insert this batch
+            try:
+                inserted, updated = _bulk_upsert_records(db, record_batch)
+                total_processed += len(record_batch)
+                total_inserted += inserted
+                total_updated += updated
+                
+                logger.info(f"✅ Batch {batch_number} completed: {len(record_batch)} events processed")
+                
+            except Exception as e:
+                logger.error(f"❌ Batch {batch_number} failed: {e}")
+                # Continue with next batch even if this one fails
+            
+            # Get next batch using scroll
+            try:
+                resp = await es_client.scroll(scroll_id=scroll_id, scroll='5m')
+                scroll_id = resp.get('_scroll_id')
+                hits = resp['hits']['hits']
+            except Exception as e:
+                logger.error(f"❌ Scroll failed: {e}")
+                break
         
-        record = {
-            "event_id": es_id,
-            "incident_id": fields["incident_id"],
-            "status": fields["status"],
-            "mitre_tactics_ids_and_names": fields["palo_tactics"],
-            "mitre_techniques_ids_and_names": fields["palo_techniques"],
-            "description": fields["description"],
-            "severity": fields["severity"],
-            "alert_categories": fields["alert_categories"],
-            "crowdstrike_tactics": fields["cs_tactics"],
-            "crowdstrike_tactics_ids": fields["cs_tactics_ids"],
-            "crowdstrike_techniques": fields["cs_techniques"],
-            "crowdstrike_techniques_ids": fields["cs_techniques_ids"],
-            "crowdstrike_severity": fields["cs_severity"],  
-            "crowdstrike_event_name": fields["cs_event_name"],
-            "crowdstrike_event_objective": fields["cs_event_objective"],
-            "suricata_classification": fields["suricata_classification"],
-            "timestamp": parsed_ts
-        }
-        record_batch.append(record)
-    
-    try:
-        inserted, updated = _bulk_upsert_records(db, record_batch)
+        # Clear scroll context
+        if scroll_id:
+            try:
+                await es_client.clear_scroll(scroll_id=scroll_id)
+                logger.info("🧹 Scroll context cleared")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to clear scroll: {e}")
+        
+        logger.info(
+            f"🎉 Sync completed: "
+            f"Total={total_processed}, "
+            f"Inserted={total_inserted}, "
+            f"Updated={total_updated}"
+        )
+        
         return {
             "status": "success",
-            "total_processed": len(record_batch),
-            "inserted": inserted,
-            "updated": updated
+            "total_processed": total_processed,
+            "inserted": total_inserted,
+            "updated": total_updated,
+            "latest_timestamp": latest_timestamp.isoformat() if latest_timestamp else None,
+            "batches_processed": batch_number
         }
-    except IntegrityError as e:
-        db.rollback()
-        logger.error(f"Integrity error: {e}")
-        return {"status": "error", "message": "Integrity error inserting records"}
+        
     except Exception as e:
+        # Clear scroll on error
+        if scroll_id:
+            try:
+                await es_client.clear_scroll(scroll_id=scroll_id)
+            except:
+                pass
+        
         db.rollback()
-        logger.error(f"Unexpected error: {e}")
-        return {"status": "error", "message": str(e)}
+        logger.error(f"❌ Sync failed: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": str(e),
+            "total_processed": total_processed
+        }
 
 
 def get_rtarf_event(db: Session, event_id: str):
@@ -1154,70 +1257,268 @@ def get_severity_trend(db: Session, hours: int = 24) -> Dict:
 # CRUD Functions for Alert
 # ===============================================================
 
-async def get_all_event_and_insert_into_alert(db: Session, es=None):
+async def sync_rtarf_events_to_alerts(db: Session, batch_size=500):
     """
-    Fetch all RtarfEvent records and insert them into Alert table.
+    Efficiently sync RtarfEvents to Alerts table using bulk operations.
+    Only processes events that don't already have alerts.
+    
+    Args:
+        db: Database session
+        batch_size: Number of records to process per batch
+    
+    Returns:
+        Summary of operation
     """
-    events = db.query(models.RtarfEvent).all()
-    inserted_alerts = []
-
-    for event in events:
-        # Skip duplicates
-        existing = db.query(models.Alert).filter(models.Alert.event_id == event.event_id).first()
-        if existing:
-            continue
-
-        # Determine alert name
-        alert_name = (
-            event.crowdstrike_event_name
-            or (event.alert_categories[0] if event.alert_categories else None)
-            or event.crowdstrike_event_objective
-            or event.suricata_classification
-            or "Unknown Alert"
+    try:
+        # Step 1: Get event_ids that already exist in alerts (FAST query)
+        existing_event_ids = set(
+            row[0] for row in db.query(models.Alert.event_id).all()
         )
+        logger.info(f"📊 Found {len(existing_event_ids)} existing alerts")
         
-        if event.alert_categories:
-            source_name = "palo-xsiam"
-        elif event.crowdstrike_event_objective:
-            source_name = "crowdstrike"
-        elif event.suricata_classification:
-            source_name = "suricata"
+        # Step 2: Get total count of new events to process
+        total_events = db.query(func.count(models.RtarfEvent.event_id)).filter(
+            ~models.RtarfEvent.event_id.in_(existing_event_ids) if existing_event_ids else True
+        ).scalar()
+        
+        if total_events == 0:
+            logger.info("✅ No new events to sync")
+            return {
+                "status": "success",
+                "total_processed": 0,
+                "inserted": 0,
+                "message": "No new events to sync"
+            }
+        
+        logger.info(f"🔄 Processing {total_events} new events...")
+        
+        # Step 3: Process in batches using offset pagination
+        total_inserted = 0
+        offset = 0
+        batch_number = 0
+        
+        while True:
+            batch_number += 1
+            
+            # Fetch batch of events that don't have alerts yet
+            query = db.query(models.RtarfEvent)
+            if existing_event_ids:
+                query = query.filter(~models.RtarfEvent.event_id.in_(existing_event_ids))
+            
+            events_batch = query.offset(offset).limit(batch_size).all()
+            
+            if not events_batch:
+                break  # No more events to process
+            
+            logger.info(f"⚙️ Processing batch {batch_number} ({len(events_batch)} events)...")
+            
+            # Step 4: Prepare bulk insert data
+            alert_records = []
+            for event in events_batch:
+                # Determine alert name
+                alert_name = (
+                    event.crowdstrike_event_name
+                    or (event.alert_categories[0] if event.alert_categories else None)
+                    or event.crowdstrike_event_objective
+                    or event.suricata_classification
+                    or "Unknown Alert"
+                )
+                
+                # Determine source
+                if event.alert_categories:
+                    source_name = "palo-xsiam"
+                elif event.crowdstrike_event_objective:
+                    source_name = "crowdstrike"
+                elif event.suricata_classification:
+                    source_name = "suricata"
+                else:
+                    source_name = "Unknown"
+                
+                # Determine severity
+                severity = event.severity or event.crowdstrike_severity or "Unknown"
+                
+                alert_records.append({
+                    "event_id": event.event_id,
+                    "alert_name": alert_name,
+                    "severity": severity,
+                    "incident_id": event.incident_id or "none",
+                    "description": event.description or "none",
+                    "status": event.status or "pending",
+                    "source": source_name,
+                    "timestamp": event.timestamp or datetime.utcnow()
+                })
+            
+            # Step 5: Bulk insert this batch
+            try:
+                if alert_records:
+                    db.bulk_insert_mappings(models.Alert, alert_records)
+                    db.commit()
+                    total_inserted += len(alert_records)
+                    logger.info(f"✅ Batch {batch_number} completed: {len(alert_records)} alerts created")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"❌ Batch {batch_number} failed: {e}")
+                # Continue with next batch
+            
+            offset += batch_size
+        
+        logger.info(f"🎉 Sync completed: {total_inserted} new alerts created")
+        
+        return {
+            "status": "success",
+            "total_processed": total_inserted,
+            "inserted": total_inserted,
+            "batches_processed": batch_number
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Alert sync failed: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+async def sync_new_rtarf_events_to_alerts(db: Session, last_sync_time=None, batch_size=500):
+    """
+    Sync only NEW RtarfEvents (created after last_sync_time) to Alerts.
+    This is the FASTEST option for scheduled syncing.
+    
+    Args:
+        db: Database session
+        last_sync_time: Only process events created after this time
+        batch_size: Number of records per batch
+    
+    Returns:
+        Summary with latest timestamp
+    """
+    try:
+        # Build query for new events only
+        query = db.query(models.RtarfEvent)
+        
+        if last_sync_time:
+            query = query.filter(models.RtarfEvent.timestamp > last_sync_time)
+            logger.info(f"🔍 Syncing events after {last_sync_time}")
         else:
-            source_name = "Unknown"
+            logger.info("🔍 Syncing all events (first sync)")
         
-        # Determine severity
-        severity = event.severity or event.crowdstrike_severity or "Unknown"
+        # Get total count
+        total_events = query.count()
         
-        incident_id = event.incident_id or "none"
+        if total_events == 0:
+            logger.info("✅ No new events to sync")
+            return {
+                "status": "success",
+                "total_processed": 0,
+                "inserted": 0,
+                "latest_timestamp": None
+            }
         
-        description= event.description or "none"
+        logger.info(f"🔄 Processing {total_events} new events...")
         
-        status = event.status or "pending"
-
-        alert = models.Alert(
-            event_id=event.event_id,
-            alert_name=alert_name,
-            severity=severity,
-            incident_id=incident_id,
-            description=description,
-            status=status,
-            source=source_name,
-            timestamp=datetime.utcnow()
-        )
-        db.add(alert)
-        inserted_alerts.append(alert)
-
-    db.commit()
-    return inserted_alerts
+        # Process in batches
+        total_inserted = 0
+        offset = 0
+        batch_number = 0
+        latest_timestamp = None
+        
+        while True:
+            batch_number += 1
+            
+            events_batch = query.order_by(models.RtarfEvent.timestamp.asc()).offset(offset).limit(batch_size).all()
+            
+            if not events_batch:
+                break
+            
+            logger.info(f"⚙️ Processing batch {batch_number} ({len(events_batch)} events)...")
+            
+            alert_records = []
+            for event in events_batch:
+                # Track latest timestamp
+                if event.timestamp:
+                    if latest_timestamp is None or event.timestamp > latest_timestamp:
+                        latest_timestamp = event.timestamp
+                
+                # Prepare alert record
+                alert_name = (
+                    event.crowdstrike_event_name
+                    or (event.alert_categories[0] if event.alert_categories else None)
+                    or event.crowdstrike_event_objective
+                    or event.suricata_classification
+                    or "Unknown Alert"
+                )
+                
+                if event.alert_categories:
+                    source_name = "palo-xsiam"
+                elif event.crowdstrike_event_objective:
+                    source_name = "crowdstrike"
+                elif event.suricata_classification:
+                    source_name = "suricata"
+                else:
+                    source_name = "Unknown"
+                
+                severity = event.severity or event.crowdstrike_severity or "Unknown"
+                
+                alert_records.append({
+                    "event_id": event.event_id,
+                    "alert_name": alert_name,
+                    "severity": severity,
+                    "incident_id": event.incident_id or "none",
+                    "description": event.description or "none",
+                    "status": event.status or "pending",
+                    "source": source_name,
+                    "timestamp": event.timestamp or datetime.utcnow()
+                })
+            
+            # Bulk insert with ON CONFLICT DO NOTHING (skip duplicates automatically)
+            try:
+                if alert_records:
+                    stmt = pg_insert(models.Alert).values(alert_records)
+                    stmt = stmt.on_conflict_do_nothing(index_elements=['event_id'])
+                    db.execute(stmt)
+                    db.commit()
+                    total_inserted += len(alert_records)
+                    logger.info(f"✅ Batch {batch_number} completed")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"❌ Batch {batch_number} failed: {e}")
+            
+            offset += batch_size
+        
+        logger.info(f"🎉 Alert sync completed: {total_inserted} alerts created")
+        
+        return {
+            "status": "success",
+            "total_processed": total_inserted,
+            "inserted": total_inserted,
+            "batches_processed": batch_number,
+            "latest_timestamp": latest_timestamp.isoformat() if latest_timestamp else None
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Alert sync failed: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 def alert_summary(db: Session):
-    
+    """
+    Get alert statistics - OPTIMIZED VERSION
+    """
+    # Single query to get total
     total_alerts = db.query(func.count(models.Alert.id)).scalar()
     
+    # Single query to get counts by name
     alert_counts = (
-        db.query(models.Alert.alert_name, func.count(models.Alert.alert_name).label("count"))
+        db.query(
+            models.Alert.alert_name,
+            func.count(models.Alert.alert_name).label("count")
+        )
         .group_by(models.Alert.alert_name)
         .order_by(func.count(models.Alert.alert_name).desc())
+        .limit(50)  # Top 50 alerts only for performance
         .all()
     )
     
@@ -1225,10 +1526,61 @@ def alert_summary(db: Session):
     
     return {
         "total_alerts": total_alerts,
-        "alert_summarys": summary
+        "alert_summaries": summary
+    }
+
+def get_alert_statistics(db: Session):
+    """
+    Get comprehensive alert statistics
+    """
+    # Total alerts
+    total = db.query(func.count(models.Alert.id)).scalar()
+    
+    # By severity
+    by_severity = (
+        db.query(
+            models.Alert.severity,
+            func.count(models.Alert.id).label("count")
+        )
+        .group_by(models.Alert.severity)
+        .all()
+    )
+    
+    # By status
+    by_status = (
+        db.query(
+            models.Alert.status,
+            func.count(models.Alert.id).label("count")
+        )
+        .group_by(models.Alert.status)
+        .all()
+    )
+    
+    # By source
+    by_source = (
+        db.query(
+            models.Alert.source,
+            func.count(models.Alert.id).label("count")
+        )
+        .group_by(models.Alert.source)
+        .all()
+    )
+    
+    # Recent alerts (last 24 hours)
+    last_24h = datetime.utcnow() - timedelta(hours=24)
+    recent_count = db.query(func.count(models.Alert.id)).filter(
+        models.Alert.timestamp >= last_24h
+    ).scalar()
+    
+    return {
+        "total_alerts": total,
+        "recent_24h": recent_count,
+        "by_severity": [{"severity": s, "count": c} for s, c in by_severity],
+        "by_status": [{"status": s, "count": c} for s, c in by_status],
+        "by_source": [{"source": s, "count": c} for s, c in by_source]
     }
     
-    
+
 def get_alert(db: Session, alert_id: int):
     """
     ดึงข้อมูล Alert ด้วย alert_id

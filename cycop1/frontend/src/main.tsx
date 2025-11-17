@@ -5,38 +5,37 @@ import ReactDOM from "react-dom/client";
 import CreateNode from "./components/CreateNode.tsx";
 import MainLayout from "./MainLayout.tsx";
 import BangkokLayout from "./BangkokLayout.tsx";
-import MapView from "./components/MapView.tsx";
-import MapViewBangkok from "./components/bangkoks/MapViewBangkok.tsx"
 import MitreAttackNavigator from "./pages/mitre-framework/index.tsx";
 import App from "./App.tsx";
-
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
     children: [
-      { index: true, element: <MapView /> },
-      { path: "/node-create", element: <CreateNode/>} ,
+      { index: true, element: <MainLayout /> },
+      { path: "/node-create", element: <CreateNode /> },
+      { path: "/defcon1", element: <MainLayout /> },
     ],
+  },
+
+  {
+    path: "/node-create",
+    element: <App />,
+    children: [{ index: true, element: <CreateNode /> }],
   },
 
   {
     path: "/mitre1",
     element: <App />,
-    children: [
-      {index: true, element: <MitreAttackNavigator />},
-    ]
+    children: [{ index: true, element: <MitreAttackNavigator /> }],
   },
 
   {
     path: "/bangkok",
     element: <BangkokLayout />,
-    children: [
-      {index: true, element: <MapViewBangkok />},
-    ]
-  }
-  
+    children: [{ index: true, element: <BangkokLayout /> }],
+  },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -44,4 +43,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
-
