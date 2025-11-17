@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     host: true,       // ฟังทุก IP
     port: 5173,
-    allowedHosts: "all",  // อนุญาตทุก host
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "defnex-analytic.please-scan.com", // ใส่โดเมนของคุณ
+      "ads-analytic.rtarf-prod.its-software-services.com"
+    ],
   },
 })
