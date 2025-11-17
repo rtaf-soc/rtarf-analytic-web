@@ -10,6 +10,7 @@ RUN npm install
 COPY cycop1/frontend /app
 
 EXPOSE 5173
+ENV VITE_ALLOWED_HOSTS=all
 
 # ใช้คำสั่งรัน dev หรือ build แล้ว serve ก็ปรับได้
 # ตัวอย่าง: รัน Vite Dev Server
