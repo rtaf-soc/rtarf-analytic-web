@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { GetAllNode, GetAllConnectionsWithNodes, type NetworkConnection } from "../services/defensiveService";
-import type { NodeGet } from "../types/defensive";
 import {
   MapContainer,
   TileLayer,
@@ -25,23 +23,34 @@ const yellowIcon = new L.Icon({
 });
 
 // Component สำหรับติดตาม bounds ของแผนที่
-const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBounds) => void }) => {
+const MapBoundsTracker = ({
+  onBoundsChange,
+}: {
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
+}) => {
   const map = useMapEvents({
-    moveend: () => {
-      onBoundsChange(map.getBounds());
-    },
-    zoomend: () => {
-      onBoundsChange(map.getBounds());
-    },
+    moveend: () => onBoundsChange(map.getBounds()),
+    zoomend: () => onBoundsChange(map.getBounds()),
   });
 
   useEffect(() => {
-    // ส่ง bounds ครั้งแรกตอน load
     onBoundsChange(map.getBounds());
   }, []);
 
   return null;
 };
+
+// Types
+interface NodeGet {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  layer: string;
+  type: string;
+  ip_address?: string;
+  node_type?: string;
+}
 
 interface MapViewProps {
   onBoundsChange?: (bounds: L.LatLngBounds) => void;
@@ -49,72 +58,55 @@ interface MapViewProps {
 
 const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
-  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
 
   useEffect(() => {
     const loadNodeData = async () => {
-      const nodes = await GetAllNode();
-      const connecteds = await GetAllConnectionsWithNodes();
-      console.log("Show Nodes:", nodes);
-      console.log("Show Connections:", connecteds);
-      setNodeData(nodes);
-      setConnectionsData(connecteds);
+      try {
+        const res = await fetch("http://localhost:5000/api/nodes");// fetch จาก Flask backend
+        if (!res.ok) throw new Error("Failed to fetch nodes");
+        const nodes: NodeGet[] = await res.json();
+
+        // แปลง latitude / longitude เป็น number
+        const parsedNodes = nodes.map((n) => ({
+          ...n,
+          latitude: Number(n.latitude),
+          longitude: Number(n.longitude),
+        }));
+
+        console.log("Parsed Nodes:", parsedNodes);
+        setNodeData(parsedNodes);
+      } catch (err) {
+        console.error(err);
+      }
     };
     loadNodeData();
   }, []);
 
-  // Create polylines from connection data
-  const connectionLines = connectionsData
-    .filter(conn => conn.source_node && conn.destination_node)
-    .map(conn => ({
-      id: conn.id,
-      positions: [
-        [conn.source_node!.latitude, conn.source_node!.longitude] as [number, number],
-        [conn.destination_node!.latitude, conn.destination_node!.longitude] as [number, number],
-      ],
-      status: conn.connection_status || "unknown",
-    }));
+  const getNodeIcon = (node: NodeGet) => (node.layer === "Internal" ? redIcon : yellowIcon);
 
-  // Determine icon color
-  const getNodeIcon = (node: NodeGet) => {
-    return node.id === 1 ? redIcon : yellowIcon;
-  };
-
-  // Determine line color based on connection status
-  const getLineColor = (status: string) => {
-    switch (status) {
-      case "running":
-        return "#32CD32"; // Green
-      case "warning":
-        return "#FFA500"; // Orange
-      case "error":
-        return "#FF0000"; // Red
-      default:
-        return "#32CD32";
-    }
-  };
+  // กำหนด center map จากค่าเฉลี่ย lat/lng
+  const centerLat = nodeData.length
+    ? nodeData.reduce((sum, n) => sum + n.latitude, 0) / nodeData.length
+    : 15.87;
+  const centerLng = nodeData.length
+    ? nodeData.reduce((sum, n) => sum + n.longitude, 0) / nodeData.length
+    : 100.9925;
 
   return (
     <MapContainer
-      center={[15.87, 100.9925]} // Thailand center
+      center={[centerLat, centerLng]}
       zoom={6}
       minZoom={4}
       maxZoom={18}
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-      {/* พื้นหลังกรมท่าเข้ม */}
+      {/* Base maps */}
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-        opacity={0.1}
-      />
-      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
-      {/* ติดตาม bounds และส่งออกไป */}
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
       {/* Render nodes as markers */}
@@ -130,23 +122,14 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
               <br />
               IP: {node.ip_address || "N/A"}
               <br />
-              Type: {node.node_type}
+              Type: {node.node_type || node.type}
+              <br />
+              Layer: {node.layer}
+              <br />
+              Lat: {node.latitude}, Lng: {node.longitude}
             </div>
           </Popup>
         </Marker>
-      ))}
-
-      {/* วาดเส้นเชื่อมโยง */}
-      {connectionLines.map((line) => (
-        <Polyline
-          key={line.id}
-          positions={line.positions}
-          pathOptions={{
-            color: getLineColor(line.status),
-            weight: 2,
-            opacity: 0.7,
-          }}
-        />
       ))}
     </MapContainer>
   );
