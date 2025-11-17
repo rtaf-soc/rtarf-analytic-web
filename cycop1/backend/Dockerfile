@@ -1,20 +1,20 @@
-# ใช้ Python slim image
-FROM python:3.12-slim
+# Backend Dockerfile
+FROM python:3.11-slim
 
-# ตั้ง working directory
+# Set working directory inside container
 WORKDIR /app
 
-# คัดลอก requirements
-COPY requirement.txt .
+# Copy requirements first (for layer caching)
+COPY requirements.txt .
 
-# ติดตั้ง dependencies
-RUN pip install --no-cache-dir -r requirement.txt
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# คัดลอก source code ทั้งหมด
+# Copy app source code
 COPY app/ ./app/
 
-# กำหนด environment variable (optional)
-ENV PYTHONUNBUFFERED=1
+# Expose FastAPI port
+EXPOSE 8000
 
-# รัน Uvicorn พร้อม bind ทุก interface
+# Run FastAPI app
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

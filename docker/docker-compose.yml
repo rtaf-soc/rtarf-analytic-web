@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgis/postgis:16-3.5
+    image: postgis/postgis:15-3.5
     container_name: postgres-db
     environment:
       POSTGRES_DB: defensive_db
@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     container_name: analytic-web-backend
     environment:
-      DATABASE_URL: postgresql://postgres:17140528@postgres:5432/defensive_db
+      DATABASE_URL: postgresql://postgres:patpimol00823@postgres:5432/defensive_db
       ES_URL: https://10.141.98.45:31900
       ES_USER: 86JTjRyfarMZ6cP5
       ES_PASS: dbpJwZIg56nfwLN8

@@ -8,41 +8,34 @@ import BangkokLayout from "./BangkokLayout.tsx";
 import MitreAttackNavigator from "./pages/mitre-framework/index.tsx";
 import App from "./App.tsx";
 
-
 const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
     children: [
       { index: true, element: <MainLayout /> },
-      { path: "/node-create", element: <CreateNode/>} ,
+      { path: "/node-create", element: <CreateNode /> },
+      { path: "/defcon1", element: <MainLayout /> },
     ],
   },
 
   {
     path: "/node-create",
     element: <App />,
-    children: [
-      {index: true, element: <CreateNode />},
-    ]
+    children: [{ index: true, element: <CreateNode /> }],
   },
 
   {
     path: "/mitre1",
     element: <App />,
-    children: [
-      {index: true, element: <MitreAttackNavigator />},
-    ]
+    children: [{ index: true, element: <MitreAttackNavigator /> }],
   },
 
   {
     path: "/bangkok",
     element: <BangkokLayout />,
-    children: [
-      {index: true, element: <BangkokLayout />},
-    ]
-  }
-  
+    children: [{ index: true, element: <BangkokLayout /> }],
+  },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -50,4 +43,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
-
