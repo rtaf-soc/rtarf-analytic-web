@@ -116,21 +116,21 @@ async def startup_print_routes():
 # Health Check & Scheduler Status
 # ===============================================================
 
-@app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
 def health_check():
     """
     ตรวจสอบสถานะของ API
     """
     return {"status": "healthy", "message": "API is running"}
 
-@app.get("/scheduler/status", tags=["Scheduler"])
+@app.get("/api/scheduler/status", tags=["Scheduler"])
 def get_scheduler_status():
     """
     Get scheduler status and scheduled jobs
     """
     return scheduler.get_scheduler_status()
 
-@app.post("/scheduler/trigger-sync", tags=["Scheduler"])
+@app.post("/api/scheduler/trigger-sync", tags=["Scheduler"])
 async def trigger_manual_sync():
     """
     Manually trigger Elasticsearch sync
@@ -141,7 +141,7 @@ async def trigger_manual_sync():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@app.post("/scheduler/trigger-cleanup", tags=["Scheduler"])
+@app.post("/api/scheduler/trigger-cleanup", tags=["Scheduler"])
 async def trigger_manual_cleanup():
     """
     Manually trigger old events cleanup
@@ -152,7 +152,7 @@ async def trigger_manual_cleanup():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@app.post("/scheduler/trigger-alert-sync", tags=["Scheduler"])
+@app.post("/api/scheduler/trigger-alert-sync", tags=["Scheduler"])
 async def trigger_manual_alert_sync():
     """
     Manually trigger alert sync from RtarfEvents
@@ -162,3 +162,4 @@ async def trigger_manual_alert_sync():
         return {"status": "success", "message": "Alert sync triggered successfully"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
