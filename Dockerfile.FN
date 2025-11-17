@@ -1,0 +1,16 @@
+# ใช้ Node.js 20 (Slim)
+FROM node:20-slim
+
+WORKDIR /app
+
+# Frontend Setup
+COPY cycop1/frontend/package*.json /app/
+RUN npm install
+
+COPY cycop1/frontend /app
+
+EXPOSE 5173
+
+# ใช้คำสั่งรัน dev หรือ build แล้ว serve ก็ปรับได้
+# ตัวอย่าง: รัน Vite Dev Server
+CMD ["npm", "run", "dev", "--", "--host"]
