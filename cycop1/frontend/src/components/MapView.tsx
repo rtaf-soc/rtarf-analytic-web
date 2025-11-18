@@ -64,7 +64,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          "http://127.0.0.1:8000/api/nodeplot?layer=RTARF%20INTERNAL%20NETWORK"
+          "/api/nodeplot?layer=RTARF INTERNAL NETWORK"
         );
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
