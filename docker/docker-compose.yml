@@ -26,6 +26,9 @@ services:
       ES_URL: https://10.141.98.45:31900
       ES_USER: 86JTjRyfarMZ6cP5
       ES_PASS: dbpJwZIg56nfwLN8
+      API_PATH: https://defnex-api.please-scan.com
+      API_AUTHEN_PASSWORD: v5QQY1WXhrV8
+      ORG_ID: default
     ports:
       - "8000:8000"
     depends_on:
