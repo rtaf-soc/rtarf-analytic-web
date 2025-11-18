@@ -1,4 +1,4 @@
-name: ads-analytic-bn
+name: ads-analytic-web
 permissions:
   contents: read
   actions: read
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [ "ads-analytic-bn" ]
+        service: [ "ads-analytic-web" ]
     outputs:
       imageTag: ${{ steps.prep.outputs.version }}
       autoDeployEnv: ${{ steps.prep.outputs.deployEnv }}
@@ -56,7 +56,7 @@ jobs:
           TAGS="$TAGS,${DOCKER_IMAGE}:sha-${GITHUB_SHA::8}"
         fi
 
-        DOCKERFILE=Dockerfile.BN
+        DOCKERFILE=Dockerfile
 
         echo ::set-output name=tags::${TAGS}
         echo ::set-output name=gcr_tags::${GCR_TAGS}
@@ -102,8 +102,8 @@ jobs:
       run: |
         export ENVIRONMENT=${{ needs.build1.outputs.autoDeployEnv }}
         export ARGOCD_BRANCH=${{ needs.build1.outputs.autoDeployBranch }}
-        export VALUE_FILE_DIR="values/ads-analytic-bn"
-        export VALUE_FILE=${VALUE_FILE_DIR}/ads-analytic-bn-03-${ARGOCD_BRANCH}-image-tag.yaml
+        export VALUE_FILE_DIR="values/ads-analytic-web"
+        export VALUE_FILE=${VALUE_FILE_DIR}/ads-analytic-web-03-${ARGOCD_BRANCH}-image-tag.yaml
         export IMAGE_TAG1=${{ needs.build1.outputs.imageTag }}
         git config --global user.email "cicd-auto@ads.com"
         git config --global user.name "CICD"
@@ -111,9 +111,9 @@ jobs:
         git clone "https://cicd-token:${GH_TOKEN}@github.com/rtaf-soc/rtarf-ads-argocd-apps" deployment
         cd deployment
         git checkout ${ARGOCD_BRANCH}
-#        cp ${VALUE_FILE_DIR}/ads-analytic-bn-02-image-tag-template.yaml ${VALUE_FILE}
-#        sed -i "s#<<image-tag>>#${IMAGE_TAG1}#g" ${VALUE_FILE}
-#        ls -lrt
-#        cat ${VALUE_FILE}
+        cp ${VALUE_FILE_DIR}/ads-analytic-web-02-image-tag-template.yaml ${VALUE_FILE}
+        sed -i "s#<<image-tag>>#${IMAGE_TAG1}#g" ${VALUE_FILE}
+        ls -lrt
+        cat ${VALUE_FILE}
 
-#        git add ${VALUE_FILE}; git commit --m "Update image tag by auto deploy script"; git push
+        git add ${VALUE_FILE}; git commit --m "Update image tag by auto deploy script"; git push

@@ -9,6 +9,8 @@ RUN npm install
 
 COPY cycop1/frontend /app
 
+#WORKDIR /app/src
+
 EXPOSE 5173
 ENV VITE_ALLOWED_HOSTS=all
 

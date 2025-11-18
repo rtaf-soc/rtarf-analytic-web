@@ -2,7 +2,7 @@
 FROM node:20
 
 # Set working directory
-WORKDIR /app
+WORKDIR /app/src
 
 # Copy package files
 COPY package*.json ./
