@@ -71,7 +71,7 @@ def nodeplot(layer: str = Query(..., description="Layer name")):
     """Return nodes and links for a specific layer"""
     data = get_nodes_and_links_by_layer(layer)
     if not data or not data.get('nodes'):
-        return []  # fallback empty array
+        return [] 
 
     nodes_list = []
     for node_id, node in data['node_hash'].items():
