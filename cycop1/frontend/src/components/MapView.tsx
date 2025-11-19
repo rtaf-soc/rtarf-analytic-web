@@ -12,7 +12,7 @@ import "leaflet/dist/leaflet.css";
 
 // ไอคอนสำหรับแต่ละประเภท node
 const routerIcon = new L.Icon({
-  iconUrl: "/img/wifi-router.png",
+  iconUrl: "/img/blue-router.png",
   iconSize: [24, 24],
 });
 
@@ -184,7 +184,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
                 [node.latitude, node.longitude],
                 [targetNode.latitude, targetNode.longitude],
               ]}
-              color="#10b981"
+              color="#33ff77"
               weight={2}
             />
           );
