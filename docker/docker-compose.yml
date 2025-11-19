@@ -22,10 +22,13 @@ services:
       dockerfile: Dockerfile
     container_name: analytic-web-backend
     environment:
-      DATABASE_URL: postgresql://postgres:patpimol00823@postgres:5432/defensive_db
+      DATABASE_URL: postgresql://postgres:17140528@postgres:5432/defensive_db
       ES_URL: https://10.141.98.45:31900
       ES_USER: 86JTjRyfarMZ6cP5
       ES_PASS: dbpJwZIg56nfwLN8
+      API_PATH: https://defnex-api.please-scan.com
+      API_AUTHEN_PASSWORD: v5QQY1WXhrV8
+      ORG_ID: default
     ports:
       - "8000:8000"
     depends_on:

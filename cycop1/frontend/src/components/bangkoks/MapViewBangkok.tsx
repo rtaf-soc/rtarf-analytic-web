@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { GetAllConnectionsWithNodes, type NetworkConnection, GetNodeWithMapScope } from "../../services/defensiveService";
 import type { NodeGet } from "../../types/defensive";
 import {
   MapContainer,
@@ -15,7 +14,6 @@ import "leaflet/dist/leaflet.css";
 import "../../index.css";
 import { Router } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
-
 
 // Component สำหรับติดตาม bounds ของแผนที่
 const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBounds) => void }) => {
@@ -40,8 +38,14 @@ interface MapViewProps {
   onBoundsChange?: (bounds: L.LatLngBounds) => void;
 }
 
+interface NetworkConnection {
+  id: number;
+  source_node: NodeGet | null;
+  destination_node: NodeGet | null;
+  connection_status: string | null;
+}
 
-const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
+const MapViewBangkok: React.FC<MapViewProps> = ({ onBoundsChange }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
   const mapSelect = "bangkok";
@@ -56,26 +60,33 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
 
   useEffect(() => {
     const loadNodeData = async () => {
-      const nodes = await GetNodeWithMapScope(mapSelect);
-      const connecteds = await GetAllConnectionsWithNodes();
-      console.log("Show Nodes:", nodes)
-      console.log("Show Connections:", connecteds)
-      setNodeData(nodes);
-      setConnectionsData(connecteds);
+      try {
+        // Fetch nodes from API
+        const nodesResponse = await fetch(`http://127.0.0.1:8000/api/nodes?mapScope=${mapSelect}`);
+        if (!nodesResponse.ok) {
+          throw new Error(`Failed to fetch nodes: ${nodesResponse.status}`);
+        }
+        const nodes = await nodesResponse.json();
+        
+        // Fetch connections from API
+        const connectionsResponse = await fetch("http://127.0.0.1:8000/api/connections");
+        if (!connectionsResponse.ok) {
+          throw new Error(`Failed to fetch connections: ${connectionsResponse.status}`);
+        }
+        const connections = await connectionsResponse.json();
+        
+        console.log("Show Nodes:", nodes);
+        console.log("Show Connections:", connections);
+        
+        setNodeData(nodes);
+        setConnectionsData(connections);
+      } catch (error) {
+        console.error("Error loading data:", error);
+      }
     };
     loadNodeData();
   }, []);
 
-  // พิกัดตัวอย่าง threat (กรุงเทพ, เชียงใหม่, สงขลา, โคราช, ขอนแก่น)
-  // const threats: { name: string; coords: [number, number]; color: string }[] = [
-  //   { name: "THREAT 1", coords: [13.7563, 100.5018], color: "red" }, // กรุงเทพ
-  //   { name: "THREAT 2", coords: [18.7883, 98.9853], color: "yellow" }, // เชียงใหม่
-  //   { name: "THREAT 3", coords: [7.0096, 100.4762], color: "yellow" }, // สงขลา
-  //   { name: "THREAT 4", coords: [14.9799, 102.0977], color: "yellow" }, // โคราช
-  //   { name: "THREAT 5", coords: [16.4419, 102.835], color: "yellow" }, // ขอนแก่น
-  // ];
-
-  
   // สร้างเซ็ตของ node IDs ที่อยู่ใน map_scope ปัจจุบัน
   const nodeIdsInMap = new Set(nodeData.map(node => node.id));
 
@@ -97,33 +108,33 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
     }));
 
   const getNodeIcon = (node: NodeGet) => {
-  let color = "white";
-  switch (node.name) {
-    case "บก.ทท.":
-      color = "yellow";
-      break;
-    case "ทบ.":
-      color = "green";
-      break;
-    case "ทอ.":
-      color = "skyblue";
-      break;
-    case "ทร.":
-      color = "blue";
-      break;
-    case "ตร.":
-      color = "#800000";
-      break;
-  }
+    let color = "white";
+    switch (node.name) {
+      case "บก.ทท.":
+        color = "yellow";
+        break;
+      case "ทบ.":
+        color = "green";
+        break;
+      case "ทอ.":
+        color = "skyblue";
+        break;
+      case "ทร.":
+        color = "blue";
+        break;
+      case "ตร.":
+        color = "#800000";
+        break;
+    }
 
-  // แปลง React component เป็น HTML string
-  const iconHtml = renderToStaticMarkup(<Router size={24} color={color} />);
-  return L.divIcon({
-    html: iconHtml,
-    className: "", // ปิด className default ของ Leaflet
-    iconSize: [30, 30], // ขนาดของ icon
-  });
-};
+    // แปลง React component เป็น HTML string
+    const iconHtml = renderToStaticMarkup(<Router size={24} color={color} />);
+    return L.divIcon({
+      html: iconHtml,
+      className: "", // ปิด className default ของ Leaflet
+      iconSize: [30, 30], // ขนาดของ icon
+    });
+  };
 
   // Determine line color based on connection status
   const getLineColor = (status: string) => {
@@ -171,7 +182,7 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
 
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
-       {/* ติดตาม bounds และส่งออกไป */}
+      {/* ติดตาม bounds และส่งออกไป */}
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
       {/* Render nodes as markers */}
