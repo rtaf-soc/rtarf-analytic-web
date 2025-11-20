@@ -200,7 +200,7 @@ const OverlayListBangkok: React.FC<OverlayListProps> = ({
 
         {/* ✅ รายการ node + checkbox ด้านหน้า
             เมื่อคลิกที่ทั้งแถว → onNodeClick(node) */}
-        <div className="space-y-1 max-h-29.5 overflow-y-auto mt-1">
+        <div className="space-y-1 max-h-29.5 overflow-y-auto mt-1 custom-scroll">
           {topNodes.map((node) => {
             const isSelected = selectedNode?.id === node.id;
             return (

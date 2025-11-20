@@ -30,7 +30,7 @@ const yellowIcon = new L.Icon({
 
 // เวอร์ชัน ALERT: กระพริบ + Glow + ขยาย/ย่อ
 const redAlertIcon = L.divIcon({
-  className: "", // ปล่อยว่าง แล้วใช้ class จาก html แทน
+  className: "", // ใช้ .alert-pulse-glow จาก index.css
   html: `
     <div class="alert-pulse-glow">
       <img src="/img/warning.png" alt="alert" />
@@ -70,15 +70,77 @@ interface MapViewProps {
 }
 
 // ===============================
-// MOVING DOT (จุดเรืองแสงวิ่งตามเส้น)
+// BEZIER UTIL (ทำเส้นโค้ง)
+// ===============================
+type LatLngTuple = [number, number];
+
+interface BezierCurve {
+  start: LatLngTuple;
+  control: LatLngTuple;
+  end: LatLngTuple;
+  points: LatLngTuple[]; // จุดที่ใช้วาด Polyline
+}
+
+// สร้าง control point + ชุดจุดตาม quadratic Bezier
+const createBezierCurve = (
+  start: LatLngTuple,
+  end: LatLngTuple,
+  segments: number = 40
+): BezierCurve => {
+  const [lat1, lng1] = start;
+  const [lat2, lng2] = end;
+
+  // จุดกึ่งกลาง
+  const midLat = (lat1 + lat2) / 2;
+  const midLng = (lng1 + lng2) / 2;
+
+  // เวกเตอร์ตั้งฉาก (ประมาณ ๆ)
+  const dLat = lat2 - lat1;
+  const dLng = lng2 - lng1;
+  const length = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+
+  // ปรับ factor เพื่อกำหนดความโค้ง (ยิ่งมากยิ่งนูน)
+  const offsetFactor = 0.35; // ลอง 0.2–0.35 ได้
+  const offsetLat = (-dLng / length) * offsetFactor;
+  const offsetLng = (dLat / length) * offsetFactor;
+
+  const control: LatLngTuple = [midLat + offsetLat, midLng + offsetLng];
+
+  const points: LatLngTuple[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const oneMinusT = 1 - t;
+
+    // B(t) = (1-t)^2 * P0 + 2(1-t)t * C + t^2 * P1
+    const lat =
+      oneMinusT * oneMinusT * lat1 +
+      2 * oneMinusT * t * control[0] +
+      t * t * lat2;
+    const lng =
+      oneMinusT * oneMinusT * lng1 +
+      2 * oneMinusT * t * control[1] +
+      t * t * lng2;
+
+    points.push([lat, lng]);
+  }
+
+  return { start, control, end, points };
+};
+
+// ===============================
+// MOVING DOT (จุดเรืองแสงวิ่งตามเส้นโค้ง)
 // ===============================
 interface MovingDotProps {
-  positions: [[number, number], [number, number]]; // [start, end]
+  start: LatLngTuple;
+  end: LatLngTuple;
+  control?: LatLngTuple; // ถ้ามี → วิ่งตาม Bezier, ถ้าไม่มี → เส้นตรง
   durationMs?: number;
 }
 
 const MovingDot: React.FC<MovingDotProps> = ({
-  positions,
+  start,
+  end,
+  control,
   durationMs = 4000,
 }) => {
   const [t, setT] = useState(0); // 0 → 1
@@ -101,20 +163,35 @@ const MovingDot: React.FC<MovingDotProps> = ({
 
     return () => {
       if (rafRef.current !== null) {
-        // ✅ แก้ตรงนี้จาก rafRefRef.current → rafRef.current
         cancelAnimationFrame(rafRef.current);
       }
     };
   }, [durationMs]);
 
-  const [start, end] = positions;
-  const lat = start[0] + (end[0] - start[0]) * t;
-  const lng = start[1] + (end[1] - start[1]) * t;
+  let lat: number;
+  let lng: number;
+
+  if (control) {
+    // quadratic Bezier
+    const oneMinusT = 1 - t;
+    lat =
+      oneMinusT * oneMinusT * start[0] +
+      2 * oneMinusT * t * control[0] +
+      t * t * end[0];
+    lng =
+      oneMinusT * oneMinusT * start[1] +
+      2 * oneMinusT * t * control[1] +
+      t * t * end[1];
+  } else {
+    // เส้นตรงปกติ
+    lat = start[0] + (end[0] - start[0]) * t;
+    lng = start[1] + (end[1] - start[1]) * t;
+  }
 
   return (
     <CircleMarker
       center={[lat, lng]}
-      radius={3}
+      radius={2.5} // ลดขนาดจุด
       pathOptions={{
         color: "#00FFFF",
         fillColor: "#00FFFF",
@@ -161,42 +238,41 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
     ) ||
     null;
 
-  const hqPosition: [number, number] = hqNode
+  const hqPosition: LatLngTuple = hqNode
     ? [hqNode.latitude, hqNode.longitude]
     : [13.7563, 100.5018]; // fallback: Bangkok center
 
-  // ====== เส้น connection เดิมจากฐานข้อมูล (ถ้ายังอยากใช้) ======
+  // ====== เส้น connection เดิมจากฐานข้อมูล (เส้นตรง) ======
   const connectionLines = connectionsData
     .filter((conn) => conn.source_node && conn.destination_node)
     .map((conn) => ({
       id: conn.id,
       positions: [
-        [
-          conn.source_node!.latitude,
-          conn.source_node!.longitude,
-        ] as [number, number],
+        [conn.source_node!.latitude, conn.source_node!.longitude] as LatLngTuple,
         [
           conn.destination_node!.latitude,
           conn.destination_node!.longitude,
-        ] as [number, number],
+        ] as LatLngTuple,
       ],
       status: conn.connection_status || "unknown",
     }));
 
-  // ====== เส้นเครือข่ายวิ่งเข้าหา HQ จากทุกโหนด ======
-  const inboundLines = nodeData
+  // ====== เส้นเครือข่ายวิ่งเข้าหา HQ จากทุกโหนด (โค้ง) ======
+  const inboundCurves: (BezierCurve & { id: string })[] = nodeData
     .filter((node) => {
       if (!node) return false;
       if (!hqNode) return true;
       return node.id !== hqNode.id;
     })
-    .map((node) => ({
-      id: `to-hq-${node.id}`,
-      positions: [
-        [node.latitude, node.longitude] as [number, number],
-        hqPosition,
-      ],
-    }));
+    .map((node) => {
+      const start: LatLngTuple = [node.latitude, node.longitude];
+      const end: LatLngTuple = hqPosition;
+      const curve = createBezierCurve(start, end);
+      return {
+        id: `to-hq-${node.id}`,
+        ...curve,
+      };
+    });
 
   // ICON ของแต่ละ node
   const getNodeIcon = (node: NodeGet) => {
@@ -276,46 +352,51 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
         </Marker>
       ))}
 
-      {/* เส้นจากฐานข้อมูลเดิม */}
+      {/* เส้นจากฐานข้อมูลเดิม (เส้นตรง – ลดความหนา) */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
           positions={line.positions}
           pathOptions={{
             color: getLineColor(line.status),
-            weight: 2,
+            weight: 1.5,   // ลดจาก 2 → 1.5
             opacity: 0.5,
           }}
         />
       ))}
 
-      {/* เส้นเข้าหา HQ + มิติ + glow + dot */}
-      {inboundLines.map((line) => (
+      {/* เส้นเข้าหา HQ แบบโค้ง + มิติ + glow + dot */}
+      {inboundCurves.map((line) => (
         <React.Fragment key={line.id}>
           {/* ฮาโลด้านนอก (หนา / จาง) */}
           <Polyline
-            positions={line.positions}
+            positions={line.points}
             pathOptions={{
               color: "#00FFFF",
-              weight: 5,
-              opacity: 0.25,
+              weight: 3,     // ลดจาก 5 → 3
+              opacity: 0.22,
             }}
             className="link-line-outer"
           />
 
-          {/* เส้นด้านใน (คม / มี dash / animation ได้ถ้าอยากเพิ่มทีหลัง) */}
+          {/* เส้นด้านใน (คม / dash / animation จาก CSS) */}
           <Polyline
-            positions={line.positions}
+            positions={line.points}
             pathOptions={{
               color: "#AFFFFF",
-              weight: 2,
+              weight: 1.4,   // ลดจาก 2 → 1.4
               opacity: 0.95,
             }}
             className="link-line-inner"
           />
 
-          {/* จุดเรืองแสงวิ่งตามเส้น */}
-          <MovingDot positions={line.positions} durationMs={3500} />
+          {/* จุดเรืองแสงวิ่งตามเส้นโค้ง (Bezier) */}
+          <MovingDot
+            start={line.start}
+            end={line.end}
+            control={line.control}
+            durationMs={3500}
+          />
         </React.Fragment>
       ))}
     </MapContainer>

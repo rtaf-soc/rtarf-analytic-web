@@ -40,6 +40,60 @@ const MapBoundsTracker = ({
   return null;
 };
 
+/* ======================
+   BEZIER UTILITIES
+====================== */
+
+type LatLngTuple = [number, number];
+
+interface BezierCurve {
+  start: LatLngTuple;
+  control: LatLngTuple;
+  end: LatLngTuple;
+  points: LatLngTuple[]; // จุดที่ใช้วาด Polyline
+}
+
+// สร้าง control point + จุดตาม quadratic Bezier (เหมือนไฟล์ MapView ใหญ่)
+const createBezierCurve = (
+  start: LatLngTuple,
+  end: LatLngTuple,
+  segments: number = 40
+): BezierCurve => {
+  const [lat1, lng1] = start;
+  const [lat2, lng2] = end;
+
+  const midLat = (lat1 + lat2) / 2;
+  const midLng = (lng1 + lng2) / 2;
+
+  // เวกเตอร์ตั้งฉาก (~ความโค้ง)
+  const dLat = lat2 - lat1;
+  const dLng = lng2 - lng1;
+  const length = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+
+  const offsetFactor = 0.01; // ปรับมาก/น้อยได้เพื่อให้โค้งมากขึ้นหรือน้อยลง
+  const offsetLat = (-dLng / length) * offsetFactor;
+  const offsetLng = (dLat / length) * offsetFactor;
+
+  const control: LatLngTuple = [midLat + offsetLat, midLng + offsetLng];
+
+  const points: LatLngTuple[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const oneMinusT = 1 - t;
+    const lat =
+      oneMinusT * oneMinusT * lat1 +
+      2 * oneMinusT * t * control[0] +
+      t * t * lat2;
+    const lng =
+      oneMinusT * oneMinusT * lng1 +
+      2 * oneMinusT * t * control[1] +
+      t * t * lng2;
+    points.push([lat, lng]);
+  }
+
+  return { start, control, end, points };
+};
+
 // ===================== ICONS โลโก้แต่ละเหล่าทัพ =====================
 // โลโก้ บก.ทท. แบบปกติ (ยังเก็บไว้เผื่อใช้ทีหลัง)
 const iconRTARF = L.icon({
@@ -49,7 +103,7 @@ const iconRTARF = L.icon({
   popupAnchor: [0, -30],
 });
 
-// 🔥 โลโก้บก.ทท. แบบ Alert เต้นหัวใจ
+// 🔥 โลโก้บก.ทท. แบบ Alert เต้นหัวใจ (ใช้ class จาก index.css)
 const iconRTARFAlert = L.divIcon({
   className: "",
   html: `
@@ -62,7 +116,7 @@ const iconRTARFAlert = L.divIcon({
   popupAnchor: [0, -30],
 });
 
-// ⭐ โลโก้เหล่าทัพอื่น: เหตุการณ์ปกติ + เรืองแสงฟ้า แต่ใช้ "ขนาดเดิม" ตามโค้ดเก่า
+// ⭐ โลโก้เหล่าทัพอื่น: Glow ฟ้า
 const iconARMY = L.divIcon({
   className: "",
   html: `
@@ -115,32 +169,32 @@ const iconPOLICE = L.divIcon({
 const FIXED_HQ = [
   {
     name: "บก.ทท.",
-    icon: iconRTARFAlert, // 👉 ใช้แบบหัวใจเต้น
-    position: [13.886433965395847, 100.56613525394891] as [number, number],
+    icon: iconRTARFAlert,
+    position: [13.886433965395847, 100.56613525394891] as LatLngTuple,
     description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
   },
   {
     name: "ทบ.",
     icon: iconARMY,
-    position: [13.762575459990577, 100.50709066527318] as [number, number],
+    position: [13.762575459990577, 100.50709066527318] as LatLngTuple,
     description: "ศูนย์ไซเบอร์กองทัพบก",
   },
   {
     name: "ทอ.",
     icon: iconAIRFORCE,
-    position: [13.922478935512451, 100.61856910575769] as [number, number],
+    position: [13.922478935512451, 100.61856910575769] as LatLngTuple,
     description: "ศูนย์ไซเบอร์กองทัพอากาศ",
   },
   {
     name: "ทร.",
     icon: iconNAVY,
-    position: [13.741766933008465, 100.48936628134868] as [number, number],
+    position: [13.741766933008465, 100.48936628134868] as LatLngTuple,
     description: "กรมการสื่อสารและเทคโนโลยีสารสนเทศทหารเรือ",
   },
   {
     name: "ตร.",
     icon: iconPOLICE,
-    position: [13.748377057528485, 100.53740589888896] as [number, number],
+    position: [13.748377057528485, 100.53740589888896] as LatLngTuple,
     description: "สำนักงานตำรวจแห่งชาติ",
   },
 ];
@@ -156,14 +210,14 @@ const HQ_CONNECTIONS = FIXED_HQ
   .filter((hq) => hq.name !== "บก.ทท.")
   .map((hq, idx) => ({
     id: `hq-static-${idx}`,
-    from: hq.position as [number, number],
-    to: HQ_CENTER as [number, number],
+    from: hq.position as LatLngTuple,
+    to: HQ_CENTER as LatLngTuple,
   }));
 
-// ===================== Animated Beam (เส้นประวิ่งเข้า HQ) =====================
+// ===================== Animated Beam (โค้ง + glow + dot) =====================
 interface AnimatedBeamProps {
-  from: [number, number];
-  to: [number, number];
+  from: LatLngTuple;
+  to: LatLngTuple;
   color?: string;
   durationMs?: number;
   dashSpeed?: number;
@@ -179,39 +233,31 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   const map = useMap();
 
   useEffect(() => {
-    const fromLat = Number(from[0]);
-    const fromLng = Number(from[1]);
-    const toLat = Number(to[0]);
-    const toLng = Number(to[1]);
+    const [fromLat, fromLng] = from;
+    const [toLat, toLng] = to;
 
-    const glowLine = L.polyline(
-      [
-        [fromLat, fromLng],
-        [toLat, toLng],
-      ],
-      {
-        color,
-        weight: 8,
-        opacity: 0.25,
-      }
-    ).addTo(map);
+    const curve = createBezierCurve(from, to);
+    const { control, points } = curve;
 
-    const dashLine = L.polyline(
-      [
-        [fromLat, fromLng],
-        [toLat, toLng],
-      ],
-      {
-        color,
-        weight: 3,
-        opacity: 0.9,
-        dashArray: "10 14",
-        dashOffset: "0",
-      }
-    ).addTo(map);
+    // เส้น glow ด้านนอก (หนา/จาง)
+    const glowLine = L.polyline(points, {
+      color,
+      weight: 3, // เล็กลง
+      opacity: 0.22,
+    }).addTo(map);
 
-    const dot = L.circleMarker([fromLat, fromLng], {
-      radius: 5,
+    // เส้นด้านใน (dash + animation จาก JS เสริม)
+    const dashLine = L.polyline(points, {
+      color,
+      weight: 1.4,
+      opacity: 0.95,
+      dashArray: "8 14",
+      dashOffset: "0",
+    }).addTo(map);
+
+    // จุดเรืองแสงวิ่ง
+    const dot = L.circleMarker(from, {
+      radius: 3,
       color,
       fillColor: color,
       fillOpacity: 1,
@@ -226,8 +272,17 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
       const elapsed = timestamp - start;
       const t = (elapsed % durationMs) / durationMs;
 
-      const lat = fromLat + (toLat - fromLat) * t;
-      const lng = fromLng + (toLng - fromLng) * t;
+      // quadratic Bezier สำหรับจุดวิ่ง
+      const oneMinusT = 1 - t;
+      const lat =
+        oneMinusT * oneMinusT * fromLat +
+        2 * oneMinusT * t * control[0] +
+        t * t * toLat;
+      const lng =
+        oneMinusT * oneMinusT * fromLng +
+        2 * oneMinusT * t * control[1] +
+        t * t * toLng;
+
       dot.setLatLng([lat, lng]);
 
       dashOffset = (dashOffset + dashSpeed) % 100;
@@ -301,11 +356,11 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         [
           Number(conn.source_node!.latitude),
           Number(conn.source_node!.longitude),
-        ] as [number, number],
+        ] as LatLngTuple,
         [
           Number(conn.destination_node!.latitude),
           Number(conn.destination_node!.longitude),
-        ] as [number, number],
+        ] as LatLngTuple,
       ],
       status: conn.connection_status || "unknown",
     }));
@@ -325,10 +380,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
   // เลือก icon ตาม node (DB)
   const getNodeIcon = (node: NodeGet, active: boolean) => {
-    // 👉 ถ้าเป็น บก.ทท. ใช้แบบหัวใจเต้น
-    if (node.name === "บก.ทท." || node.name === "บก.ทท") {
-      return iconRTARFAlert;
-    }
+    if (node.name === "บก.ทท." || node.name === "บก.ทท") return iconRTARFAlert;
     if (node.name === "ทบ.") return iconARMY;
     if (node.name === "ทอ.") return iconAIRFORCE;
     if (node.name === "ทร.") return iconNAVY;
@@ -438,27 +490,27 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         </Marker>
       ))}
 
-      {/* เส้นเชื่อมโยงปกติจาก DB (จาง ๆ) */}
+      {/* เส้นเชื่อมโยงปกติจาก DB (เส้นตรง จาง ๆ และเล็กลง) */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
           positions={line.positions}
           pathOptions={{
             color: getLineColor(line.status),
-            weight: 2,
-            opacity: 0.3,
+            weight: 1.4,
+            opacity: 0.95,
           }}
         />
       ))}
 
-      {/* เส้นประ + glow + จุดวิ่ง จาก 4 เหล่าทัพ → บก.ทท. */}
+      {/* เส้นโค้ง + glow + dash + จุดวิ่ง จาก 4 เหล่าทัพ → บก.ทท. */}
       {HQ_CONNECTIONS.map((line) => (
         <AnimatedBeam
           key={line.id}
           from={line.from}
           to={line.to}
           color="#22d3ee"
-          durationMs={4000}
+          durationMs={3500}
           dashSpeed={-1}
         />
       ))}
