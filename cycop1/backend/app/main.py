@@ -41,10 +41,15 @@ async def log_requests(request, call_next):
 
     return response
 
+allowed_origins = [
+    "https://defnex-analytic.please-scan.com",
+    "http://localhost:5173",      # ไว้ dev
+]
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # แก้เป็น frontend domain จริงถ้าต้องการ
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

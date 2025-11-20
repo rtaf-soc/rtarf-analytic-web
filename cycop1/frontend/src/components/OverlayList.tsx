@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Check } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
 import {
   MapContainer,
   TileLayer,
@@ -59,14 +59,7 @@ const OverlayList: React.FC<OverlayListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // กำหนดสีสำหรับแต่ละ layer
-  const layerColors = [
-    "bg-blue-700",
-    "bg-blue-700",
-    "bg-blue-700",
-    "bg-blue-700",
-    "bg-blue-700",
-  ];
+  const layerColors = ["bg-blue-700","bg-blue-700","bg-blue-700","bg-blue-700","bg-blue-700"];
 
   // Timer อัปเดตเวลา
   useEffect(() => {
@@ -74,7 +67,6 @@ const OverlayList: React.FC<OverlayListProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Format วัน/เวลา
   const formatDate = (date: Date): string => {
     const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const months = [
@@ -84,28 +76,27 @@ const OverlayList: React.FC<OverlayListProps> = ({
     return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString("en-US", { hour12: false });
+  const formatTime = (date: Date): string => date.toLocaleTimeString("en-US", { hour12: false });
+
+  // === ฟังก์ชัน fetchLayers เรียกได้จาก useEffect และปุ่ม refresh ===
+  const fetchLayers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/layers");
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setOverlayItems(data);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to fetch layers:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch layers");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Fetch layers จาก API
   useEffect(() => {
-    const fetchLayers = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/layers");
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setOverlayItems(data);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch layers:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch layers");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLayers();
+    fetchLayers(); // เรียกครั้งแรกตอน mount
   }, []);
 
   const handleLayerClick = (layerValue: string) => {
@@ -115,7 +106,6 @@ const OverlayList: React.FC<OverlayListProps> = ({
 
   const getLayerColor = (index: number) => layerColors[index % layerColors.length];
 
-  // Thailand marker สำหรับ minimap
   const thailandIcon = new L.DivIcon({
     className: "custom-marker",
     html: `<div style="width: 10px; height: 10px; background: #10b981; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 10px #10b981;"></div>`,
@@ -124,6 +114,15 @@ const OverlayList: React.FC<OverlayListProps> = ({
 
   return (
     <div className="fixed left-0 top-0 h-screen w-60 bg-slate-800 text-white p-1 border-r-2 border-gray-700 flex flex-col">
+      {/* Refresh Button */}
+      <button
+        onClick={fetchLayers}
+        disabled={loading}
+        className="absolute top-4 right-4 z-10 p-1.5 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+      >
+        <RefreshCw className={`w-3 h-3 text-white ${loading ? "animate-spin" : ""}`} />
+      </button>
+
       {/* Logo and DateTime */}
       <div className="bg-black rounded-lg p-2 mb-2 border border-gray-700">
         <div className="flex justify-center mb-1">
@@ -152,10 +151,7 @@ const OverlayList: React.FC<OverlayListProps> = ({
           scrollWheelZoom={false}
           doubleClickZoom={false}
         >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            opacity={0.5}
-          />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" opacity={0.5} />
           <Marker position={[13.7563, 100.5018]} icon={thailandIcon} />
           <MinimapBounds parentBounds={mainMapBounds} />
         </MapContainer>
