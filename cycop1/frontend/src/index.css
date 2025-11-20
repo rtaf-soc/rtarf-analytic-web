@@ -6,6 +6,26 @@
   filter: hue-rotate(175deg) saturate(1.6) brightness(0.9);
 }
 
+/* ========= Custom Scrollbar กลืนพื้นหลัง =========== */
+.custom-scroll::-webkit-scrollbar {
+  width: 8px;             /* ความกว้างของ scrollbar */
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #1b1d20;    /* เทาเข้ม เหมือน bg ของ container */
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #2c2f33;    /* เทาเข้มกว่า 1 step */
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3a3d41;    /* hover สีอ่อนขึ้นนิดเดียว */
+}
+
+
 /* ===========================
    ALERT ICON PULSE + GLOW
    =========================== */
@@ -100,3 +120,88 @@
     stroke-dashoffset: -40;
   }
 }
+
+.rtarf-alert-heartbeat {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* รูปโลโก้เต้นเป็นจังหวะหัวใจ */
+.rtarf-alert-heartbeat img {
+  width: 32px;
+  height: 32px;
+  animation: rtarf-heartbeat 1.2s infinite ease-in-out;
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.9));
+}
+
+/* วงแหวนกระเพื่อมออกไป */
+.rtarf-alert-heartbeat::after {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 0, 0, 0.7);
+  animation: rtarf-heartbeat-ring 1.2s infinite ease-out;
+}
+
+/* keyframes หัวใจเต้น: ตุ๊บ-ตุ๊บ-พัก */
+@keyframes rtarf-heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.25);
+  }
+  35% {
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* วงแหวนขยาย + จางหาย */
+@keyframes rtarf-heartbeat-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------- */
+/*  HQ NORMAL GLOW (ทบ. / ทอ. / ทร. / ตร.)                    */
+/* ---------------------------------------------------------- */
+.hq-normal-glow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hq-normal-glow img {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9));
+  animation: hq-glow-breath 3s ease-in-out infinite;
+}
+
+@keyframes hq-glow-breath {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9));
+  }
+  50% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 1));
+  }
+}
+

@@ -80,9 +80,8 @@ const OverlayList: React.FC = () => {
       "NOV",
       "DEC",
     ];
-    return `${days[date.getDay()]} ${date.getDate()} ${
-      months[date.getMonth()]
-    } ${date.getFullYear()}`;
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]
+      } ${date.getFullYear()}`;
   };
 
   const formatTime: DateFormatter = (date: Date): string =>
@@ -177,39 +176,52 @@ const OverlayList: React.FC = () => {
       </div>
 
       {/* Overlay List */}
-      <div className="bg-black rounded-lg p-2 mb-1 border-8 border-gray-500 flex-shrink-0 w-57">
+      <div className="bg-black rounded-lg p-2 mb-2 border-8 border-gray-500 flex-shrink-0 w-57">
+        {/* หัว OVERLAY LIST เหมือนด้านบน */}
         <div className="text-[15px] font-bold mb-1.5 text-white border-b border-gray-600 pb-1 flex justify-center">
           OVERLAY LIST
         </div>
 
-        {loading && (
-          <div className="text-[11px] text-gray-400 mb-1">
-            กำลังโหลดข้อมูล Node...
-          </div>
-        )}
+        {/* แถวเล็กด้านใต้หัว เอาไว้โชว์สถานะโหลด (เหมือนอันบน) */}
+        <div className="text-[13px] font-semibold text-white mb-1 flex justify-between items-center">
+          {loading && (
+            <span className="text-[10px] text-gray-400">กำลังโหลดข้อมูล Node...</span>
+          )}
+        </div>
+
+        {/* error */}
         {error && (
           <div className="text-[11px] text-red-400 mb-1">{error}</div>
         )}
 
-        <div className="space-y-1">
-          {overlayItems.length === 0 && !loading && !error && (
-            <div className="text-[11px] text-gray-400 italic">
-              ไม่มีข้อมูล Node จากฐานข้อมูล
-            </div>
-          )}
+        {/* ไม่มีข้อมูล */}
+        {!loading && !error && overlayItems.length === 0 && (
+          <div className="text-[12px] text-gray-400 mb-1">
+            ไม่มีข้อมูล Node จากฐานข้อมูล
+          </div>
+        )}
 
+        {/* รายการ overlay ให้ใช้ layout แบบเดียวกับ node list: มี border, bg, scroll ได้ */}
+        <div className="space-y-1 max-h-29.5 overflow-y-auto mt-1 custom-scroll">
           {overlayItems.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => handleSelectOverlay(item.id)}
-              className="flex items-center gap-1.5 w-full text-left hover:bg-slate-900/60 rounded px-1 py-0.5"
+              className={`w-full flex items-center gap-2 px-1.5 py-1 text-left text-[11px] rounded border ${item.checked
+                  ? "border-green-400 bg-slate-800"
+                  : "border-gray-700 bg-slate-900/60 hover:bg-slate-800"
+                } transition-colors`}
             >
-              <div
-                className={`w-2 h-2 ${item.color} flex items-center justify-center`}
-              >
-                {item.checked && <Check className="w-2 h-2 text-white" />}
+              {/* ช่องสี่เหลี่ยม + Check เหมือนด้านบน แต่ใส่สี overlay เข้าไป */}
+              <div className="flex items-center justify-center w-3 h-3 border border-gray-400 rounded-[2px] bg-black">
+                {item.checked && <Check className="w-2 h-2 text-green-400" />}
               </div>
+
+              {/* ชิปสี overlay (ใช้ class จาก item.color เช่น bg-red-500 ฯลฯ) */}
+              <div className={`w-2.5 h-2.5 rounded-sm ${item.color}`} />
+
+              {/* ชื่อ overlay */}
               <span className="text-[12px] text-gray-300 flex-1 font-bold truncate">
                 {item.name}
               </span>
@@ -217,6 +229,7 @@ const OverlayList: React.FC = () => {
           ))}
         </div>
 
+        {/* ปุ่ม control ด้านล่างเหมือนเดิม */}
         <div className="flex gap-1 mt-2 pt-2 border-t border-gray-600">
           <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px]">
             <span>🔍</span>
@@ -232,6 +245,7 @@ const OverlayList: React.FC = () => {
           </button>
         </div>
       </div>
+
 
       {/* SITREP */}
       <div className="bg-black rounded-lg p-2 border-8 border-gray-500 flex-1 overflow-hidden w-57">
@@ -272,7 +286,7 @@ const OverlayList: React.FC = () => {
                   <div>
                     • G/W:{" "}
                     {selectedNode.additional_ips &&
-                    selectedNode.additional_ips.length > 0
+                      selectedNode.additional_ips.length > 0
                       ? selectedNode.additional_ips.join(", ")
                       : "-"}
                   </div>

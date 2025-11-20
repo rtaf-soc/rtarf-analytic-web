@@ -297,11 +297,10 @@ const DefconBangkok: React.FC<DefconProps> = ({ selectedNode }) => {
           key={idx}
           d={`M 50 50 L ${x1} ${y1} A 45 45 0 ${largeArc} 1 ${x2} ${y2} Z`}
           fill={item.hex}
-          className={`transition-all duration-300 ${
-            active
+          className={`transition-all duration-300 ${active
               ? "scale-[1.05] drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]"
               : "opacity-80"
-          }`}
+            }`}
           onMouseEnter={() => setHoverIndex(idx)}
           onMouseLeave={() => setHoverIndex(null)}
         />
@@ -334,9 +333,8 @@ const DefconBangkok: React.FC<DefconProps> = ({ selectedNode }) => {
               return (
                 <div
                   key={level}
-                  className={`w-10 h-4 border-2 ${
-                    active ? `${c.border} ${c.bg} ${c.glow}` : "border-gray-600"
-                  }`}
+                  className={`w-10 h-4 border-2 ${active ? `${c.border} ${c.bg} ${c.glow}` : "border-gray-600"
+                    }`}
                 />
               );
             })}
@@ -358,10 +356,38 @@ const DefconBangkok: React.FC<DefconProps> = ({ selectedNode }) => {
       </div>
 
       {/* ------------------ Severity Chart ------------------ */}
-      <div className="bg-black border-8 border-gray-500 p-2 rounded-lg">
-        <canvas ref={chartRef} className="h-20"></canvas>
-      </div>
+      <div
+                className="relative bg-black p-[6px] 
+        bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1">
+        <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
+          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
+            จำนวนการแจ้งเตือนแยกตามระดับความรุนแรง
+          </div>
 
+          <div
+            className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] 
+                        shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]"
+          >
+            {severityStats?.severity_distribution ? (
+              <>
+                <div className="h-16 relative">
+                  <canvas ref={chartRef}></canvas>
+                </div>
+                <div className="flex justify-center gap-3 mt-1">
+                  <div className="text-[7px] text-red-400 font-bold">{severityStats.severity_distribution.critical}</div>
+                  <div className="text-[7px] text-orange-400 font-bold">{severityStats.severity_distribution.high}</div>
+                  <div className="text-[7px] text-yellow-400 font-bold">{severityStats.severity_distribution.medium}</div>
+                  <div className="text-[7px] text-blue-400 font-bold">{severityStats.severity_distribution.low}</div>
+                </div>
+              </>
+            ) : (
+              <div className="h-14 flex items-center justify-center text-gray-500 text-[8px]">
+                กำลังโหลดข้อมูล...
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       {/* ------------------ THREAT DISTRIBUTION ------------------ */}
       <div className="bg-black border-8 border-gray-500 p-2 rounded-lg">
         <div className="text-center text-white text-xs font-bold">
@@ -377,9 +403,8 @@ const DefconBangkok: React.FC<DefconProps> = ({ selectedNode }) => {
             {pieData.map((item, idx) => (
               <div
                 key={idx}
-                className={`flex justify-between text-[9px] ${
-                  hoverIndex === idx ? "text-white" : "text-gray-400"
-                }`}
+                className={`flex justify-between text-[9px] ${hoverIndex === idx ? "text-white" : "text-gray-400"
+                  }`}
                 onMouseEnter={() => setHoverIndex(idx)}
                 onMouseLeave={() => setHoverIndex(null)}
               >

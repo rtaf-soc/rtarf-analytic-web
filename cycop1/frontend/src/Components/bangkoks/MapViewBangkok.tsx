@@ -14,7 +14,7 @@ import {
   Popup,
   GeoJSON,
   useMapEvents,
-  useMap,              // ⭐ เพิ่ม useMap สำหรับ AnimatedBeam
+  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -22,6 +22,7 @@ import "../../index.css";
 import { Router } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+// ===================== MapBoundsTracker =====================
 const MapBoundsTracker = ({
   onBoundsChange,
 }: {
@@ -29,7 +30,7 @@ const MapBoundsTracker = ({
 }) => {
   const map = useMapEvents({
     moveend: () => onBoundsChange(map.getBounds()),
-    zoomend:   () => onBoundsChange(map.getBounds()),
+    zoomend: () => onBoundsChange(map.getBounds()),
   });
 
   useEffect(() => {
@@ -39,7 +40,8 @@ const MapBoundsTracker = ({
   return null;
 };
 
-// ---------- ICON โลโก้แต่ละเหล่าทัพ (ไฟล์ต้องอยู่ใน public/img) ----------
+// ===================== ICONS โลโก้แต่ละเหล่าทัพ =====================
+// โลโก้ บก.ทท. แบบปกติ (ยังเก็บไว้เผื่อใช้ทีหลัง)
 const iconRTARF = L.icon({
   iconUrl: "/img/บก.ทท.png",
   iconSize: [50, 45],
@@ -47,39 +49,73 @@ const iconRTARF = L.icon({
   popupAnchor: [0, -30],
 });
 
-const iconARMY = L.icon({
-  iconUrl: "/img/ทบ.png",
-  iconSize: [60, 65],
-  iconAnchor: [24, 24],
-  popupAnchor: [0, -30],
-});
-
-const iconAIRFORCE = L.icon({
-  iconUrl: "/img/ทอ.png",
+// 🔥 โลโก้บก.ทท. แบบ Alert เต้นหัวใจ
+const iconRTARFAlert = L.divIcon({
+  className: "",
+  html: `
+    <div class="rtarf-alert-heartbeat">
+      <img src="/img/บก.ทท.png" alt="บก.ทท." style="width:50px; height:45px;" />
+    </div>
+  `,
   iconSize: [50, 45],
   iconAnchor: [24, 24],
   popupAnchor: [0, -30],
 });
 
-const iconNAVY = L.icon({
-  iconUrl: "/img/ทร.png",
+// ⭐ โลโก้เหล่าทัพอื่น: เหตุการณ์ปกติ + เรืองแสงฟ้า แต่ใช้ "ขนาดเดิม" ตามโค้ดเก่า
+const iconARMY = L.divIcon({
+  className: "",
+  html: `
+    <div class="hq-normal-glow">
+      <img src="/img/ทบ.png" alt="ทบ." style="width:60px; height:65px;" />
+    </div>
+  `,
+  iconSize: [60, 65],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+const iconAIRFORCE = L.divIcon({
+  className: "",
+  html: `
+    <div class="hq-normal-glow">
+      <img src="/img/ทอ.png" alt="ทอ." style="width:50px; height:45px;" />
+    </div>
+  `,
+  iconSize: [50, 45],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+const iconNAVY = L.divIcon({
+  className: "",
+  html: `
+    <div class="hq-normal-glow">
+      <img src="/img/ทร.png" alt="ทร." style="width:35px; height:50px;" />
+    </div>
+  `,
   iconSize: [35, 50],
   iconAnchor: [24, 24],
   popupAnchor: [0, -30],
 });
 
-const iconPOLICE = L.icon({
-  iconUrl: "/img/ตอ.png",
+const iconPOLICE = L.divIcon({
+  className: "",
+  html: `
+    <div class="hq-normal-glow">
+      <img src="/img/ตอ.png" alt="ตร." style="width:40px; height:40px;" />
+    </div>
+  `,
   iconSize: [40, 40],
   iconAnchor: [24, 24],
   popupAnchor: [0, -30],
 });
 
-// ---------- FIX MARKER ตำแหน่ง HQ แต่ละเหล่าทัพ ----------
+// ===================== FIX MARKER HQ =====================
 const FIXED_HQ = [
   {
     name: "บก.ทท.",
-    icon: iconRTARF,
+    icon: iconRTARFAlert, // 👉 ใช้แบบหัวใจเต้น
     position: [13.886433965395847, 100.56613525394891] as [number, number],
     description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
   },
@@ -109,61 +145,93 @@ const FIXED_HQ = [
   },
 ];
 
-// จุดศูนย์กลางที่ให้ “เส้นวิ่งเข้าหา” = HQ บก.ทท.
+// จุดศูนย์กลาง (ปลายทาง) = HQ บก.ทท.
 const HQ_CENTER = FIXED_HQ[0].position;
 
-// ชื่อที่ถือว่าเป็น HQ (จะไม่วาด marker จาก DB ซ้ำ)
+// ชื่อ HQ ไว้ใช้กรองไม่ให้ซ้อนกับ marker DB
 const HQ_NAMES = new Set(["บก.ทท.", "บก.ทท", "ทบ.", "ทอ.", "ทร.", "ตร."]);
 
-interface MapViewProps {
-  onBoundsChange?: (bounds: L.LatLngBounds) => void;
-  onNodeClick?: (node: NodeGet) => void;
-  selectedNode?: NodeGet | null;
-}
+// เส้นคงที่จากโลโก้เหล่าทัพ → HQ บก.ทท.
+const HQ_CONNECTIONS = FIXED_HQ
+  .filter((hq) => hq.name !== "บก.ทท.")
+  .map((hq, idx) => ({
+    id: `hq-static-${idx}`,
+    from: hq.position as [number, number],
+    to: HQ_CENTER as [number, number],
+  }));
 
-// ---------- ลำแสงวิ่งเข้า HQ ----------
+// ===================== Animated Beam (เส้นประวิ่งเข้า HQ) =====================
 interface AnimatedBeamProps {
   from: [number, number];
   to: [number, number];
   color?: string;
+  durationMs?: number;
+  dashSpeed?: number;
 }
 
 const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   from,
   to,
   color = "#22d3ee",
+  durationMs = 3000,
+  dashSpeed = -1.5,
 }) => {
   const map = useMap();
 
   useEffect(() => {
-    // เส้นหลัก (เรืองแสง + เส้นประ)
-    const line = L.polyline([from, to], {
-      color,
-      weight: 3,
-      opacity: 0.9,
-      dashArray: "10 15",
-    }).addTo(map);
+    const fromLat = Number(from[0]);
+    const fromLng = Number(from[1]);
+    const toLat = Number(to[0]);
+    const toLng = Number(to[1]);
 
-    // จุดวิ่งตามเส้น
-    const dot = L.circleMarker(from, {
-      radius: 4,
+    const glowLine = L.polyline(
+      [
+        [fromLat, fromLng],
+        [toLat, toLng],
+      ],
+      {
+        color,
+        weight: 8,
+        opacity: 0.25,
+      }
+    ).addTo(map);
+
+    const dashLine = L.polyline(
+      [
+        [fromLat, fromLng],
+        [toLat, toLng],
+      ],
+      {
+        color,
+        weight: 3,
+        opacity: 0.9,
+        dashArray: "10 14",
+        dashOffset: "0",
+      }
+    ).addTo(map);
+
+    const dot = L.circleMarker([fromLat, fromLng], {
+      radius: 5,
       color,
       fillColor: color,
       fillOpacity: 1,
     }).addTo(map);
 
     let frameId: number;
-    const duration = 2000; // ms ต่อรอบ
     let start: number | null = null;
+    let dashOffset = 0;
 
     const animate = (timestamp: number) => {
       if (start === null) start = timestamp;
       const elapsed = timestamp - start;
-      const t = (elapsed % duration) / duration; // 0 → 1
+      const t = (elapsed % durationMs) / durationMs;
 
-      const lat = from[0] + (to[0] - from[0]) * t;
-      const lng = from[1] + (to[1] - from[1]) * t;
+      const lat = fromLat + (toLat - fromLat) * t;
+      const lng = fromLng + (toLng - fromLng) * t;
       dot.setLatLng([lat, lng]);
+
+      dashOffset = (dashOffset + dashSpeed) % 100;
+      dashLine.setStyle({ dashOffset: `${dashOffset}` });
 
       frameId = requestAnimationFrame(animate);
     };
@@ -172,14 +240,23 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
 
     return () => {
       cancelAnimationFrame(frameId);
-      map.removeLayer(line);
+      map.removeLayer(glowLine);
+      map.removeLayer(dashLine);
       map.removeLayer(dot);
     };
-  }, [map, from, to, color]);
+  }, [map, from, to, color, durationMs, dashSpeed]);
 
   return null;
 };
 
+// ===================== Props =====================
+interface MapViewProps {
+  onBoundsChange?: (bounds: L.LatLngBounds) => void;
+  onNodeClick?: (node: NodeGet) => void;
+  selectedNode?: NodeGet | null;
+}
+
+// ===================== Main Component =====================
 const MapViewBangkok: React.FC<MapViewProps> = ({
   onBoundsChange,
   onNodeClick,
@@ -189,31 +266,25 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>(
     []
   );
+  const [bangkokGeoJSON, setBangkokGeoJSON] = useState<any>(null);
   const mapSelect = "bangkok";
 
-  const [bangkokGeoJSON, setBangkokGeoJSON] = useState<any>(null);
-
-  // โหลดขอบเขตกรุงเทพ
   useEffect(() => {
     fetch("/data/bangkok-districts.geojson")
       .then((res) => res.json())
       .then((data) => setBangkokGeoJSON(data));
   }, []);
 
-  // โหลด Node + Connections จาก backend
   useEffect(() => {
     const loadNodeData = async () => {
       const nodes = await GetNodeWithMapScope(mapSelect);
       const connecteds = await GetAllConnectionsWithNodes();
-      console.log("Show Nodes:", nodes);
-      console.log("Show Connections:", connecteds);
       setNodeData(nodes);
       setConnectionsData(connecteds);
     };
     loadNodeData();
   }, []);
 
-  // connection ปกติจาก DB
   const nodeIdsInMap = new Set(nodeData.map((node) => node.id));
 
   const connectionLines = connectionsData
@@ -227,30 +298,37 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     .map((conn) => ({
       id: conn.id,
       positions: [
-        [conn.source_node!.latitude, conn.source_node!.longitude] as [
-          number,
-          number
-        ],
-        [conn.destination_node!.latitude, conn.destination_node!.longitude] as [
-          number,
-          number
-        ],
+        [
+          Number(conn.source_node!.latitude),
+          Number(conn.source_node!.longitude),
+        ] as [number, number],
+        [
+          Number(conn.destination_node!.latitude),
+          Number(conn.destination_node!.longitude),
+        ] as [number, number],
       ],
       status: conn.connection_status || "unknown",
     }));
 
-  // ⭐ เส้น “เครือข่ายวิ่งเข้า บก.ทท.” จาก node ทุกตัว (ยกเว้น HQ เอง)
-  const flowLinesToHQ = nodeData
-    .filter((node) => !HQ_NAMES.has(node.name))
-    .map((node) => ({
-      id: `flow-${node.id}`,
-      from: [node.latitude, node.longitude] as [number, number],
-      to: HQ_CENTER,
-    }));
+  const getLineColor = (status: string) => {
+    switch (status) {
+      case "running":
+        return "#32CD32";
+      case "warning":
+        return "#FFA500";
+      case "error":
+        return "#FF0000";
+      default:
+        return "#32CD32";
+    }
+  };
 
-  // เลือก icon ตาม node
+  // เลือก icon ตาม node (DB)
   const getNodeIcon = (node: NodeGet, active: boolean) => {
-    if (node.name === "บก.ทท." || node.name === "บก.ทท") return iconRTARF;
+    // 👉 ถ้าเป็น บก.ทท. ใช้แบบหัวใจเต้น
+    if (node.name === "บก.ทท." || node.name === "บก.ทท") {
+      return iconRTARFAlert;
+    }
     if (node.name === "ทบ.") return iconARMY;
     if (node.name === "ทอ.") return iconAIRFORCE;
     if (node.name === "ทร.") return iconNAVY;
@@ -291,20 +369,6 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     });
   };
 
-  // สีเส้น connection ปกติ
-  const getLineColor = (status: string) => {
-    switch (status) {
-      case "running":
-        return "#32CD32";
-      case "warning":
-        return "#FFA500";
-      case "error":
-        return "#FF0000";
-      default:
-        return "#32CD32";
-    }
-  };
-
   return (
     <MapContainer
       center={[13.7563, 100.5018]}
@@ -336,11 +400,9 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
       />
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
-      {onBoundsChange && (
-        <MapBoundsTracker onBoundsChange={onBoundsChange} />
-      )}
+      {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
-      {/* Marker จากฐานข้อมูล (ยกเว้น HQ ที่ fix ไว้แล้ว) */}
+      {/* Marker จาก DB (ยกเว้น HQ) */}
       {nodeData
         .filter((node) => !HQ_NAMES.has(node.name))
         .map((node) => {
@@ -348,7 +410,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
           return (
             <Marker
               key={node.id}
-              position={[node.latitude, node.longitude]}
+              position={[Number(node.latitude), Number(node.longitude)]}
               icon={getNodeIcon(node, active)}
               eventHandlers={{
                 click: () => onNodeClick && onNodeClick(node),
@@ -365,7 +427,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
           );
         })}
 
-      {/* FIXED MARKERS สำหรับ HQ แต่ละเหล่าทัพ */}
+      {/* FIXED HQ MARKERS */}
       {FIXED_HQ.map((hq, idx) => (
         <Marker key={`hq-${idx}`} position={hq.position} icon={hq.icon}>
           <Popup>
@@ -376,7 +438,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         </Marker>
       ))}
 
-      {/* เส้นเชื่อมโยงปกติจาก DB (จาง ๆ พอ) */}
+      {/* เส้นเชื่อมโยงปกติจาก DB (จาง ๆ) */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
@@ -389,13 +451,15 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         />
       ))}
 
-      {/* ⭐ ลำแสงวิ่งเข้า บก.ทท. */}
-      {flowLinesToHQ.map((line) => (
+      {/* เส้นประ + glow + จุดวิ่ง จาก 4 เหล่าทัพ → บก.ทท. */}
+      {HQ_CONNECTIONS.map((line) => (
         <AnimatedBeam
           key={line.id}
           from={line.from}
           to={line.to}
           color="#22d3ee"
+          durationMs={4000}
+          dashSpeed={-1}
         />
       ))}
     </MapContainer>
