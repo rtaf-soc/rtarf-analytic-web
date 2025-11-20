@@ -156,6 +156,26 @@ def nodeplot(layer: str = Query(..., description="Layer name")):
 
     return nodes_list
 
+@app.get("/api/defstatus", tags=["DefconStatus"])
+def get_defcon_status():
+    from app.services.get_defcon_status import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetDefConStatus")
+
+@app.get("/api/reconcountry", tags=["ReconCountries"])
+def get_threat_alerts():
+    from app.services.get_recon_countries import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetReconCountries")
+
+@app.get("/api/threatdistributions", tags=["ThreatDistributions"])
+def get_threat_alerts():
+    from app.services.get_threat_distributions import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatDistributions")
+
+@app.get("/api/threatalerts", tags=["ThreatAlerts"])
+def get_threat_alerts():
+    from app.services.get_threat_alerts import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatAlerts")
+
 # @app.get("/api/scheduler/status", tags=["Scheduler"])
 # def get_scheduler_status():
 #     """

@@ -41,6 +41,7 @@ const MapBoundsTracker = ({
 
 interface MapViewProps {
   onBoundsChange?: (bounds: L.LatLngBounds) => void;
+  selectedLayer: string | null; // layer ที่เลือกจาก OverlayList
 }
 
 interface NodeData {
@@ -54,17 +55,18 @@ interface NodeData {
   status: Record<string, any>;
 }
 
-const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
+const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
   const [nodeData, setNodeData] = useState<NodeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!selectedLayer) return; // ถ้าไม่มี layer เลือก → ไม่ fetch
     const loadNodes = async () => {
       try {
         setLoading(true);
         const response = await fetch(
-          "/api/nodeplot?layer=RTARF INTERNAL NETWORK"
+          `/api/nodeplot?layer=${encodeURIComponent(selectedLayer)}`
         );
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -72,14 +74,13 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
         const data = await response.json();
         console.log("Loaded NodePlot:", data);
 
-        // map API response → NodeData
         const formattedData: NodeData[] = data.map((node: any) => ({
           id: node.id,
           name: node.name,
           latitude: node.latitude,
           longitude: node.longitude,
-          type: "Router", // ปรับตาม node.type ถ้ามี
-          layer: "RTARF INTERNAL NETWORK",
+          type: node.type || "Router",
+          layer: selectedLayer,
           links: node.links || [],
           status: node.status || {},
         }));
@@ -97,7 +98,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
     };
 
     loadNodes();
-  }, []);
+  }, [selectedLayer]);
 
   const getNodeIcon = (node: NodeData) => {
     switch (node.type.toLowerCase()) {

@@ -21,7 +21,6 @@ const MinimapBounds = ({
 
   useEffect(() => {
     if (parentBounds) {
-      // ปรับ minimap ให้เห็นทั้ง bounds ของ main map
       map.fitBounds(parentBounds, { padding: [10, 10] });
     }
   }, [parentBounds, map]);
@@ -41,6 +40,8 @@ const MinimapBounds = ({
 
 interface OverlayListProps {
   mainMapBounds?: L.LatLngBounds | null;
+  selectedLayerValue: string | null;
+  onLayerChange: (layerValue: string | null) => void;
 }
 
 interface LayerItem {
@@ -48,10 +49,13 @@ interface LayerItem {
   value: string;
 }
 
-const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
+const OverlayList: React.FC<OverlayListProps> = ({
+  mainMapBounds = null,
+  selectedLayerValue,
+  onLayerChange,
+}) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [overlayItems, setOverlayItems] = useState<LayerItem[]>([]);
-  const [selectedLayerValue, setSelectedLayerValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,70 +68,52 @@ const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
     "bg-blue-700",
   ];
 
+  // Timer อัปเดตเวลา
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // Format วัน/เวลา
   const formatDate = (date: Date): string => {
-    const days: string[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    const months: string[] = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
+    const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const months = [
+      "JAN","FEB","MAR","APR","MAY","JUN",
+      "JUL","AUG","SEP","OCT","NOV","DEC",
     ];
-    return `${days[date.getDay()]} ${date.getDate()} ${
-      months[date.getMonth()]
-    } ${date.getFullYear()}`;
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
   const formatTime = (date: Date): string => {
     return date.toLocaleTimeString("en-US", { hour12: false });
   };
 
+  // Fetch layers จาก API
   useEffect(() => {
     const fetchLayers = async () => {
       try {
         setLoading(true);
         const response = await fetch("/api/layers");
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         setOverlayItems(data);
-        setSelectedLayerValue(null);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch layers:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch layers");
-        setSelectedLayerValue(null);
       } finally {
         setLoading(false);
       }
     };
-
     fetchLayers();
   }, []);
 
   const handleLayerClick = (layerValue: string) => {
-    // Toggle: ถ้าคลิกอันเดิมจะยกเลิก, คลิกอันใหม่จะเลือกอันนั้น
-    setSelectedLayerValue(selectedLayerValue === layerValue ? null : layerValue);
+    const newValue = selectedLayerValue === layerValue ? null : layerValue;
+    onLayerChange(newValue);
   };
 
-  const getLayerColor = (index: number): string => {
-    return layerColors[index % layerColors.length];
-  };
+  const getLayerColor = (index: number) => layerColors[index % layerColors.length];
 
   // Thailand marker สำหรับ minimap
   const thailandIcon = new L.DivIcon({
@@ -148,16 +134,12 @@ const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
           </div>
         </div>
         <div className="text-center mt-8">
-          <div className="text-[15px] text-gray-300 font-bold">
-            {formatDate(currentTime)}
-          </div>
-          <div className="text-sm font-mono font-bold text-white">
-            {formatTime(currentTime)}
-          </div>
+          <div className="text-[15px] text-gray-300 font-bold">{formatDate(currentTime)}</div>
+          <div className="text-sm font-mono font-bold text-white">{formatTime(currentTime)}</div>
         </div>
       </div>
 
-      {/* Minimap แสดง bounds ของ main map */}
+      {/* Minimap */}
       <div className="bg-slate-700 rounded p-1 relative overflow-hidden border-8 border-gray-500 mb-1">
         <MapContainer
           center={[15.87, 100.99]}
@@ -174,11 +156,7 @@ const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             opacity={0.5}
           />
-
-          {/* Thailand marker */}
           <Marker position={[13.7563, 100.5018]} icon={thailandIcon} />
-
-          {/* แสดงกรอบ viewport ของ main map */}
           <MinimapBounds parentBounds={mainMapBounds} />
         </MapContainer>
       </div>
@@ -189,13 +167,9 @@ const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
           OVERLAY LIST
         </div>
         {loading ? (
-          <div className="text-center text-gray-400 text-xs py-2">
-            Loading...
-          </div>
+          <div className="text-center text-gray-400 text-xs py-2">Loading...</div>
         ) : error ? (
-          <div className="text-center text-red-400 text-xs py-2">
-            Error loading layers
-          </div>
+          <div className="text-center text-red-400 text-xs py-2">Error loading layers</div>
         ) : (
           <div className="space-y-1">
             {overlayItems.map((item, index) => {
@@ -210,20 +184,12 @@ const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
                 >
                   <div
                     className={`w-3 h-3 border-2 ${
-                      isSelected
-                        ? `${layerColor} border-white`
-                        : "bg-slate-600 border-gray-400"
+                      isSelected ? `${layerColor} border-white` : "bg-slate-600 border-gray-400"
                     } rounded-sm flex items-center justify-center flex-shrink-0`}
                   >
-                    {isSelected && (
-                      <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
-                    )}
+                    {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
                   </div>
-                  <span
-                    className={`text-[12px] flex-1 font-bold ${
-                      isSelected ? "text-white" : "text-gray-400"
-                    }`}
-                  >
+                  <span className={`text-[12px] flex-1 font-bold ${isSelected ? "text-white" : "text-gray-400"}`}>
                     {item.name}
                   </span>
                 </div>
@@ -234,18 +200,10 @@ const OverlayList: React.FC<OverlayListProps> = ({ mainMapBounds = null }) => {
 
         {/* Control buttons */}
         <div className="flex gap-1 mt-2 pt-2 border-t border-gray-600">
-          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors">
-            <span>🔍</span>
-          </button>
-          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors">
-            <span>📁</span>
-          </button>
-          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors">
-            <span>💾</span>
-          </button>
-          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors">
-            <span>🗑️</span>
-          </button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors"><span>🔍</span></button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors"><span>📁</span></button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors"><span>💾</span></button>
+          <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px] transition-colors"><span>🗑️</span></button>
         </div>
       </div>
 

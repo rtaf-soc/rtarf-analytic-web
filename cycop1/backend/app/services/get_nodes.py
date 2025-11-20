@@ -1,7 +1,9 @@
 import os
 import requests
 from requests.auth import HTTPBasicAuth
+from dotenv import load_dotenv
 
+load_dotenv(".env")
 # โหลดค่าจาก env
 API_PATH = os.getenv("API_PATH", "https://defnex-api.please-scan.com")
 API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD", "v5QQY1WXhrV8")
