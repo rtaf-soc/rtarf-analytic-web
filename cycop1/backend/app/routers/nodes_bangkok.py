@@ -1,4 +1,4 @@
-# app/routers/nodes.py
+# app/routers/nodes_bangkok.py
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -22,120 +22,117 @@ def get_db():
     response_model=schemas.Node,
     status_code=status.HTTP_201_CREATED
 )
-def create_new_node(node: schemas.NodeCreate, db: Session = Depends(get_db)):
+def create_new_node_bangkok(node: schemas.NodeCreate, db: Session = Depends(get_db)):
     """
-    สร้างโหนดใหม่ในระบบ
+    สร้างโหนดใหม่ (Bangkok) เก็บที่ตาราง node_positionsBK
     """
     if node.ip_address:
-        existing_node = crud.get_node_by_ip(db, ip_address=node.ip_address)
+        existing_node = crud.get_node_by_ip_bangkok(db, ip_address=node.ip_address)
         if existing_node:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Node with IP address '{node.ip_address}' already exists"
+                detail=f"Bangkok node with IP address '{node.ip_address}' already exists"
             )
 
-    db_node = crud.create_node(db=db, node=node)
+    db_node = crud.create_node_bangkok(db=db, node=node)
     return schemas.Node.from_orm_with_location(db_node)
 
 
 @router.get("/", response_model=List[schemas.Node])
-def read_all_nodes(
+def read_all_nodes_bangkok(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     node_type: Optional[str] = Query(None, description="Filter by node type"),
     db: Session = Depends(get_db)
 ):
     """
-    ดึงข้อมูลโหนดทั้งหมด พร้อมระบบแบ่งหน้า (pagination)
+    ดึงข้อมูลโหนด Bangkok ทั้งหมด จากตาราง node_positionsBK พร้อม pagination
     """
     try:
-        nodes = crud.get_nodes(db, skip=skip, limit=limit, node_type=node_type)
-        # debug ดิบ ๆ ดูก่อนก็ได้
-        print("DB nodes count =", len(nodes))
+        nodes = crud.get_nodes_bangkok(db, skip=skip, limit=limit, node_type=node_type)
+        print("DB nodesBK count =", len(nodes))
 
         result = [schemas.Node.from_orm_with_location(node) for node in nodes]
-        print("Pydantic nodes count =", len(result))
+        print("Pydantic nodesBK count =", len(result))
         return result
     except Exception as e:
-        # log ลง console ให้เห็น traceback เต็ม ๆ
-        logging.error("Error in read_all_nodes: %s", e)
+        logging.error("Error in read_all_nodes_bangkok: %s", e)
         traceback.print_exc()
-        # ส่งข้อความ detail ออกไปให้ browser เห็นแทน Internal Server Error
         raise HTTPException(
             status_code=500,
-            detail=f"read_all_nodes error: {e}"
+            detail=f"read_all_nodes_bangkok error: {e}"
         )
 
 
 @router.get("/{node_id}", response_model=schemas.Node)
-def read_single_node(node_id: int, db: Session = Depends(get_db)):
+def read_single_node_bangkok(node_id: int, db: Session = Depends(get_db)):
     """
-    ดึงข้อมูลโหนดเดียวด้วย ID
+    ดึงข้อมูลโหนด Bangkok (node_positionsBK) ด้วย ID
     """
-    db_node = crud.get_node(db, node_id=node_id)
+    db_node = crud.get_node_bangkok(db, node_id=node_id)
     if db_node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Node with ID {node_id} not found"
+            detail=f"Bangkok node with ID {node_id} not found"
         )
     return schemas.Node.from_orm_with_location(db_node)
 
 
 @router.get("/by-ip/{ip_address}", response_model=schemas.Node)
-def read_node_by_ip(ip_address: str, db: Session = Depends(get_db)):
+def read_node_by_ip_bangkok(ip_address: str, db: Session = Depends(get_db)):
     """
-    ดึงข้อมูลโหนดด้วย IP address
+    ดึงข้อมูลโหนด Bangkok ด้วย IP address
     """
-    db_node = crud.get_node_by_ip(db, ip_address=ip_address)
+    db_node = crud.get_node_by_ip_bangkok(db, ip_address=ip_address)
     if db_node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Node with IP address '{ip_address}' not found"
+            detail=f"Bangkok node with IP address '{ip_address}' not found"
         )
     return schemas.Node.from_orm_with_location(db_node)
 
 
 @router.put("/{node_id}", response_model=schemas.Node)
-def update_existing_node(
+def update_existing_node_bangkok(
     node_id: int,
     node: schemas.NodeUpdate,
     db: Session = Depends(get_db)
 ):
     """
-    อัพเดทข้อมูลโหนดที่มีอยู่
+    อัพเดทข้อมูลโหนด Bangkok (node_positionsBK)
     """
-    db_node = crud.update_node(db, node_id=node_id, node=node)
+    db_node = crud.update_node_bangkok(db, node_id=node_id, node=node)
     if db_node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Node with ID {node_id} not found"
+            detail=f"Bangkok node with ID {node_id} not found"
         )
     return schemas.Node.from_orm_with_location(db_node)
 
 
 @router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_existing_node(node_id: int, db: Session = Depends(get_db)):
+def delete_existing_node_bangkok(node_id: int, db: Session = Depends(get_db)):
     """
-    ลบโหนดออกจากระบบ (จะลบ connections ที่เกี่ยวข้องด้วย)
+    ลบโหนด Bangkok ออกจากระบบ (ตาราง node_positionsBK)
     """
-    success = crud.delete_node(db, node_id=node_id)
+    success = crud.delete_node_bangkok(db, node_id=node_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Node with ID {node_id} not found"
+            detail=f"Bangkok node with ID {node_id} not found"
         )
     return None
 
 
 @router.post("/search-by-area", response_model=List[schemas.Node])
-def search_nodes_in_area(
+def search_nodes_in_area_bangkok(
     area: schemas.AreaSearchParams,
     db: Session = Depends(get_db)
 ):
     """
-    ค้นหาโหนดในพื้นที่สี่เหลี่ยม (bounding box)
+    ค้นหาโหนด Bangkok ในพื้นที่สี่เหลี่ยม (bounding box) จาก node_positionsBK
     """
-    nodes = crud.search_nodes_by_area(
+    nodes = crud.search_nodes_by_area_bangkok(
         db,
         min_lat=area.min_latitude,
         min_lng=area.min_longitude,
@@ -145,41 +142,20 @@ def search_nodes_in_area(
     return [schemas.Node.from_orm_with_location(node) for node in nodes]
 
 
-@router.get("/map_scope/{map_scope}", response_model=List[schemas.Node])
-def read_nodes_by_map_scope(
-    map_scope: str,
-    skip: int = Query(0, ge=0, description="จำนวนแถวที่ข้ามไป"),
-    limit: int = Query(100, ge=1, le=1000, description="จำนวนแถวสูงสุดที่จะดึง"),
-    db: Session = Depends(get_db)
-):
-    """
-    ดึงโหนดทั้งหมดตาม `map_scope` พร้อม pagination
-    - map_scope: 'global' หรือ 'bangkok'
-    """
-    nodes = crud.get_nodes_by_map_scope(db, skip=skip, limit=limit, map_scope=map_scope)
-
-    if not nodes:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No nodes found for map_scope '{map_scope}'"
-        )
-
-    return [schemas.Node.from_orm_with_location(node) for node in nodes]
-
-
 @router.get("/{node_id}/connections", response_model=schemas.NodeWithConnections)
-def get_node_with_connections(
+def get_node_with_connections_bangkok(
     node_id: int,
     db: Session = Depends(get_db)
 ):
     """
-    ดึงข้อมูลโหนดพร้อมการเชื่อมต่อทั้งหมด
+    ดึงข้อมูลโหนด Bangkok พร้อมการเชื่อมต่อทั้งหมด
+    (ใช้ตาราง network_connections เดิม อิง node_id)
     """
-    db_node = crud.get_node(db, node_id=node_id)
+    db_node = crud.get_node_bangkok(db, node_id=node_id)
     if db_node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Node with ID {node_id} not found"
+            detail=f"Bangkok node with ID {node_id} not found"
         )
 
     connections = crud.get_node_connections(db, node_id=node_id, direction="both")
@@ -198,19 +174,20 @@ def get_node_with_connections(
 
 
 @router.get("/{node_id}/alerts", response_model=schemas.NodeWithAlerts)
-def get_node_with_alerts(
+def get_node_with_alerts_bangkok(
     node_id: int,
     limit: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
     """
-    ดึงข้อมูลโหนดพร้อม alerts ล่าสุด
+    ดึงข้อมูลโหนด Bangkok พร้อม alerts ล่าสุด
+    (ใช้ alert_lists เดิม อิง affected_node_id)
     """
-    db_node = crud.get_node(db, node_id=node_id)
+    db_node = crud.get_node_bangkok(db, node_id=node_id)
     if db_node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Node with ID {node_id} not found"
+            detail=f"Bangkok node with ID {node_id} not found"
         )
 
     alerts = crud.get_latest_alerts_by_node(db, node_id=node_id, limit=limit)

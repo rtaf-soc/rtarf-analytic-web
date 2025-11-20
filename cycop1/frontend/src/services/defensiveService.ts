@@ -1,38 +1,38 @@
-// services/postgresService.ts
+// src/services/defensiveService.ts
 import axios from "axios";
 import type { AlertBase, NodeGet } from "../types/defensive";
 
 const POSTGRES_API_URL =
   import.meta.env.VITE_POSTGRES_API_URL || "http://localhost:8000";
 
-// ==============================
-// Rtarf Services
-// ==============================
+// ======================================================
+// RTARF EVENT SERVICES
+// ======================================================
 
 export interface RtarfAverageSeverityPayload {
-  average_severity_level: number,
-  danger_level: string,
-  total_events: number,
-  events_with_severity: number,
-  raw_average: number
+  average_severity_level: number;
+  danger_level: string;
+  total_events: number;
+  events_with_severity: number;
+  raw_average: number;
 }
 
 export interface RtarfSeverityStatistics {
-  total_events: number,
+  total_events: number;
   severity_distribution: {
-    critical: number,
-    high: number,
-    medium: number,
-    low: number,
-    unknown: number
-  },
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    unknown: number;
+  };
   percentages: {
-    critical: number,
-    high: number,
-    medium: number,
-    low: number,
-    unknown: number
-  }
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    unknown: number;
+  };
 }
 
 export async function fetchRtarfAverageSummary(): Promise<RtarfAverageSeverityPayload> {
@@ -42,13 +42,13 @@ export async function fetchRtarfAverageSummary(): Promise<RtarfAverageSeverityPa
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching Rtarf average summary from PostgreSQL:", error);
+    console.error("Error fetching Rtarf average summary:", error);
     return {
       average_severity_level: 0,
       danger_level: "Unknown",
       total_events: 0,
       events_with_severity: 0,
-      raw_average: 0
+      raw_average: 0,
     };
   }
 }
@@ -60,15 +60,14 @@ export async function fetchRtarfSeverityStatistics(): Promise<RtarfSeverityStati
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching Rtarf average summary from PostgreSQL:", error);
+    console.error("Error fetching Rtarf severity statistics:", error);
     return null;
-    };
   }
+}
 
-
-// ==============================
-// Alert Services
-// ==============================
+// ======================================================
+// ALERT SERVICES
+// ======================================================
 
 export interface AlertItem {
   alert_name: string;
@@ -77,7 +76,7 @@ export interface AlertItem {
 
 export interface AlertSummary {
   total_alerts: number;
-  alert_summaries: AlertItem[];  // Changed from alert_summarys
+  alert_summaries: AlertItem[];
 }
 
 export async function fetchAlertSummary(): Promise<AlertSummary> {
@@ -85,14 +84,10 @@ export async function fetchAlertSummary(): Promise<AlertSummary> {
     const response = await axios.get<AlertSummary>(
       `${POSTGRES_API_URL}/alerts/summary`
     );
-    console.log("Alert Summary Response:", response.data); // Debug log
     return response.data;
   } catch (error) {
-    console.error("Error fetching alert summary from PostgreSQL:", error);
-    return {
-      total_alerts: 0,
-      alert_summaries: [],
-    };
+    console.error("Error fetching alert summary:", error);
+    return { total_alerts: 0, alert_summaries: [] };
   }
 }
 
@@ -108,72 +103,124 @@ export async function fetchLatestAlert(): Promise<AlertBase[]> {
   }
 }
 
-
-// ==============================
-// Node Services
-// ==============================
+// ======================================================
+// NODE SERVICES
+// ======================================================
 
 export interface NodePayload {
-  name: string,
-  description?: string,
-  node_type: string,
-  latitude: string,
-  longitude: string,
-  ip_address?: string,
-  additional_ips?: string[],
-  network_metadata?: Record<string, any>,
-  map_scope:string
+  name: string;
+  description?: string;
+  node_type: string;
+  latitude: number;
+  longitude: number;
+  ip_address?: string;
+  additional_ips?: string[];
+  network_metadata?: Record<string, any>;
+  map_scope: string;
 }
 
 export interface NodeSummary {
-  node_id: number,
-  node_name: string,
-  total_events: number,
-  events_by_role: string[],
-  events_by_severity: string[],
-  latest_event_time: string,
+  node_id: number;
+  node_name: string;
+  total_events: number;
+  events_by_role: string[];
+  events_by_severity: string[];
+  latest_event_time: string;
 }
 
-
-export async function createNode(payload: NodePayload): Promise<NodePayload> {
-  try{
-    const response = await axios.post<NodePayload> (
+// ------------------------------
+// Create node (GLOBAL TABLE)
+// ------------------------------
+export async function createNode(payload: NodePayload): Promise<NodeGet> {
+  try {
+    const response = await axios.post<NodeGet>(
       `${POSTGRES_API_URL}/nodes/`,
       payload
     );
     return response.data;
   } catch (error) {
     console.error("Error creating node:", error);
-    throw error
+    throw error;
   }
 }
 
+// ------------------------------
+// Create node Bangkok (node_positionsBK)
+// ------------------------------
+export async function createBangkokNode(
+  payload: Omit<NodePayload, "map_scope">
+): Promise<NodeGet> {
+  try {
+    const response = await axios.post<NodeGet>(
+      `${POSTGRES_API_URL}/nodes-bangkok/`,
+      {
+        ...payload,
+        map_scope: "bangkok",
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating Bangkok node:", error);
+    throw error;
+  }
+}
+
+// ------------------------------
+// Get ALL global nodes
+// ------------------------------
 export async function GetAllNode(): Promise<NodeGet[]> {
+  const url = `${POSTGRES_API_URL}/nodes/`;
+
   try {
-    const response = await axios.get<NodeGet[]>(
-      `${POSTGRES_API_URL}/nodes/`
-    );
+    const response = await axios.get<NodeGet[]>(url);
     return response.data;
-  } catch (error) {
-    console.error("Error fetching all nodes:", error);
-    return [];
+  } catch (error: any) {
+    console.error("Error fetching all nodes:", error?.response?.data || error);
+    throw error;
   }
 }
 
-export async function GetNodeWithMapScope(map_scope: string): Promise<NodeGet[]> {
+// ------------------------------
+// Get ALL Bangkok nodes (node_positionsBK)
+// ------------------------------
+export async function GetAllBangkokNode(): Promise<NodeGet[]> {
+  const url = `${POSTGRES_API_URL}/nodes-bangkok/`;
+
   try {
-    const response = await axios.get<NodeGet[]>(
-      `${POSTGRES_API_URL}/nodes/map_scope/${map_scope}`
-    );
+    const response = await axios.get<NodeGet[]>(url);
     return response.data;
-  } catch (error) {
-    console.error("Error fetching all nodes:", error);
-    return [];
+  } catch (error: any) {
+    console.error(
+      "Error fetching Bangkok nodes:",
+      error?.response?.data || error
+    );
+    throw error;
   }
 }
-// ==============================
-// Network Connection Services
-// ==============================
+
+// ------------------------------
+// Get nodes by map_scope from GLOBAL table
+// ------------------------------
+export async function GetNodeWithMapScope(
+  map_scope: string
+): Promise<NodeGet[]> {
+  const url = `${POSTGRES_API_URL}/nodes/map_scope/${map_scope}`;
+
+  try {
+    const response = await axios.get<NodeGet[]>(url);
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      `Error fetching scope=${map_scope}:`,
+      error?.response?.data || error
+    );
+    throw error;
+  }
+}
+
+// ======================================================
+// NETWORK CONNECTION SERVICES
+// ======================================================
 
 export interface ConnectionNode {
   id: number;
@@ -202,14 +249,16 @@ export interface NetworkConnection {
   last_seen?: string;
 }
 
-export async function GetAllConnectionsWithNodes(): Promise<NetworkConnection[]> {
+export async function GetAllConnectionsWithNodes(): Promise<
+  NetworkConnection[]
+> {
   try {
     const response = await axios.get<NetworkConnection[]>(
       `${POSTGRES_API_URL}/connections/with-nodes`
     );
     return response.data;
   } catch (error) {
-    console.error("Error fetching connections with nodes:", error);
+    console.error("Error fetching network connections:", error);
     return [];
   }
 }

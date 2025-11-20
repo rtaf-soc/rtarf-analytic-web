@@ -5,6 +5,7 @@ import time
 import logging
 from . import elastic_client, database, models, scheduler
 from .routers import nodes, connections, rtarf_events, alerts, dashboard, network_graph, node_events
+from .routers import nodes_bangkok  # ✅ เพิ่ม import router Bangkok
 
 # Configure logging
 logging.basicConfig(
@@ -89,6 +90,7 @@ async def shutdown_event():
 # ===============================================================
 
 app.include_router(nodes.router, prefix="/nodes", tags=["Nodes"])
+app.include_router(nodes_bangkok.router, prefix="/nodes-bangkok", tags=["Nodes Bangkok"])  # ✅ เพิ่ม router ใหม่
 app.include_router(connections.router, prefix="/connections", tags=["Network Connections"])
 app.include_router(rtarf_events.router, prefix="/rtarf-events", tags=["RTARF Events"])
 app.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])

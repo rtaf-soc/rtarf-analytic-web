@@ -1,5 +1,10 @@
+// src/components/bangkoks/MapViewBangkok.tsx
 import React, { useState, useEffect } from "react";
-import { GetAllConnectionsWithNodes, type NetworkConnection, GetNodeWithMapScope } from "../../services/defensiveService";
+import {
+  GetAllConnectionsWithNodes,
+  type NetworkConnection,
+  GetNodeWithMapScope,
+} from "../../services/defensiveService";
 import type { NodeGet } from "../../types/defensive";
 import {
   MapContainer,
@@ -9,6 +14,7 @@ import {
   Popup,
   GeoJSON,
   useMapEvents,
+  useMap,              // ⭐ เพิ่ม useMap สำหรับ AnimatedBeam
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -16,124 +22,284 @@ import "../../index.css";
 import { Router } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-
-// Component สำหรับติดตาม bounds ของแผนที่
-const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBounds) => void }) => {
+const MapBoundsTracker = ({
+  onBoundsChange,
+}: {
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
+}) => {
   const map = useMapEvents({
-    moveend: () => {
-      onBoundsChange(map.getBounds());
-    },
-    zoomend: () => {
-      onBoundsChange(map.getBounds());
-    },
+    moveend: () => onBoundsChange(map.getBounds()),
+    zoomend:   () => onBoundsChange(map.getBounds()),
   });
-  
+
   useEffect(() => {
-    // ส่ง bounds ครั้งแรกตอน load
     onBoundsChange(map.getBounds());
-  }, []);
-  
+  }, [map, onBoundsChange]);
+
   return null;
 };
 
+// ---------- ICON โลโก้แต่ละเหล่าทัพ (ไฟล์ต้องอยู่ใน public/img) ----------
+const iconRTARF = L.icon({
+  iconUrl: "/img/บก.ทท.png",
+  iconSize: [50, 45],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+const iconARMY = L.icon({
+  iconUrl: "/img/ทบ.png",
+  iconSize: [60, 65],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+const iconAIRFORCE = L.icon({
+  iconUrl: "/img/ทอ.png",
+  iconSize: [50, 45],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+const iconNAVY = L.icon({
+  iconUrl: "/img/ทร.png",
+  iconSize: [35, 50],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+const iconPOLICE = L.icon({
+  iconUrl: "/img/ตอ.png",
+  iconSize: [40, 40],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -30],
+});
+
+// ---------- FIX MARKER ตำแหน่ง HQ แต่ละเหล่าทัพ ----------
+const FIXED_HQ = [
+  {
+    name: "บก.ทท.",
+    icon: iconRTARF,
+    position: [13.886433965395847, 100.56613525394891] as [number, number],
+    description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
+  },
+  {
+    name: "ทบ.",
+    icon: iconARMY,
+    position: [13.762575459990577, 100.50709066527318] as [number, number],
+    description: "ศูนย์ไซเบอร์กองทัพบก",
+  },
+  {
+    name: "ทอ.",
+    icon: iconAIRFORCE,
+    position: [13.922478935512451, 100.61856910575769] as [number, number],
+    description: "ศูนย์ไซเบอร์กองทัพอากาศ",
+  },
+  {
+    name: "ทร.",
+    icon: iconNAVY,
+    position: [13.741766933008465, 100.48936628134868] as [number, number],
+    description: "กรมการสื่อสารและเทคโนโลยีสารสนเทศทหารเรือ",
+  },
+  {
+    name: "ตร.",
+    icon: iconPOLICE,
+    position: [13.748377057528485, 100.53740589888896] as [number, number],
+    description: "สำนักงานตำรวจแห่งชาติ",
+  },
+];
+
+// จุดศูนย์กลางที่ให้ “เส้นวิ่งเข้าหา” = HQ บก.ทท.
+const HQ_CENTER = FIXED_HQ[0].position;
+
+// ชื่อที่ถือว่าเป็น HQ (จะไม่วาด marker จาก DB ซ้ำ)
+const HQ_NAMES = new Set(["บก.ทท.", "บก.ทท", "ทบ.", "ทอ.", "ทร.", "ตร."]);
+
 interface MapViewProps {
   onBoundsChange?: (bounds: L.LatLngBounds) => void;
+  onNodeClick?: (node: NodeGet) => void;
+  selectedNode?: NodeGet | null;
 }
 
+// ---------- ลำแสงวิ่งเข้า HQ ----------
+interface AnimatedBeamProps {
+  from: [number, number];
+  to: [number, number];
+  color?: string;
+}
 
-const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
+const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
+  from,
+  to,
+  color = "#22d3ee",
+}) => {
+  const map = useMap();
+
+  useEffect(() => {
+    // เส้นหลัก (เรืองแสง + เส้นประ)
+    const line = L.polyline([from, to], {
+      color,
+      weight: 3,
+      opacity: 0.9,
+      dashArray: "10 15",
+    }).addTo(map);
+
+    // จุดวิ่งตามเส้น
+    const dot = L.circleMarker(from, {
+      radius: 4,
+      color,
+      fillColor: color,
+      fillOpacity: 1,
+    }).addTo(map);
+
+    let frameId: number;
+    const duration = 2000; // ms ต่อรอบ
+    let start: number | null = null;
+
+    const animate = (timestamp: number) => {
+      if (start === null) start = timestamp;
+      const elapsed = timestamp - start;
+      const t = (elapsed % duration) / duration; // 0 → 1
+
+      const lat = from[0] + (to[0] - from[0]) * t;
+      const lng = from[1] + (to[1] - from[1]) * t;
+      dot.setLatLng([lat, lng]);
+
+      frameId = requestAnimationFrame(animate);
+    };
+
+    frameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      map.removeLayer(line);
+      map.removeLayer(dot);
+    };
+  }, [map, from, to, color]);
+
+  return null;
+};
+
+const MapViewBangkok: React.FC<MapViewProps> = ({
+  onBoundsChange,
+  onNodeClick,
+  selectedNode,
+}) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
-  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
+  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>(
+    []
+  );
   const mapSelect = "bangkok";
 
   const [bangkokGeoJSON, setBangkokGeoJSON] = useState<any>(null);
 
+  // โหลดขอบเขตกรุงเทพ
   useEffect(() => {
     fetch("/data/bangkok-districts.geojson")
-      .then(res => res.json())
-      .then(data => setBangkokGeoJSON(data));
+      .then((res) => res.json())
+      .then((data) => setBangkokGeoJSON(data));
   }, []);
 
+  // โหลด Node + Connections จาก backend
   useEffect(() => {
     const loadNodeData = async () => {
       const nodes = await GetNodeWithMapScope(mapSelect);
       const connecteds = await GetAllConnectionsWithNodes();
-      console.log("Show Nodes:", nodes)
-      console.log("Show Connections:", connecteds)
+      console.log("Show Nodes:", nodes);
+      console.log("Show Connections:", connecteds);
       setNodeData(nodes);
       setConnectionsData(connecteds);
     };
     loadNodeData();
   }, []);
 
-  // พิกัดตัวอย่าง threat (กรุงเทพ, เชียงใหม่, สงขลา, โคราช, ขอนแก่น)
-  // const threats: { name: string; coords: [number, number]; color: string }[] = [
-  //   { name: "THREAT 1", coords: [13.7563, 100.5018], color: "red" }, // กรุงเทพ
-  //   { name: "THREAT 2", coords: [18.7883, 98.9853], color: "yellow" }, // เชียงใหม่
-  //   { name: "THREAT 3", coords: [7.0096, 100.4762], color: "yellow" }, // สงขลา
-  //   { name: "THREAT 4", coords: [14.9799, 102.0977], color: "yellow" }, // โคราช
-  //   { name: "THREAT 5", coords: [16.4419, 102.835], color: "yellow" }, // ขอนแก่น
-  // ];
+  // connection ปกติจาก DB
+  const nodeIdsInMap = new Set(nodeData.map((node) => node.id));
 
-  
-  // สร้างเซ็ตของ node IDs ที่อยู่ใน map_scope ปัจจุบัน
-  const nodeIdsInMap = new Set(nodeData.map(node => node.id));
-
-  // Create polylines from connection data
   const connectionLines = connectionsData
-    .filter(conn =>
-      conn.source_node &&
-      conn.destination_node &&
-      nodeIdsInMap.has(conn.source_node.id) &&
-      nodeIdsInMap.has(conn.destination_node.id)
+    .filter(
+      (conn) =>
+        conn.source_node &&
+        conn.destination_node &&
+        nodeIdsInMap.has(conn.source_node.id) &&
+        nodeIdsInMap.has(conn.destination_node.id)
     )
-    .map(conn => ({
+    .map((conn) => ({
       id: conn.id,
       positions: [
-        [conn.source_node!.latitude, conn.source_node!.longitude] as [number, number],
-        [conn.destination_node!.latitude, conn.destination_node!.longitude] as [number, number],
+        [conn.source_node!.latitude, conn.source_node!.longitude] as [
+          number,
+          number
+        ],
+        [conn.destination_node!.latitude, conn.destination_node!.longitude] as [
+          number,
+          number
+        ],
       ],
       status: conn.connection_status || "unknown",
     }));
 
-  const getNodeIcon = (node: NodeGet) => {
-  let color = "white";
-  switch (node.name) {
-    case "บก.ทท.":
-      color = "yellow";
-      break;
-    case "ทบ.":
-      color = "green";
-      break;
-    case "ทอ.":
-      color = "skyblue";
-      break;
-    case "ทร.":
-      color = "blue";
-      break;
-    case "ตร.":
-      color = "#800000";
-      break;
-  }
+  // ⭐ เส้น “เครือข่ายวิ่งเข้า บก.ทท.” จาก node ทุกตัว (ยกเว้น HQ เอง)
+  const flowLinesToHQ = nodeData
+    .filter((node) => !HQ_NAMES.has(node.name))
+    .map((node) => ({
+      id: `flow-${node.id}`,
+      from: [node.latitude, node.longitude] as [number, number],
+      to: HQ_CENTER,
+    }));
 
-  // แปลง React component เป็น HTML string
-  const iconHtml = renderToStaticMarkup(<Router size={24} color={color} />);
-  return L.divIcon({
-    html: iconHtml,
-    className: "", // ปิด className default ของ Leaflet
-    iconSize: [30, 30], // ขนาดของ icon
-  });
-};
+  // เลือก icon ตาม node
+  const getNodeIcon = (node: NodeGet, active: boolean) => {
+    if (node.name === "บก.ทท." || node.name === "บก.ทท") return iconRTARF;
+    if (node.name === "ทบ.") return iconARMY;
+    if (node.name === "ทอ.") return iconAIRFORCE;
+    if (node.name === "ทร.") return iconNAVY;
+    if (node.name === "ตร.") return iconPOLICE;
 
-  // Determine line color based on connection status
+    let color = "white";
+    switch (node.name) {
+      case "กองทัพบก":
+        color = "green";
+        break;
+      case "กองทัพอากาศ":
+        color = "skyblue";
+        break;
+      case "กองทัพเรือ":
+        color = "blue";
+        break;
+      case "สำนักงานตำรวจแห่งชาติ":
+        color = "#800000";
+        break;
+    }
+
+    const iconHtml = renderToStaticMarkup(
+      <div
+        style={{
+          filter: active
+            ? "drop-shadow(0 0 6px rgba(34,197,94,0.9))"
+            : "none",
+        }}
+      >
+        <Router size={24} color={color} />
+      </div>
+    );
+
+    return L.divIcon({
+      html: iconHtml,
+      className: "",
+      iconSize: [32, 32],
+    });
+  };
+
+  // สีเส้น connection ปกติ
   const getLineColor = (status: string) => {
     switch (status) {
       case "running":
-        return "#32CD32"; // Green
+        return "#32CD32";
       case "warning":
-        return "#FFA500"; // Orange
+        return "#FFA500";
       case "error":
-        return "#FF0000"; // Red
+        return "#FF0000";
       default:
         return "#32CD32";
     }
@@ -141,9 +307,9 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
 
   return (
     <MapContainer
-      center={[13.7563, 100.5018]} // กรุงเทพมหานคร
-      zoom={11} // ซูมเข้าไปที่กรุงเทพ (11-13 สำหรับเมือง)
-      minZoom={10} // จำกัดการซูมออกไม่ให้เห็นทั้งโลก
+      center={[13.7563, 100.5018]}
+      zoom={11}
+      minZoom={10}
       maxZoom={18}
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
@@ -159,7 +325,7 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
           }}
         />
       )}
-      {/* 🌊 พื้นหลังกรมท่าเข้ม */}
+
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -168,32 +334,49 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
         opacity={0.1}
       />
-
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
-       {/* ติดตาม bounds และส่งออกไป */}
-      {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
+      {onBoundsChange && (
+        <MapBoundsTracker onBoundsChange={onBoundsChange} />
+      )}
 
-      {/* Render nodes as markers */}
-      {nodeData.map((node) => (
-        <Marker
-          key={node.id}
-          position={[node.latitude, node.longitude]}
-          icon={getNodeIcon(node)}
-        >
+      {/* Marker จากฐานข้อมูล (ยกเว้น HQ ที่ fix ไว้แล้ว) */}
+      {nodeData
+        .filter((node) => !HQ_NAMES.has(node.name))
+        .map((node) => {
+          const active = selectedNode?.id === node.id;
+          return (
+            <Marker
+              key={node.id}
+              position={[node.latitude, node.longitude]}
+              icon={getNodeIcon(node, active)}
+              eventHandlers={{
+                click: () => onNodeClick && onNodeClick(node),
+              }}
+            >
+              <Popup>
+                <strong>{node.name}</strong>
+                <br />
+                IP: {node.ip_address || "N/A"}
+                <br />
+                Type: {node.node_type}
+              </Popup>
+            </Marker>
+          );
+        })}
+
+      {/* FIXED MARKERS สำหรับ HQ แต่ละเหล่าทัพ */}
+      {FIXED_HQ.map((hq, idx) => (
+        <Marker key={`hq-${idx}`} position={hq.position} icon={hq.icon}>
           <Popup>
-            <div className="text-sm">
-              <strong>{node.name}</strong>
-              <br />
-              IP: {node.ip_address || "N/A"}
-              <br />
-              Type: {node.node_type}
-            </div>
+            <strong>{hq.name}</strong>
+            <br />
+            {hq.description}
           </Popup>
         </Marker>
       ))}
 
-      {/* วาดเส้นเชื่อมโยง */}
+      {/* เส้นเชื่อมโยงปกติจาก DB (จาง ๆ พอ) */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
@@ -201,8 +384,18 @@ const MapViewBangkok:React.FC<MapViewProps> = ({ onBoundsChange }) => {
           pathOptions={{
             color: getLineColor(line.status),
             weight: 2,
-            opacity: 0.7,
+            opacity: 0.3,
           }}
+        />
+      ))}
+
+      {/* ⭐ ลำแสงวิ่งเข้า บก.ทท. */}
+      {flowLinesToHQ.map((line) => (
+        <AnimatedBeam
+          key={line.id}
+          from={line.from}
+          to={line.to}
+          color="#22d3ee"
         />
       ))}
     </MapContainer>

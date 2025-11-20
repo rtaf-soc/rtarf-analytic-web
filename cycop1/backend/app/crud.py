@@ -153,6 +153,115 @@ def search_nodes_by_area(db: Session, min_lat: float, min_lng: float, max_lat: f
 
 
 # ===============================================================
+# CRUD Functions for NodePositionBK (Bangkok)
+# ===============================================================
+
+def get_node_bangkok(db: Session, node_id: int):
+    """
+    ดึงข้อมูลโหนด Bangkok 1 รายการจาก node_positionsBK ด้วย ID
+    """
+    return db.query(models.NodePositionBK).filter(models.NodePositionBK.id == node_id).first()
+
+
+def get_node_by_ip_bangkok(db: Session, ip_address: str):
+    """
+    ดึงข้อมูลโหนด Bangkok จาก IP address
+    """
+    return db.query(models.NodePositionBK).filter(models.NodePositionBK.ip_address == ip_address).first()
+
+
+def get_nodes_bangkok(db: Session, skip: int = 0, limit: int = 100, node_type: Optional[str] = None):
+    """
+    ดึงข้อมูลโหนด Bangkok ทั้งหมด (node_positionsBK) พร้อม pagination
+    """
+    query = db.query(models.NodePositionBK)
+
+    if node_type:
+        query = query.filter(models.NodePositionBK.node_type == node_type)
+
+    return query.offset(skip).limit(limit).all()
+
+
+def create_node_bangkok(db: Session, node: schemas.NodeCreate):
+    """
+    สร้างโหนด Bangkok ใหม่ในตาราง node_positionsBK
+    """
+    point = Point(node.longitude, node.latitude)
+    wkb_point = from_shape(point, srid=4326)
+
+    db_node = models.NodePositionBK(
+        name=node.name,
+        description=node.description,
+        node_type=node.node_type,
+        map_scope="bangkok",
+        ip_address=node.ip_address,
+        additional_ips=node.additional_ips or [],
+        network_metadata=node.network_metadata or {},
+        location=wkb_point
+    )
+
+    db.add(db_node)
+    db.commit()
+    db.refresh(db_node)
+    return db_node
+
+
+def update_node_bangkok(db: Session, node_id: int, node: schemas.NodeUpdate):
+    """
+    อัพเดทข้อมูลโหนด Bangkok ที่มีอยู่
+    """
+    db_node = get_node_bangkok(db, node_id)
+    if db_node is None:
+        return None
+
+    update_data = node.dict(exclude_unset=True)
+
+    for field, value in update_data.items():
+        if field in ("latitude", "longitude"):
+            continue
+        setattr(db_node, field, value)
+
+    # อัพเดท location ถ้ามี lat/lng ใหม่
+    if "latitude" in update_data and "longitude" in update_data:
+        point = Point(update_data["longitude"], update_data["latitude"])
+        db_node.location = from_shape(point, srid=4326)
+
+    db_node.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_node)
+    return db_node
+
+
+def delete_node_bangkok(db: Session, node_id: int):
+    """
+    ลบโหนด Bangkok ออกจากตาราง node_positionsBK
+    """
+    db_node = get_node_bangkok(db, node_id)
+    if db_node is None:
+        return False
+
+    db.delete(db_node)
+    db.commit()
+    return True
+
+
+def search_nodes_by_area_bangkok(db: Session, min_lat: float, min_lng: float, max_lat: float, max_lng: float):
+    """
+    ค้นหาโหนด Bangkok ในพื้นที่สี่เหลี่ยม (bounding box) จากตาราง node_positionsBK
+    """
+    from geoalchemy2 import functions as geo_func
+
+    polygon_wkt = (
+        f'POLYGON(({min_lng} {min_lat}, {max_lng} {min_lat}, '
+        f'{max_lng} {max_lat}, {min_lng} {max_lat}, {min_lng} {min_lat}))'
+    )
+
+    return db.query(models.NodePositionBK).filter(
+        geo_func.ST_Within(models.NodePositionBK.location, geo_func.ST_GeomFromText(polygon_wkt, 4326))
+    ).all()
+
+
+# ===============================================================
 # CRUD Functions for NetworkConnection
 # ===============================================================
 

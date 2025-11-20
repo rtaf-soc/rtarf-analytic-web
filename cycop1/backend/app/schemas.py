@@ -17,10 +17,10 @@ class NodeBase(BaseModel):
     ip_address: Optional[str] = Field(None, description="IP address หลักของโหนด")
     additional_ips: Optional[List[str]] = Field(default=[], description="IP addresses เพิ่มเติม")
     network_metadata: Optional[Dict[str, Any]] = Field(default={}, description="ข้อมูล metadata เพิ่มเติม")
-    
-     # ✅ เพิ่ม map_scope เพื่อแยก global/province (เช่น global, bangkok)
+
+    # ✅ เพิ่ม map_scope เพื่อแยก global/province (เช่น global, bangkok)
     map_scope: str = Field("global", description="ขอบเขตของแผนที่ เช่น global หรือ bangkok")
-    
+
     @field_validator('ip_address')
     @classmethod
     def validate_ip_address(cls, v):
@@ -30,7 +30,7 @@ class NodeBase(BaseModel):
             except ValueError:
                 raise ValueError(f"Invalid IP address: {v}")
         return v
-    
+
     @field_validator('additional_ips')
     @classmethod
     def validate_additional_ips(cls, v):
@@ -58,10 +58,10 @@ class NodeUpdate(BaseModel):
     ip_address: Optional[str] = None
     additional_ips: Optional[List[str]] = None
     network_metadata: Optional[Dict[str, Any]] = None
-    
-     # ✅ สามารถอัพเดต map_scope ได้
+
+    # ✅ สามารถอัพเดต map_scope ได้
     map_scope: Optional[str] = Field(None, description="ขอบเขตของแผนที่ เช่น global หรือ bangkok")
-    
+
     @field_validator('ip_address')
     @classmethod
     def validate_ip_address(cls, v):
@@ -95,23 +95,37 @@ class Node(BaseModel):
     def from_orm_with_location(cls, db_node):
         """
         แปลง SQLAlchemy model ที่มี geometry เป็น Pydantic model
-        โดยแปลง location (WKBElement) เป็น lat/lon
+        - พยายามใช้ geometry จาก field 'location' ถ้ามี
+        - ถ้าไม่มีหรือแปลงไม่ได้ → fallback ไปใช้ column latitude/longitude ปกติ
         """
-        from geoalchemy2.shape import to_shape
-        
-        point = to_shape(db_node.location)
-        
+        # ค่า fallback จาก column ปกติ
+        lat = float(getattr(db_node, "latitude", 0) or 0.0)
+        lon = float(getattr(db_node, "longitude", 0) or 0.0)
+
+        # ถ้ามี geometry location ให้ลองใช้ก่อน
+        location = getattr(db_node, "location", None)
+        if location is not None:
+            try:
+                from geoalchemy2.shape import to_shape
+                point = to_shape(location)
+                lon = float(point.x)  # longitude
+                lat = float(point.y)  # latitude
+            except Exception as e:
+                # ถ้า geometry พัง ไม่ให้โปรแกรมล่ม แต่เตือนใน log แล้วใช้ fallback ต่อ
+                print("WARN: Cannot parse geometry location for node id="
+                      f"{getattr(db_node, 'id', '?')}: {e}")
+
         return cls(
             id=db_node.id,
             name=db_node.name,
             description=db_node.description,
             node_type=db_node.node_type,
-            longitude=point.x,  # longitude
-            latitude=point.y,   # latitude
+            latitude=lat,
+            longitude=lon,
             ip_address=str(db_node.ip_address) if db_node.ip_address else None,
             additional_ips=db_node.additional_ips or [],
             network_metadata=db_node.network_metadata or {},
-            map_scope=db_node.map_scope,  # ✅ include new field
+            map_scope=db_node.map_scope or "global",
             created_at=db_node.created_at,
             updated_at=db_node.updated_at
         )
@@ -136,7 +150,7 @@ class NetworkConnectionBase(BaseModel):
     packets_sent: Optional[int] = Field(default=0, ge=0, description="จำนวน packets ที่ส่ง")
     packets_received: Optional[int] = Field(default=0, ge=0, description="จำนวน packets ที่รับ")
     connection_metadata: Optional[Dict[str, Any]] = Field(default={}, description="ข้อมูลเพิ่มเติม")
-    
+
     @field_validator('source_ip', 'destination_ip')
     @classmethod
     def validate_ip(cls, v):
@@ -173,7 +187,7 @@ class NetworkConnection(NetworkConnectionBase):
     first_seen: datetime
     last_seen: datetime
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -182,7 +196,7 @@ class NetworkConnectionWithNodes(NetworkConnection):
     """Schema สำหรับ Response พร้อมข้อมูล nodes"""
     source_node: Optional[Node] = None
     destination_node: Optional[Node] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -213,14 +227,14 @@ class RtarfEventBase(BaseModel):
     source_node_id: Optional[int] = None
     destination_node_id: Optional[int] = None
     connection_id: Optional[int] = None
-    
+
     # Palo-XSIAM fields
     mitre_tactics_ids_and_names: Optional[List[Dict[str, str]]] = Field(default=[])
     mitre_techniques_ids_and_names: Optional[List[Dict[str, str]]] = Field(default=[])
     description: Optional[str] = None
     severity: Optional[str] = Field(None, max_length=50)
     alert_categories: Optional[List[str]] = Field(default=[])
-    
+
     # CrowdStrike fields
     crowdstrike_tactics: Optional[List[str]] = Field(default=[])
     crowdstrike_tactics_ids: Optional[List[str]] = Field(default=[])
@@ -229,10 +243,10 @@ class RtarfEventBase(BaseModel):
     crowdstrike_severity: Optional[str] = Field(None, max_length=50)
     crowdstrike_event_name: Optional[str] = Field(None, max_length=255)
     crowdstrike_event_objective: Optional[str] = None
-    
+
     # Suricata fields
     suricata_classification: Optional[str] = Field(None, max_length=255)
-    
+
     @field_validator('source_ip', 'destination_ip')
     @classmethod
     def validate_ip(cls, v):
@@ -262,7 +276,7 @@ class RtarfEventWithNodes(RtarfEvent):
     """Schema สำหรับ Response พร้อมข้อมูล nodes"""
     source_node: Optional[Node] = None
     destination_node: Optional[Node] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -291,7 +305,7 @@ class AlertBase(BaseModel):
     source_ip: Optional[str] = Field(None, description="IP address ต้นทาง")
     destination_ip: Optional[str] = Field(None, description="IP address ปลายทาง")
     affected_node_id: Optional[int] = Field(None, description="ID ของโหนดที่ได้รับผลกระทบ")
-    
+
     @field_validator('source_ip', 'destination_ip')
     @classmethod
     def validate_ip(cls, v):
@@ -312,7 +326,7 @@ class Alert(AlertBase):
     """Schema สำหรับ Response"""
     id: int
     timestamp: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -320,7 +334,7 @@ class Alert(AlertBase):
 class AlertWithNode(Alert):
     """Schema สำหรับ Response พร้อมข้อมูลโหนด"""
     affected_node: Optional[Node] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -335,7 +349,7 @@ class NodeWithConnections(Node):
     incoming_connections: List[NetworkConnection] = []
     total_outgoing: int = 0
     total_incoming: int = 0
-    
+
     class Config:
         from_attributes = True
 
@@ -344,7 +358,7 @@ class NodeWithAlerts(Node):
     """Schema สำหรับ Node พร้อม alerts ล่าสุด"""
     latest_alerts: List[Alert] = []
     total_alerts: int = 0
-    
+
     class Config:
         from_attributes = True
 
@@ -367,7 +381,7 @@ class NetworkGraphData(BaseModel):
     """Schema สำหรับข้อมูล Network Graph"""
     nodes: List[Node]
     connections: List[NetworkConnection]
-    
+
     class Config:
         from_attributes = True
 
@@ -415,21 +429,21 @@ class AreaSearchParams(BaseModel):
     min_longitude: float = Field(..., ge=-180, le=180)
     max_latitude: float = Field(..., ge=-90, le=90)
     max_longitude: float = Field(..., ge=-180, le=180)
-    
+
     @field_validator('max_latitude')
     @classmethod
     def validate_latitude_range(cls, v, info):
         if 'min_latitude' in info.data and v <= info.data['min_latitude']:
             raise ValueError('max_latitude must be greater than min_latitude')
         return v
-    
+
     @field_validator('max_longitude')
     @classmethod
     def validate_longitude_range(cls, v, info):
         if 'min_longitude' in info.data and v <= info.data['min_longitude']:
             raise ValueError('max_longitude must be greater than min_longitude')
         return v
-    
+
 
 # ===============================================================
 # Schemas for NodeEvent
@@ -440,22 +454,22 @@ class NodeEventBase(BaseModel):
     node_id: int = Field(..., description="ID ของ Node ที่เกี่ยวข้อง")
     rtarf_event_id: int = Field(..., description="ID ของ RtarfEvent (Primary Key, not event_id string)")
     node_role: Optional[str] = Field(
-        None, 
-        max_length=50, 
+        None,
+        max_length=50,
         description="บทบาทของ Node ใน Event (source, destination, affected, related)"
     )
     node_ip: Optional[str] = Field(None, description="IP address ของ Node")
     relevance_score: Optional[int] = Field(
-        100, 
-        ge=0, 
-        le=100, 
+        100,
+        ge=0,
+        le=100,
         description="คะแนนความเกี่ยวข้อง (0-100)"
     )
     involvement_metadata: Optional[Dict] = Field(
         default_factory=dict,
         description="ข้อมูลเพิ่มเติมเกี่ยวกับการมีส่วนร่วมของ Node"
     )
-    
+
     @field_validator('node_role')
     @classmethod
     def validate_node_role(cls, v):
@@ -464,7 +478,7 @@ class NodeEventBase(BaseModel):
             if v not in allowed_roles:
                 raise ValueError(f"node_role must be one of: {', '.join(allowed_roles)}")
         return v
-    
+
     @field_validator('node_ip')
     @classmethod
     def validate_ip(cls, v):
@@ -486,7 +500,7 @@ class NodeEventUpdate(BaseModel):
     node_role: Optional[str] = Field(None, max_length=50)
     relevance_score: Optional[int] = Field(None, ge=0, le=100)
     involvement_metadata: Optional[Dict] = None
-    
+
     @field_validator('node_role')
     @classmethod
     def validate_node_role(cls, v):
@@ -502,7 +516,7 @@ class NodeEvent(NodeEventBase):
     id: int
     detected_at: datetime
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -511,7 +525,7 @@ class NodeEventWithDetails(NodeEvent):
     """Schema for NodeEvent with related node and event details"""
     node: Optional['Node'] = None
     rtarf_event: Optional['RtarfEvent'] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -531,7 +545,7 @@ class NodeWithEventsResponse(BaseModel):
     node_ip: Optional[str] = None
     total_events: int
     events: List[NodeEvent]
-    
+
     class Config:
         from_attributes = True
 
@@ -543,7 +557,7 @@ class EventWithNodesResponse(BaseModel):
     severity: Optional[str] = None
     total_nodes: int
     nodes: List[NodeEvent]
-    
+
     class Config:
         from_attributes = True
 

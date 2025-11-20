@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { GetAllNode, GetAllConnectionsWithNodes, type NetworkConnection } from "../services/defensiveService";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  GetAllNode,
+  GetAllConnectionsWithNodes,
+  type NetworkConnection,
+} from "../services/defensiveService";
 import type { NodeGet } from "../types/defensive";
 import {
   MapContainer,
@@ -8,24 +12,42 @@ import {
   Polyline,
   Popup,
   useMapEvents,
+  CircleMarker,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../index.css";
 
-// ไอคอน threat สีแดง/เหลือง
-const redIcon = new L.Icon({
-  iconUrl: "/img/warning.png",
-  iconSize: [24, 24],
-});
+// ===============================
+// ICONS
+// ===============================
 
+// icon ปกติ (เหลือง)
 const yellowIcon = new L.Icon({
   iconUrl: "/img/wifi-router.png",
   iconSize: [24, 24],
 });
 
-// Component สำหรับติดตาม bounds ของแผนที่
-const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngBounds) => void }) => {
+// เวอร์ชัน ALERT: กระพริบ + Glow + ขยาย/ย่อ
+const redAlertIcon = L.divIcon({
+  className: "", // ปล่อยว่าง แล้วใช้ class จาก html แทน
+  html: `
+    <div class="alert-pulse-glow">
+      <img src="/img/warning.png" alt="alert" />
+    </div>
+  `,
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
+
+// ===============================
+// MAP BOUNDS TRACKER
+// ===============================
+const MapBoundsTracker = ({
+  onBoundsChange,
+}: {
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
+}) => {
   const map = useMapEvents({
     moveend: () => {
       onBoundsChange(map.getBounds());
@@ -36,9 +58,9 @@ const MapBoundsTracker = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLn
   });
 
   useEffect(() => {
-    // ส่ง bounds ครั้งแรกตอน load
+    // ส่ง bounds ครั้งแรกตอนโหลด
     onBoundsChange(map.getBounds());
-  }, []);
+  }, [map, onBoundsChange]);
 
   return null;
 };
@@ -47,9 +69,71 @@ interface MapViewProps {
   onBoundsChange?: (bounds: L.LatLngBounds) => void;
 }
 
+// ===============================
+// MOVING DOT (จุดเรืองแสงวิ่งตามเส้น)
+// ===============================
+interface MovingDotProps {
+  positions: [[number, number], [number, number]]; // [start, end]
+  durationMs?: number;
+}
+
+const MovingDot: React.FC<MovingDotProps> = ({
+  positions,
+  durationMs = 4000,
+}) => {
+  const [t, setT] = useState(0); // 0 → 1
+  const startTsRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const animate = (timestamp: number) => {
+      if (startTsRef.current === null) {
+        startTsRef.current = timestamp;
+      }
+      const elapsed = timestamp - startTsRef.current;
+      const cycle = elapsed % durationMs;
+      const nextT = cycle / durationMs;
+      setT(nextT);
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafRef.current !== null) {
+        // ✅ แก้ตรงนี้จาก rafRefRef.current → rafRef.current
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [durationMs]);
+
+  const [start, end] = positions;
+  const lat = start[0] + (end[0] - start[0]) * t;
+  const lng = start[1] + (end[1] - start[1]) * t;
+
+  return (
+    <CircleMarker
+      center={[lat, lng]}
+      radius={3}
+      pathOptions={{
+        color: "#00FFFF",
+        fillColor: "#00FFFF",
+        fillOpacity: 1,
+        weight: 1,
+      }}
+      className="circle-marker-glow"
+    />
+  );
+};
+
+// ===============================
+// MAIN MAP VIEW
+// ===============================
 const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
-  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>([]);
+  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>(
+    []
+  );
 
   useEffect(() => {
     const loadNodeData = async () => {
@@ -63,32 +147,88 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
     loadNodeData();
   }, []);
 
-  // Create polylines from connection data
+  // ====== หาตำแหน่ง HQ ======
+  const hqNode =
+    nodeData.find(
+      (n) =>
+        n.name &&
+        n.name.toUpperCase().includes("RTARF INTERNAL NODE - HQ01")
+    ) ||
+    nodeData.find(
+      (n) =>
+        n.node_type &&
+        n.node_type.toUpperCase() === "RTARF_INTERNAL_NODE"
+    ) ||
+    null;
+
+  const hqPosition: [number, number] = hqNode
+    ? [hqNode.latitude, hqNode.longitude]
+    : [13.7563, 100.5018]; // fallback: Bangkok center
+
+  // ====== เส้น connection เดิมจากฐานข้อมูล (ถ้ายังอยากใช้) ======
   const connectionLines = connectionsData
-    .filter(conn => conn.source_node && conn.destination_node)
-    .map(conn => ({
+    .filter((conn) => conn.source_node && conn.destination_node)
+    .map((conn) => ({
       id: conn.id,
       positions: [
-        [conn.source_node!.latitude, conn.source_node!.longitude] as [number, number],
-        [conn.destination_node!.latitude, conn.destination_node!.longitude] as [number, number],
+        [
+          conn.source_node!.latitude,
+          conn.source_node!.longitude,
+        ] as [number, number],
+        [
+          conn.destination_node!.latitude,
+          conn.destination_node!.longitude,
+        ] as [number, number],
       ],
       status: conn.connection_status || "unknown",
     }));
 
-  // Determine icon color
+  // ====== เส้นเครือข่ายวิ่งเข้าหา HQ จากทุกโหนด ======
+  const inboundLines = nodeData
+    .filter((node) => {
+      if (!node) return false;
+      if (!hqNode) return true;
+      return node.id !== hqNode.id;
+    })
+    .map((node) => ({
+      id: `to-hq-${node.id}`,
+      positions: [
+        [node.latitude, node.longitude] as [number, number],
+        hqPosition,
+      ],
+    }));
+
+  // ICON ของแต่ละ node
   const getNodeIcon = (node: NodeGet) => {
-    return node.id === 1 ? redIcon : yellowIcon;
+    // HQ → ไอคอนแดงกระพริบ Glow แรงๆ
+    if (
+      node.name &&
+      node.name.toUpperCase().includes("RTARF INTERNAL NODE - HQ01")
+    ) {
+      return redAlertIcon;
+    }
+
+    // INTERNAL NODE อื่น ๆ อยากให้เต้นด้วยก็ใช้ตัวเดียวกัน
+    if (
+      node.node_type &&
+      node.node_type.toUpperCase() === "RTARF_INTERNAL_NODE"
+    ) {
+      return redAlertIcon;
+    }
+
+    // node ทั่วไป → icon เหลืองปกติ
+    return yellowIcon;
   };
 
-  // Determine line color based on connection status
+  // สีเส้น connection เดิม
   const getLineColor = (status: string) => {
     switch (status) {
       case "running":
-        return "#32CD32"; // Green
+        return "#32CD32";
       case "warning":
-        return "#FFA500"; // Orange
+        return "#FFA500";
       case "error":
-        return "#FF0000"; // Red
+        return "#FF0000";
       default:
         return "#32CD32";
     }
@@ -117,7 +257,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       {/* ติดตาม bounds และส่งออกไป */}
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
-      {/* Render nodes as markers */}
+      {/* Marker ของทุก node */}
       {nodeData.map((node) => (
         <Marker
           key={node.id}
@@ -136,7 +276,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
         </Marker>
       ))}
 
-      {/* วาดเส้นเชื่อมโยง */}
+      {/* เส้นจากฐานข้อมูลเดิม */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
@@ -144,9 +284,39 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
           pathOptions={{
             color: getLineColor(line.status),
             weight: 2,
-            opacity: 0.7,
+            opacity: 0.5,
           }}
         />
+      ))}
+
+      {/* เส้นเข้าหา HQ + มิติ + glow + dot */}
+      {inboundLines.map((line) => (
+        <React.Fragment key={line.id}>
+          {/* ฮาโลด้านนอก (หนา / จาง) */}
+          <Polyline
+            positions={line.positions}
+            pathOptions={{
+              color: "#00FFFF",
+              weight: 5,
+              opacity: 0.25,
+            }}
+            className="link-line-outer"
+          />
+
+          {/* เส้นด้านใน (คม / มี dash / animation ได้ถ้าอยากเพิ่มทีหลัง) */}
+          <Polyline
+            positions={line.positions}
+            pathOptions={{
+              color: "#AFFFFF",
+              weight: 2,
+              opacity: 0.95,
+            }}
+            className="link-line-inner"
+          />
+
+          {/* จุดเรืองแสงวิ่งตามเส้น */}
+          <MovingDot positions={line.positions} durationMs={3500} />
+        </React.Fragment>
       ))}
     </MapContainer>
   );

@@ -56,6 +56,36 @@ class NodePosition(Base):
         return f"<NodePosition(id={self.id}, name='{self.name}', ip='{self.ip_address}', type='{self.node_type}')>"
 
 
+class NodePositionBK(Base):
+    __tablename__ = "node_positionsBK"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    node_type = Column(String(50), index=True, nullable=False)
+
+    # ระบุว่าเป็นโหนดที่ใช้ใน Bangkok map
+    map_scope = Column(String(50), nullable=False, default="bangkok", index=True)
+
+    ip_address = Column(INET, index=True, nullable=True)
+    additional_ips = Column(JSONB, default=list)
+    network_metadata = Column(JSONB, default=dict)
+
+    location = Column(
+        Geometry(geometry_type='POINT', srid=4326, spatial_index=True),
+        nullable=False
+    )
+
+    created_at = Column(DateTime, default=datetime.utcnow, server_default=func.now())
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, server_default=func.now())
+
+    # ตรงนี้ยังไม่ผูก FK กับ NetworkConnection / Alert โดยตรง
+    # ใช้ node_id ร่วมกับตารางอื่นผ่าน logic ใน CRUD/Router แทน
+
+    def __repr__(self):
+        return f"<NodePositionBK(id={self.id}, name='{self.name}', ip='{self.ip_address}', type='{self.node_type}')>"
+
+
 class NetworkConnection(Base):
     """
     เก็บข้อมูลการเชื่อมต่อเครือข่ายระหว่างโหนด

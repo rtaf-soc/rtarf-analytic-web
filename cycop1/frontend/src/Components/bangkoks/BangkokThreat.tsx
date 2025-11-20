@@ -101,7 +101,7 @@ const BangkokThreat = ({
 }
 
   return (
-    <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col`}>
+    <div className={`w-71.5 h-65 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col`}>
       <div className="p-1">
         <SeverityStatistics threats={filteredThreats} />
       </div>
