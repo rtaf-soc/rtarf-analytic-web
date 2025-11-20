@@ -9,6 +9,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "../../../frontend/src/index.css";
 
 // ไอคอนสำหรับแต่ละประเภท node
 const routerIcon = new L.Icon({
@@ -179,14 +180,19 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
           linkPairs.add(key);
 
           return (
+            
             <Polyline
               key={key}
               positions={[
                 [node.latitude, node.longitude],
                 [targetNode.latitude, targetNode.longitude],
               ]}
-              color="#33ff77"
-              weight={2}
+              pathOptions={{
+                color: "#AFFFFF",
+                weight: 3, // ลดจาก 2 → 1.4
+                opacity: 2,
+              }}      
+              className="link-line-inner"
             />
           );
         })
