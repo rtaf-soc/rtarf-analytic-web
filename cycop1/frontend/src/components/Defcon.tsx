@@ -62,7 +62,7 @@ const DevConDashboard = () => {
   const [error, setError] = useState<string | null>(null);
 
   const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+    import.meta.env.VITE_API_BASE_URL;
     
   console.log("ENV:", import.meta.env.VITE_API_BASE_URL);
 
@@ -80,13 +80,13 @@ const DevConDashboard = () => {
   const getThreatTypeColor = (type: string): { color: string; hex: string } => {
     const colorMap: Record<string, { color: string; hex: string }> = {
       "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
-      Malwares: { color: "bg-pink-500", hex: "#ec4899" },
-      DDoS: { color: "bg-green-500", hex: "#22c55e" },
-      Phising: { color: "bg-yellow-400", hex: "#facc15" },
-      Others: { color: "bg-blue-400", hex: "#60a5fa" },
+      "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
+      "DDoS": { color: "bg-green-500", hex: "#22c55e" },
+      "Phising": { color: "bg-yellow-400", hex: "#facc15" },
+      "Others": { color: "bg-blue-400", hex: "#60a5fa" },
       "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
       "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
-      XSS: { color: "bg-cyan-500", hex: "#06b6d4" },
+      "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
     };
     return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
   };

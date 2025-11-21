@@ -27,6 +27,16 @@
   height: 70%;
 }
 
+.bangkok-glow {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: red;
+  box-shadow: 0 0 15px 5px rgba(255,0,0,0.7);
+  border: 2px solid white;
+}
+
+
 /* ขยาย → ย่อ */
 @keyframes alertPulseScale {
   0% {
