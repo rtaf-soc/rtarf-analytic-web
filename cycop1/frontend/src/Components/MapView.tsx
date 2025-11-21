@@ -13,6 +13,7 @@ import {
   Popup,
   useMapEvents,
   CircleMarker,
+  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -22,15 +23,13 @@ import "../index.css";
 // ICONS
 // ===============================
 
-// icon ปกติ (เหลือง)
 const yellowIcon = new L.Icon({
   iconUrl: "/img/wifi-router.png",
   iconSize: [24, 24],
 });
 
-// เวอร์ชัน ALERT: กระพริบ + Glow + ขยาย/ย่อ
 const redAlertIcon = L.divIcon({
-  className: "", // ใช้ .alert-pulse-glow จาก index.css
+  className: "",
   html: `
     <div class="alert-pulse-glow">
       <img src="/img/warning.png" alt="alert" />
@@ -58,30 +57,29 @@ const MapBoundsTracker = ({
   });
 
   useEffect(() => {
-    // ส่ง bounds ครั้งแรกตอนโหลด
     onBoundsChange(map.getBounds());
   }, [map, onBoundsChange]);
 
   return null;
 };
 
+type LatLngTuple = [number, number];
+
 interface MapViewProps {
   onBoundsChange?: (bounds: L.LatLngBounds) => void;
+  selectedNode?: NodeGet | null;
 }
 
 // ===============================
-// BEZIER UTIL (ทำเส้นโค้ง)
+// BEZIER UTIL
 // ===============================
-type LatLngTuple = [number, number];
-
 interface BezierCurve {
   start: LatLngTuple;
   control: LatLngTuple;
   end: LatLngTuple;
-  points: LatLngTuple[]; // จุดที่ใช้วาด Polyline
+  points: LatLngTuple[];
 }
 
-// สร้าง control point + ชุดจุดตาม quadratic Bezier
 const createBezierCurve = (
   start: LatLngTuple,
   end: LatLngTuple,
@@ -90,17 +88,14 @@ const createBezierCurve = (
   const [lat1, lng1] = start;
   const [lat2, lng2] = end;
 
-  // จุดกึ่งกลาง
   const midLat = (lat1 + lat2) / 2;
   const midLng = (lng1 + lng2) / 2;
 
-  // เวกเตอร์ตั้งฉาก (ประมาณ ๆ)
   const dLat = lat2 - lat1;
   const dLng = lng2 - lng1;
   const length = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
 
-  // ปรับ factor เพื่อกำหนดความโค้ง (ยิ่งมากยิ่งนูน)
-  const offsetFactor = 0.35; // ลอง 0.2–0.35 ได้
+  const offsetFactor = 0.35;
   const offsetLat = (-dLng / length) * offsetFactor;
   const offsetLng = (dLat / length) * offsetFactor;
 
@@ -111,7 +106,6 @@ const createBezierCurve = (
     const t = i / segments;
     const oneMinusT = 1 - t;
 
-    // B(t) = (1-t)^2 * P0 + 2(1-t)t * C + t^2 * P1
     const lat =
       oneMinusT * oneMinusT * lat1 +
       2 * oneMinusT * t * control[0] +
@@ -128,12 +122,12 @@ const createBezierCurve = (
 };
 
 // ===============================
-// MOVING DOT (จุดเรืองแสงวิ่งตามเส้นโค้ง)
+// MOVING DOT
 // ===============================
 interface MovingDotProps {
   start: LatLngTuple;
   end: LatLngTuple;
-  control?: LatLngTuple; // ถ้ามี → วิ่งตาม Bezier, ถ้าไม่มี → เส้นตรง
+  control?: LatLngTuple;
   durationMs?: number;
 }
 
@@ -143,7 +137,7 @@ const MovingDot: React.FC<MovingDotProps> = ({
   control,
   durationMs = 4000,
 }) => {
-  const [t, setT] = useState(0); // 0 → 1
+  const [t, setT] = useState(0);
   const startTsRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -172,7 +166,6 @@ const MovingDot: React.FC<MovingDotProps> = ({
   let lng: number;
 
   if (control) {
-    // quadratic Bezier
     const oneMinusT = 1 - t;
     lat =
       oneMinusT * oneMinusT * start[0] +
@@ -183,7 +176,6 @@ const MovingDot: React.FC<MovingDotProps> = ({
       2 * oneMinusT * t * control[1] +
       t * t * end[1];
   } else {
-    // เส้นตรงปกติ
     lat = start[0] + (end[0] - start[0]) * t;
     lng = start[1] + (end[1] - start[1]) * t;
   }
@@ -191,7 +183,7 @@ const MovingDot: React.FC<MovingDotProps> = ({
   return (
     <CircleMarker
       center={[lat, lng]}
-      radius={2.5} // ลดขนาดจุด
+      radius={2.5}
       pathOptions={{
         color: "#00FFFF",
         fillColor: "#00FFFF",
@@ -204,9 +196,27 @@ const MovingDot: React.FC<MovingDotProps> = ({
 };
 
 // ===============================
+// FocusOnSelected: flyTo node ที่เลือก
+// ===============================
+const FocusOnSelected: React.FC<{ node?: NodeGet | null }> = ({ node }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!node) return;
+    if (node.latitude == null || node.longitude == null) return;
+
+    map.flyTo([node.latitude, node.longitude], 7, {
+      duration: 1.5,
+    });
+  }, [node, map]);
+
+  return null;
+};
+
+// ===============================
 // MAIN MAP VIEW
 // ===============================
-const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
+const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
   const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>(
     []
@@ -224,7 +234,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
     loadNodeData();
   }, []);
 
-  // ====== หาตำแหน่ง HQ ======
+  // ====== HQ ======
   const hqNode =
     nodeData.find(
       (n) =>
@@ -240,15 +250,18 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
 
   const hqPosition: LatLngTuple = hqNode
     ? [hqNode.latitude, hqNode.longitude]
-    : [13.7563, 100.5018]; // fallback: Bangkok center
+    : [13.7563, 100.5018];
 
-  // ====== เส้น connection เดิมจากฐานข้อมูล (เส้นตรง) ======
+  // ====== เส้นจากฐานข้อมูล (ตรง) ======
   const connectionLines = connectionsData
     .filter((conn) => conn.source_node && conn.destination_node)
     .map((conn) => ({
       id: conn.id,
       positions: [
-        [conn.source_node!.latitude, conn.source_node!.longitude] as LatLngTuple,
+        [
+          conn.source_node!.latitude,
+          conn.source_node!.longitude,
+        ] as LatLngTuple,
         [
           conn.destination_node!.latitude,
           conn.destination_node!.longitude,
@@ -257,26 +270,27 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       status: conn.connection_status || "unknown",
     }));
 
-  // ====== เส้นเครือข่ายวิ่งเข้าหา HQ จากทุกโหนด (โค้ง) ======
-  const inboundCurves: (BezierCurve & { id: string })[] = nodeData
-    .filter((node) => {
-      if (!node) return false;
-      if (!hqNode) return true;
-      return node.id !== hqNode.id;
-    })
-    .map((node) => {
-      const start: LatLngTuple = [node.latitude, node.longitude];
-      const end: LatLngTuple = hqPosition;
-      const curve = createBezierCurve(start, end);
-      return {
-        id: `to-hq-${node.id}`,
-        ...curve,
-      };
-    });
+  // ====== เส้นโค้งเข้า HQ จากทุก node ======
+  const inboundCurves: (BezierCurve & { id: string; nodeId?: number })[] =
+    nodeData
+      .filter((node) => {
+        if (!node) return false;
+        if (!hqNode) return true;
+        return node.id !== hqNode.id;
+      })
+      .map((node) => {
+        const start: LatLngTuple = [node.latitude, node.longitude];
+        const end: LatLngTuple = hqPosition;
+        const curve = createBezierCurve(start, end);
+        return {
+          id: `to-hq-${node.id}`,
+          nodeId: node.id,
+          ...curve,
+        };
+      });
 
-  // ICON ของแต่ละ node
+  // ICON node
   const getNodeIcon = (node: NodeGet) => {
-    // HQ → ไอคอนแดงกระพริบ Glow แรงๆ
     if (
       node.name &&
       node.name.toUpperCase().includes("RTARF INTERNAL NODE - HQ01")
@@ -284,7 +298,6 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       return redAlertIcon;
     }
 
-    // INTERNAL NODE อื่น ๆ อยากให้เต้นด้วยก็ใช้ตัวเดียวกัน
     if (
       node.node_type &&
       node.node_type.toUpperCase() === "RTARF_INTERNAL_NODE"
@@ -292,11 +305,9 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       return redAlertIcon;
     }
 
-    // node ทั่วไป → icon เหลืองปกติ
     return yellowIcon;
   };
 
-  // สีเส้น connection เดิม
   const getLineColor = (status: string) => {
     switch (status) {
       case "running":
@@ -312,14 +323,14 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
 
   return (
     <MapContainer
-      center={[15.87, 100.9925]} // Thailand center
+      center={[15.87, 100.9925]}
       zoom={6}
       minZoom={4}
       maxZoom={18}
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-      {/* พื้นหลังกรมท่าเข้ม */}
+      {/* พื้นหลัง */}
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -330,75 +341,119 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       />
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
-      {/* ติดตาม bounds และส่งออกไป */}
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
-      {/* Marker ของทุก node */}
-      {nodeData.map((node) => (
-        <Marker
-          key={node.id}
-          position={[node.latitude, node.longitude]}
-          icon={getNodeIcon(node)}
-        >
-          <Popup>
-            <div className="text-sm">
-              <strong>{node.name}</strong>
-              <br />
-              IP: {node.ip_address || "N/A"}
-              <br />
-              Type: {node.node_type}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      {/* โฟกัส node ที่เลือก */}
+      <FocusOnSelected node={selectedNode ?? null} />
 
-      {/* เส้นจากฐานข้อมูลเดิม (เส้นตรง – ลดความหนา) */}
+      {/* Marker ทุก node */}
+      {nodeData.map((node) => {
+        const isSelected =
+          selectedNode && node.id != null && node.id === selectedNode.id;
+
+        return (
+          <React.Fragment key={node.id}>
+            <Marker
+              position={[node.latitude, node.longitude]}
+              icon={getNodeIcon(node)}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <strong>{node.name}</strong>
+                  <br />
+                  IP: {node.ip_address || "N/A"}
+                  <br />
+                  Type: {node.node_type}
+                </div>
+              </Popup>
+            </Marker>
+
+            {isSelected && (
+              <CircleMarker
+                center={[node.latitude, node.longitude]}
+                radius={12}
+                pathOptions={{
+                  color: "#00FFFF",
+                  weight: 2,
+                  opacity: 0.8,
+                }}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      {/* เส้นจากฐานข้อมูล (ตรง) */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
           positions={line.positions}
           pathOptions={{
             color: getLineColor(line.status),
-            weight: 1.5,   // ลดจาก 2 → 1.5
+            weight: 1.5,
             opacity: 0.5,
           }}
         />
       ))}
 
-      {/* เส้นเข้าหา HQ แบบโค้ง + มิติ + glow + dot */}
-      {inboundCurves.map((line) => (
-        <React.Fragment key={line.id}>
-          {/* ฮาโลด้านนอก (หนา / จาง) */}
-          <Polyline
-            positions={line.points}
-            pathOptions={{
-              color: "#00FFFF",
-              weight: 3,     // ลดจาก 5 → 3
-              opacity: 0.22,
-            }}
-            className="link-line-outer"
-          />
+      {/* เส้นเข้า HQ แบบโค้ง */}
+      {inboundCurves.map((line) => {
+        const isForSelected =
+          selectedNode && line.nodeId != null && line.nodeId === selectedNode.id;
 
-          {/* เส้นด้านใน (คม / dash / animation จาก CSS) */}
-          <Polyline
-            positions={line.points}
-            pathOptions={{
-              color: "#AFFFFF",
-              weight: 1.4,   // ลดจาก 2 → 1.4
-              opacity: 0.95,
-            }}
-            className="link-line-inner"
-          />
+        return (
+          <React.Fragment key={line.id}>
+            {/* outer glow */}
+            <Polyline
+              positions={line.points}
+              pathOptions={{
+                color: "#00FFFF",
+                weight: isForSelected ? 4 : 3,
+                opacity: isForSelected ? 0.35 : 0.22,
+              }}
+              className="link-line-outer"
+            />
 
-          {/* จุดเรืองแสงวิ่งตามเส้นโค้ง (Bezier) */}
-          <MovingDot
-            start={line.start}
-            end={line.end}
-            control={line.control}
-            durationMs={3500}
-          />
-        </React.Fragment>
-      ))}
+            {/* inner line */}
+            <Polyline
+              positions={line.points}
+              pathOptions={{
+                color: "#AFFFFF",
+                weight: isForSelected ? 2 : 1.4,
+                opacity: 0.95,
+              }}
+              className="link-line-inner"
+            />
+
+            <MovingDot
+              start={line.start}
+              end={line.end}
+              control={line.control}
+              durationMs={isForSelected ? 2800 : 3500}
+            />
+          </React.Fragment>
+        );
+      })}
+
+      {/* ✅ ถ้าอยากให้ Popup เด้งเองตอนเลือกจาก OVERLAY LIST 
+          แทนต้องคลิก Marker เอง ให้เพิ่ม popup สำหรับ selectedNode แบบนี้: */}
+      {selectedNode && (
+        <Popup
+          position={[selectedNode.latitude, selectedNode.longitude]}
+          autoPan={true}
+          closeButton={true}
+          autoClose={false}
+          closeOnClick={false}
+        >
+          <div className="text-sm">
+            <strong>{selectedNode.name}</strong>
+            <br />
+            IP: {selectedNode.ip_address || "N/A"}
+            <br />
+            Type: {selectedNode.node_type || "-"}
+          </div>
+        </Popup>
+      )}
     </MapContainer>
   );
 };

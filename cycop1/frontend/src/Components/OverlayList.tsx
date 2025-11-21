@@ -14,7 +14,12 @@ interface DateFormatter {
   (date: Date): string;
 }
 
-const OverlayList: React.FC = () => {
+// 👇 เพิ่ม: ให้ component นี้ยิง node ที่เลือกออกไปได้
+interface OverlayListProps {
+  onSelectNode?: (node: NodeGet) => void;
+}
+
+const OverlayList: React.FC<OverlayListProps> = ({ onSelectNode }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [nodes, setNodes] = useState<NodeGet[]>([]);
@@ -24,68 +29,11 @@ const OverlayList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // เวลา
+  // เวลา ----------------------------------------------------
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // โหลด node จาก /nodes/
-  useEffect(() => {
-    const fetchNodes = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await GetAllNode();
-        console.log("OverlayList nodes:", data);
-
-        setNodes(data);
-
-        const mapped: OverlayItem[] = data.map((node, index) => ({
-          id: node.id ?? index,
-          name: node.name ?? `NODE-${index + 1}`,
-          color: getColorByNodeType(node.node_type),
-          checked: index === 0,
-        }));
-
-        setOverlayItems(mapped);
-
-        if (data.length > 0) {
-          setSelectedNode(data[0]);
-        }
-      } catch (err) {
-        console.error("Error in OverlayList.fetchNodes:", err);
-        setError("ไม่สามารถโหลดข้อมูล Node ได้");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNodes();
-  }, []);
-
-  const formatDate: DateFormatter = (date) => {
-    const days: string[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    const months: string[] = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
-    ];
-    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]
-      } ${date.getFullYear()}`;
-  };
-
-  const formatTime: DateFormatter = (date: Date): string =>
-    date.toLocaleTimeString("en-US", { hour12: false });
 
   const getColorByNodeType = (nodeType?: string): string => {
     const type = (nodeType ?? "DEFAULT").toUpperCase();
@@ -108,6 +56,66 @@ const OverlayList: React.FC = () => {
     }
   };
 
+  // โหลด node จาก /nodes/ -----------------------------------
+  useEffect(() => {
+    const fetchNodes = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await GetAllNode();
+        console.log("OverlayList nodes:", data);
+
+        setNodes(data);
+
+        const mapped: OverlayItem[] = data.map((node, index) => ({
+          id: node.id ?? index,
+          name: node.name ?? `NODE-${index + 1}`,
+          color: getColorByNodeType(node.node_type),
+          checked: index === 0,
+        }));
+
+        setOverlayItems(mapped);
+
+        // ถ้ามีข้อมูลให้เลือกตัวแรกเป็น default
+        if (data.length > 0) {
+          setSelectedNode(data[0]);
+          onSelectNode?.(data[0]); // 👈 แจ้ง parent ว่าเลือก node แรก
+        }
+      } catch (err) {
+        console.error("Error in OverlayList.fetchNodes:", err);
+        setError("ไม่สามารถโหลดข้อมูล Node ได้");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNodes();
+  }, [onSelectNode]);
+
+  const formatDate: DateFormatter = (date) => {
+    const days: string[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const months: string[] = [
+      "JAN",
+      "FEB",
+      "MAR",
+      "APR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AUG",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DEC",
+    ];
+    return `${days[date.getDay()]} ${date.getDate()} ${
+      months[date.getMonth()]
+    } ${date.getFullYear()}`;
+  };
+
+  const formatTime: DateFormatter = (date: Date): string =>
+    date.toLocaleTimeString("en-US", { hour12: false });
+
   const handleSelectOverlay = (itemId: number) => {
     setOverlayItems((prev) => {
       const updated = prev.map((item) => ({
@@ -118,6 +126,7 @@ const OverlayList: React.FC = () => {
       const index = updated.findIndex((item) => item.id === itemId);
       if (index !== -1 && nodes[index]) {
         setSelectedNode(nodes[index]);
+        onSelectNode?.(nodes[index]); // 👈 ส่ง node ที่เลือกออกไป
       }
 
       return updated;
@@ -175,17 +184,18 @@ const OverlayList: React.FC = () => {
         ></div>
       </div>
 
-      {/* Overlay List */}
+      {/* OVERLAY LIST */}
       <div className="bg-black rounded-lg p-2 mb-2 border-8 border-gray-500 flex-shrink-0 w-57">
-        {/* หัว OVERLAY LIST เหมือนด้านบน */}
         <div className="text-[15px] font-bold mb-1.5 text-white border-b border-gray-600 pb-1 flex justify-center">
           OVERLAY LIST
         </div>
 
-        {/* แถวเล็กด้านใต้หัว เอาไว้โชว์สถานะโหลด (เหมือนอันบน) */}
+        {/* แถวเล็กใต้หัว */}
         <div className="text-[13px] font-semibold text-white mb-1 flex justify-between items-center">
           {loading && (
-            <span className="text-[10px] text-gray-400">กำลังโหลดข้อมูล Node...</span>
+            <span className="text-[10px] text-gray-400">
+              กำลังโหลดข้อมูล Node...
+            </span>
           )}
         </div>
 
@@ -201,24 +211,25 @@ const OverlayList: React.FC = () => {
           </div>
         )}
 
-        {/* รายการ overlay ให้ใช้ layout แบบเดียวกับ node list: มี border, bg, scroll ได้ */}
+        {/* รายการ overlay */}
         <div className="space-y-1 max-h-29.5 overflow-y-auto mt-1 custom-scroll">
           {overlayItems.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => handleSelectOverlay(item.id)}
-              className={`w-full flex items-center gap-2 px-1.5 py-1 text-left text-[11px] rounded border ${item.checked
+              className={`w-full flex items-center gap-2 px-1.5 py-1 text-left text-[11px] rounded border ${
+                item.checked
                   ? "border-green-400 bg-slate-800"
                   : "border-gray-700 bg-slate-900/60 hover:bg-slate-800"
-                } transition-colors`}
+              } transition-colors`}
             >
-              {/* ช่องสี่เหลี่ยม + Check เหมือนด้านบน แต่ใส่สี overlay เข้าไป */}
+              {/* กล่อง check */}
               <div className="flex items-center justify-center w-3 h-3 border border-gray-400 rounded-[2px] bg-black">
                 {item.checked && <Check className="w-2 h-2 text-green-400" />}
               </div>
 
-              {/* ชิปสี overlay (ใช้ class จาก item.color เช่น bg-red-500 ฯลฯ) */}
+              {/* chip สี overlay */}
               <div className={`w-2.5 h-2.5 rounded-sm ${item.color}`} />
 
               {/* ชื่อ overlay */}
@@ -229,7 +240,7 @@ const OverlayList: React.FC = () => {
           ))}
         </div>
 
-        {/* ปุ่ม control ด้านล่างเหมือนเดิม */}
+        {/* ปุ่ม control ล่างสุด */}
         <div className="flex gap-1 mt-2 pt-2 border-t border-gray-600">
           <button className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center hover:bg-slate-600 text-[8px]">
             <span>🔍</span>
@@ -245,7 +256,6 @@ const OverlayList: React.FC = () => {
           </button>
         </div>
       </div>
-
 
       {/* SITREP */}
       <div className="bg-black rounded-lg p-2 border-8 border-gray-500 flex-1 overflow-hidden w-57">
@@ -286,7 +296,7 @@ const OverlayList: React.FC = () => {
                   <div>
                     • G/W:{" "}
                     {selectedNode.additional_ips &&
-                      selectedNode.additional_ips.length > 0
+                    selectedNode.additional_ips.length > 0
                       ? selectedNode.additional_ips.join(", ")
                       : "-"}
                   </div>
