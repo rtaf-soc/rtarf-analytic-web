@@ -20,21 +20,31 @@ interface Country {
   percentage: number;
 }
 
-interface ApiCountry {
-  name?: string;
-  country?: string;
-  count?: number;
-  value?: number;
+interface ApiSeverity {
+  threatName?: string;
+  threatDetail?: string;
+  serverity?: string;
   quantity?: number;
+  percentage?: number;
+  mitrTechniqueName?: string | null;
+  mitrTacticName?: string | null;
 }
 
-interface ApiDistribution {
-  type?: string;
-  label?: string;
-  name?: string;
-  percentage?: number;
-  value?: number;
-}
+// interface ApiCountry {
+//   name?: string;
+//   country?: string;
+//   count?: number;
+//   value?: number;
+//   quantity?: number;
+// }
+
+// interface ApiDistribution {
+//   type?: string;
+//   label?: string;
+//   name?: string;
+//   percentage?: number;
+//   value?: number;
+// }
 
 interface ApiAlert {
   id?: string;
@@ -51,7 +61,10 @@ const DevConDashboard = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+    
+  console.log("ENV:", import.meta.env.VITE_API_BASE_URL);
 
   const getThreatColor = (level: number): string => {
     const colorMap: Record<number, string> = {
@@ -67,13 +80,13 @@ const DevConDashboard = () => {
   const getThreatTypeColor = (type: string): { color: string; hex: string } => {
     const colorMap: Record<string, { color: string; hex: string }> = {
       "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
-      "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
-      "DDoS": { color: "bg-green-500", hex: "#22c55e" },
-      "Phising": { color: "bg-yellow-400", hex: "#facc15" },
-      "Others": { color: "bg-blue-400", hex: "#60a5fa" },
+      Malwares: { color: "bg-pink-500", hex: "#ec4899" },
+      DDoS: { color: "bg-green-500", hex: "#22c55e" },
+      Phising: { color: "bg-yellow-400", hex: "#facc15" },
+      Others: { color: "bg-blue-400", hex: "#60a5fa" },
       "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
       "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
-      "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
+      XSS: { color: "bg-cyan-500", hex: "#06b6d4" },
     };
     return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
   };
@@ -82,17 +95,17 @@ const DevConDashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const [defconRes, countriesRes, distributionsRes, alertsRes] =
+      const [defconRes, severitiesRes, distributionsRes, alertsRes] =
         await Promise.all([
           fetch(`${API_BASE_URL}/api/defstatus`),
-          fetch(`${API_BASE_URL}/api/reconcountry`),
+          fetch(`${API_BASE_URL}/api/severities`),
           fetch(`${API_BASE_URL}/api/threatdistributions`),
           fetch(`${API_BASE_URL}/api/threatalerts`),
         ]);
 
       if (
         !defconRes.ok ||
-        !countriesRes.ok ||
+        !severitiesRes.ok ||
         !distributionsRes.ok ||
         !alertsRes.ok
       ) {
@@ -100,32 +113,25 @@ const DevConDashboard = () => {
       }
 
       const defconData = await defconRes.json();
-      const countriesData = await countriesRes.json();
+      const severitiesData = await severitiesRes.json();
       const distributionsData = await distributionsRes.json();
       const alertsData = await alertsRes.json();
 
       setDefconLevel(defconData.level || defconData.defconLevel || 1);
 
-      // Top countries
-      const countriesArray: ApiCountry[] = Array.isArray(countriesData)
-        ? countriesData
-        : Array.isArray(countriesData.countries)
-        ? countriesData.countries
+      const severityArray: ApiSeverity[] = Array.isArray(severitiesData)
+        ? severitiesData
         : [];
 
-      // Sort by quantity descending และ slice top 3
-      const sortedCountries: Country[] = countriesArray
+      const sortedSeverities: Country[] = severityArray
         .sort((a, b) => (b.quantity || 0) - (a.quantity || 0))
         .slice(0, 3)
-        .map((c) => ({
-          name: c.country || "Unknown",
-          percentage: Math.min(
-            100,
-            Math.max(20, c.quantity || 0) // แปลง quantity เป็น percentage สำหรับความสูงแท่ง
-          ),
+        .map((item) => ({
+          name: item.serverity || "Unknown",
+          percentage: Math.min(100, Math.max(20, item.quantity || 0) / 50), // ปรับ scale ให้อยู่ในกราฟ
         }));
 
-      setTopCountries(sortedCountries);
+      setTopCountries(sortedSeverities);
 
       // Threat Distribution (Pie chart) - ใช้ threatName
       const distributionsArray = Array.isArray(distributionsData.distributions)
@@ -258,7 +264,7 @@ const DevConDashboard = () => {
       <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1">
         <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
           <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
-            Top 3 ประเทศ ลาดตระเวนมายังเครือข่ายประจำสัปดาห์
+            จำนวนการแจ้งเตือนแยกตามระดับความรุนแรง
           </div>
 
           <div className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]">

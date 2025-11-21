@@ -28,5 +28,5 @@ def call_api(api_name):
     except Exception as e:
         return {"error": str(e)}
 
-print(call_api(f"api/Analytic/org/{ORG_ID}/action/GetReconCountries"))
+print(call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatSeverities"))
 

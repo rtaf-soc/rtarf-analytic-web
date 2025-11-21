@@ -22,6 +22,9 @@ RUN npm install
 
 COPY cycop1/frontend .
 
+# Build production frontend
+RUN npm run build
+
 # Supervisord Config
 WORKDIR /app
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
