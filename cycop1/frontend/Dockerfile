@@ -1,20 +1,22 @@
-# Frontend Dockerfile
+# Frontend Dockerfile (Production-ready)
 FROM node:20
 
 # Set working directory
 WORKDIR /app/src
 
-# Copy package files
+# Copy package files and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy project files
+# Copy project files (รวม .env.production)
 COPY . .
 
-# Expose Vite dev server port
-EXPOSE 5173
+# Build production frontend
+RUN npm run build
 
-# Default command for development (change to "npm run build" for production)
-CMD ["npm", "run", "dev", "--", "--host"]
+# Serve production bundle
+RUN npm install -g serve
+
+# Serve /dist folder on port 80
+EXPOSE 80
+CMD ["serve", "-s", "dist", "-l", "80"]
