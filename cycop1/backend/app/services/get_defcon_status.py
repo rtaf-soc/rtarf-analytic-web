@@ -20,7 +20,7 @@ def call_api(api_name):
     try:
         response = requests.get(
             url,
-            auth=HTTPBasicAuth(ORG_ID, API_KEY), 
+            auth=HTTPBasicAuth("api", API_KEY), 
             headers={"Content-Type": "application/json"},
             timeout=10
         )
