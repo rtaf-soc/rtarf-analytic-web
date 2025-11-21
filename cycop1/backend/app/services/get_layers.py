@@ -6,9 +6,12 @@ from dotenv import load_dotenv
 # โหลดค่า .env
 load_dotenv(".env")
 
-API_PATH = os.getenv("API_PATH", "https://defnex-api.please-scan.com")
-API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD", "v5QQY1WXhrV8")
-ORG_ID = os.getenv("ORG_ID", "default")
+API_PATH = os.getenv("API_PATH")
+API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD")
+ORG_ID = os.getenv("ORG_ID")
+print("API_PATH = ", API_PATH)
+print("API_AUTHEN_PASSWORD = ", API_AUTHEN_PASSWORD)
+print("ORG_ID = ", ORG_ID)
 
 def get_all_layers():
     """เรียก API GetLayers และ return JSON หรือ raw text"""

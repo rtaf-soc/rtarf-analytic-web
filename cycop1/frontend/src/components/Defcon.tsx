@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
+
 // Define types
 interface Threat {
   id: string;
@@ -61,8 +62,7 @@ const DevConDashboard = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
     
   console.log("ENV:", import.meta.env.VITE_API_BASE_URL);
 
@@ -231,8 +231,8 @@ const DevConDashboard = () => {
 
       {/* DEFCON Status */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
-        <div className="text-[25px] text-white font-bold mb-3 tracking-wider text-center">
-          DEFCON
+        <div className="text-[14px] text-white font-bold mb-3 tracking-wider text-center">
+          สถานการณ์ทางไซเบอร์
         </div>
 
         <div className="flex items-center justify-between">

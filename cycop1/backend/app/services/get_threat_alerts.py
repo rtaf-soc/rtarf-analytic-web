@@ -5,12 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")
 
-API_PATH = os.getenv("API_HTTP_ENDPOINT")
-API_KEY = os.getenv("API_KEY")
+API_PATH = os.getenv("API_PATH")
+API_KEY = os.getenv("API_AUTHEN_PASSWORD")  
 ORG_ID = os.getenv("ORG_ID")
-# print("API_PATH = ", API_PATH)
-# print("API_KEY = ", API_KEY)
-# print("ORG_ID = ", ORG_ID)
+print("API_PATH = ", API_PATH)
+print("API_KEY = ", API_KEY)
+print("ORG_ID = ", ORG_ID)
 
 def call_api(api_name):
     url = f"{API_PATH}/{api_name}"

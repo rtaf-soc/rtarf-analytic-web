@@ -6,10 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")
 
-API_PATH = os.getenv("API_PATH", "https://defnex-api.please-scan.com")
-ORG_ID = os.getenv("ORG_ID", "default")
-API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD", "")
-
+API_PATH = os.getenv("API_PATH")
+ORG_ID = os.getenv("ORG_ID")
+API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD")
+print("API_PATH = ", API_PATH)
+print("API_AUTHEN_PASSWORD = ", API_AUTHEN_PASSWORD)
+print("ORG_ID = ", ORG_ID)
 def make_request(method, api_url, params=None):
     """Make HTTP request to API with BasicAuth"""
     url = f"{API_PATH}/{api_url}"

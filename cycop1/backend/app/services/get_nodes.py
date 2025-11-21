@@ -8,6 +8,9 @@ load_dotenv(".env")
 API_PATH = os.getenv("API_PATH")
 API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD")
 ORG_ID = os.getenv("ORG_ID")
+# print("API_PATH = ", API_PATH)
+# print("API_AUTHEN_PASSWORD = ", API_AUTHEN_PASSWORD)
+# print("ORG_ID = ", ORG_ID)
 
 def get_all_nodes(full_text_search=""):
     url = f"{API_PATH}/api/Node/org/{ORG_ID}/action/GetNodes"

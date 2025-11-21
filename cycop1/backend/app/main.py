@@ -172,7 +172,7 @@ def get_threat_severities():
     return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatSeverities")
 
 @app.get("/api/threatdistributions", tags=["ThreatDistributions"])
-def get_threat_alerts():
+def get_threat_alertsdistributions():
     from app.services.get_threat_distributions import call_api, ORG_ID
     return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatDistributions")
 
