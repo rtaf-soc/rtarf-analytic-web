@@ -46,45 +46,45 @@ const ThreatAlertList: React.FC = () => {
                     <span className="animate-pulse text-red-500">⚠</span>
                 </div>
 
-<div className="space-y-1 overflow-y-auto max-h-44 pr-1 custom-scroll">
-    {threats.map((threat, idx) => (
-        <div
-            key={idx}
-            className="flex items-center gap-2 bg-black rounded-md hover:bg-gray-900 transition-all duration-300 cursor-pointer group relative overflow-hidden"
-        >
-            {/* Glowing background */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
-                <div className={`absolute inset-0 ${threat.color} blur-xl animate-pulse`}></div>
-            </div>
+                <div className="space-y-1 overflow-y-auto max-h-44 pr-1">
+                    {threats.map((threat, idx) => (
+                        <div
+                            key={idx}
+                            className="flex items-center gap-2 bg-black rounded-md hover:bg-gray-900 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                        >
+                            {/* Glowing background */}
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
+                                <div className={`absolute inset-0 ${threat.color} blur-xl animate-pulse`}></div>
+                            </div>
 
-            {/* Left color bar */}
-            <div className={`${threat.color} w-4 h-8 flex-shrink-0 relative group-hover:shadow-lg transition-all duration-300`}>
-                <div className={`absolute inset-0 ${threat.color} blur-md opacity-0 group-hover:opacity-75 transition-opacity duration-300`}></div>
-            </div>
+                            {/* Left color bar */}
+                            <div className={`${threat.color} w-4 h-8 flex-shrink-0 relative group-hover:shadow-lg transition-all duration-300`}>
+                                <div className={`absolute inset-0 ${threat.color} blur-md opacity-0 group-hover:opacity-75 transition-opacity duration-300`}></div>
+                            </div>
 
-            {/* Text */}
-            <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight z-10">
-                <span
-                    className="text-white font-semibold truncate group-hover:text-gray-200 transition-colors duration-300"
-                    title={threat.description}
-                >
-                    {threat.description}
-                </span>
-                <span
-                    className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300"
-                    title={threat.code}
-                >
-                    {threat.code}
-                </span>
-            </div>
+                            {/* Text */}
+                            <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight z-10">
+                                <span
+                                    className="text-white font-semibold truncate group-hover:text-gray-200 transition-colors duration-300"
+                                    title={threat.description}
+                                >
+                                    {threat.description}
+                                </span>
+                                <span
+                                    className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300"
+                                    title={threat.code}
+                                >
+                                    {threat.code}
+                                </span>
+                            </div>
 
-            {/* Pulse dot */}
-            <div className="flex-shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className={`w-2 h-2 rounded-full ${threat.color} animate-pulse`}></div>
-            </div>
-        </div>
-    ))}
-</div>
+                            {/* Pulse dot */}
+                            <div className="flex-shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className={`w-2 h-2 rounded-full ${threat.color} animate-pulse`}></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
 
             </div>
         </>
