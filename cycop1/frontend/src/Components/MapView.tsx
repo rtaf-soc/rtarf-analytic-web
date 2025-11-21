@@ -196,7 +196,7 @@ const MovingDot: React.FC<MovingDotProps> = ({
 };
 
 // ===============================
-// FocusOnSelected: flyTo node ที่เลือก
+// FocusOnSelected
 // ===============================
 const FocusOnSelected: React.FC<{ node?: NodeGet | null }> = ({ node }) => {
   const map = useMap();
@@ -218,9 +218,8 @@ const FocusOnSelected: React.FC<{ node?: NodeGet | null }> = ({ node }) => {
 // ===============================
 const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
   const [nodeData, setNodeData] = useState<NodeGet[]>([]);
-  const [connectionsData, setConnectionsData] = useState<NetworkConnection[]>(
-    []
-  );
+  const [connectionsData, setConnectionsData] =
+    useState<NetworkConnection[]>([]);
 
   useEffect(() => {
     const loadNodeData = async () => {
@@ -234,7 +233,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
     loadNodeData();
   }, []);
 
-  // ====== HQ ======
+  // ====== HQ NODE ======
   const hqNode =
     nodeData.find(
       (n) =>
@@ -252,7 +251,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
     ? [hqNode.latitude, hqNode.longitude]
     : [13.7563, 100.5018];
 
-  // ====== เส้นจากฐานข้อมูล (ตรง) ======
+  // ====== Straight Lines ======
   const connectionLines = connectionsData
     .filter((conn) => conn.source_node && conn.destination_node)
     .map((conn) => ({
@@ -270,7 +269,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
       status: conn.connection_status || "unknown",
     }));
 
-  // ====== เส้นโค้งเข้า HQ จากทุก node ======
+  // ====== Curved Lines into HQ ======
   const inboundCurves: (BezierCurve & { id: string; nodeId?: number })[] =
     nodeData
       .filter((node) => {
@@ -289,7 +288,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
         };
       });
 
-  // ICON node
+  // ICON
   const getNodeIcon = (node: NodeGet) => {
     if (
       node.name &&
@@ -330,23 +329,24 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-      {/* พื้นหลัง */}
+      {/* Layers */}
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
+
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
         opacity={0.1}
       />
+
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
-      {/* โฟกัส node ที่เลือก */}
       <FocusOnSelected node={selectedNode ?? null} />
 
-      {/* Marker ทุก node */}
+      {/* Node Markers */}
       {nodeData.map((node) => {
         const isSelected =
           selectedNode && node.id != null && node.id === selectedNode.id;
@@ -383,7 +383,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
         );
       })}
 
-      {/* เส้นจากฐานข้อมูล (ตรง) */}
+      {/* Straight Lines */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
@@ -396,47 +396,42 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedNode }) => {
         />
       ))}
 
-      {/* เส้นเข้า HQ แบบโค้ง */}
-      {inboundCurves.map((line) => {
+      {/* Curved Lines */}
+      {inboundCurves.map((curve) => {
         const isForSelected =
-          selectedNode && line.nodeId != null && line.nodeId === selectedNode.id;
+          selectedNode && curve.nodeId != null && curve.nodeId === selectedNode.id;
 
         return (
-          <React.Fragment key={line.id}>
-            {/* outer glow */}
+          <React.Fragment key={curve.id}>
             <Polyline
-              positions={line.points}
+              positions={curve.points}
               pathOptions={{
                 color: "#00FFFF",
                 weight: isForSelected ? 4 : 3,
                 opacity: isForSelected ? 0.35 : 0.22,
               }}
-              className="link-line-outer"
             />
 
-            {/* inner line */}
             <Polyline
-              positions={line.points}
+              positions={curve.points}
               pathOptions={{
                 color: "#AFFFFF",
                 weight: isForSelected ? 2 : 1.4,
                 opacity: 0.95,
               }}
-              className="link-line-inner"
             />
 
             <MovingDot
-              start={line.start}
-              end={line.end}
-              control={line.control}
+              start={curve.start}
+              end={curve.end}
+              control={curve.control}
               durationMs={isForSelected ? 2800 : 3500}
             />
           </React.Fragment>
         );
       })}
 
-      {/* ✅ ถ้าอยากให้ Popup เด้งเองตอนเลือกจาก OVERLAY LIST 
-          แทนต้องคลิก Marker เอง ให้เพิ่ม popup สำหรับ selectedNode แบบนี้: */}
+      {/* ✅ Popup แสดงรายละเอียด node ที่เลือกแบบในรูป */}
       {selectedNode && (
         <Popup
           position={[selectedNode.latitude, selectedNode.longitude]}
