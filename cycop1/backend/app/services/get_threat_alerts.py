@@ -8,9 +8,9 @@ load_dotenv(".env")
 API_PATH = os.getenv("API_HTTP_ENDPOINT")
 API_KEY = os.getenv("API_KEY")
 ORG_ID = os.getenv("ORG_ID")
-# print("API_PATH = ", API_PATH)
-# print("API_KEY = ", API_KEY)
-# print("ORG_ID = ", ORG_ID)
+print("API_PATH = ", API_PATH)
+print("API_KEY = ", API_KEY)
+print("ORG_ID = ", ORG_ID)
 
 def call_api(api_name):
     url = f"{API_PATH}/{api_name}"
@@ -20,7 +20,7 @@ def call_api(api_name):
     try:
         response = requests.get(
             url,
-            auth=HTTPBasicAuth("api", API_KEY), 
+            auth=HTTPBasicAuth(ORG_ID, API_KEY), 
             headers={"Content-Type": "application/json"},
             timeout=10
         )
