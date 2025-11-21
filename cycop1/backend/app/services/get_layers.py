@@ -9,14 +9,15 @@ load_dotenv(".env")
 API_PATH = os.getenv("API_PATH")
 API_KEY = os.getenv("API_AUTHEN_PASSWORD")
 ORG_ID = "default"
-print("API_PATH = ", API_PATH)
-print("API_KEY = ", API_KEY)
-print("ORG_ID = ", ORG_ID)
 
 def get_all_layers():
     """เรียก API GetLayers และ return JSON หรือ raw text"""
     api_path = f"api/Node/org/{ORG_ID}/action/GetLayers"
     url = f"{API_PATH}/{api_path}"
+
+    print("API_PATH = ", API_PATH)
+    print("API_KEY = ", API_KEY)
+    print("ORG_ID = ", ORG_ID)
     print("Request →", url)
 
     response = requests.get(
