@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")
 # โหลดค่าจาก env
-API_PATH = os.getenv("API_PATH", "https://defnex-api.please-scan.com")
-API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD", "v5QQY1WXhrV8")
-ORG_ID = os.getenv("ORG_ID", "default")
+API_PATH = os.getenv("API_PATH")
+API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD")
+ORG_ID = os.getenv("ORG_ID")
 
 def get_all_nodes(full_text_search=""):
     url = f"{API_PATH}/api/Node/org/{ORG_ID}/action/GetNodes"
