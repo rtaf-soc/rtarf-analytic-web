@@ -18,9 +18,9 @@ def make_request(method, api_url, params=None):
     url = f"{API_PATH}/{api_url}"
     try:
         if method.lower() == "get":
-            response = requests.get(url, params=params, auth=HTTPBasicAuth(ORG_ID, API_KEY))
+            response = requests.get(url, params=params, auth=HTTPBasicAuth("api", API_KEY))
         else:
-            response = requests.post(url, json=params, auth=HTTPBasicAuth(ORG_ID, API_KEY))
+            response = requests.post(url, json=params, auth=HTTPBasicAuth("api", API_KEY))
         response.raise_for_status()
         print(f"[DEBUG] Request successful: {url}")
         try:
