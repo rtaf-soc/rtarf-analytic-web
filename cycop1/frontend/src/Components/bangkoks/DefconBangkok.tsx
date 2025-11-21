@@ -13,7 +13,7 @@ import type { AlertBase, NodeGet } from "../../types/defensive";
 import * as Chart from "chart.js";
 
 // ------------------------------------------------------
-//   ⬇⬇⬇   SITREP COMPONENT — ย้ายมาไว้ในไฟล์นี้   ⬇⬇⬇
+//   ⬇⬇⬇   SITREP COMPONENT ⬇⬇⬇
 // ------------------------------------------------------
 const Sitrep = ({ selectedNode }: { selectedNode: NodeGet | null }) => {
   if (!selectedNode) {

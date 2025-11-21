@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Globe, Check } from "lucide-react";
+import L from "leaflet"; // 👈 เพิ่มใช้ type LatLngBounds
 import { GetAllNode } from "../services/defensiveService";
 import type { NodeGet } from "../types/defensive";
 
@@ -14,12 +15,16 @@ interface DateFormatter {
   (date: Date): string;
 }
 
-// 👇 เพิ่ม: ให้ component นี้ยิง node ที่เลือกออกไปได้
+// ให้ component นี้ยิง node ที่เลือกออกไป + รับ bounds จาก MapView
 interface OverlayListProps {
   onSelectNode?: (node: NodeGet) => void;
+  mainMapBounds?: L.LatLngBounds | null;
 }
 
-const OverlayList: React.FC<OverlayListProps> = ({ onSelectNode }) => {
+const OverlayList: React.FC<OverlayListProps> = ({
+  onSelectNode,
+  mainMapBounds,
+}) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [nodes, setNodes] = useState<NodeGet[]>([]);
@@ -79,7 +84,7 @@ const OverlayList: React.FC<OverlayListProps> = ({ onSelectNode }) => {
         // ถ้ามีข้อมูลให้เลือกตัวแรกเป็น default
         if (data.length > 0) {
           setSelectedNode(data[0]);
-          onSelectNode?.(data[0]); // 👈 แจ้ง parent ว่าเลือก node แรก
+          onSelectNode?.(data[0]); // แจ้ง parent ว่าเลือก node แรก
         }
       } catch (err) {
         console.error("Error in OverlayList.fetchNodes:", err);
@@ -126,7 +131,7 @@ const OverlayList: React.FC<OverlayListProps> = ({ onSelectNode }) => {
       const index = updated.findIndex((item) => item.id === itemId);
       if (index !== -1 && nodes[index]) {
         setSelectedNode(nodes[index]);
-        onSelectNode?.(nodes[index]); // 👈 ส่ง node ที่เลือกออกไป
+        onSelectNode?.(nodes[index]); // ส่ง node ที่เลือกออกไป
       }
 
       return updated;
@@ -135,6 +140,61 @@ const OverlayList: React.FC<OverlayListProps> = ({ onSelectNode }) => {
 
   const displayOrDash = (value?: string | number | null): string =>
     value === undefined || value === null || value === "" ? "-" : String(value);
+
+  // =========================
+  // World Map indicator style
+  // =========================
+  const getWorldMarkerStyle = () => {
+    if (!mainMapBounds) {
+      // ตอนยังไม่รู้ bounds ใช้ค่าประมาณเดิม
+      return {
+        left: "72%",
+        top: "40%",
+        width: "25px",
+        height: "25px",
+      };
+    }
+
+    const center = mainMapBounds.getCenter();
+    const lat = center.lat; // -90 .. 90
+    const lng = center.lng; // -180 .. 180
+
+    // สมมติ world.svg เป็นแผนที่ equirectangular
+    const xPercent = ((lng + 180) / 360) * 100; // -180..180 -> 0..100
+    const yPercent = ((90 - lat) / 180) * 100;  // 90..-90 -> 0..100
+
+    return {
+      left: `calc(${xPercent}% - 12.5px)`, // 25/2
+      top: `calc(${yPercent}% - 12.5px)`,
+      width: "25px",
+      height: "25px",
+    };
+  };
+
+  const getWorldGlowStyle = () => {
+    if (!mainMapBounds) {
+      return {
+        left: "calc(73% - 3px)",
+        top: "calc(48% - 3px)",
+        width: "12px",
+        height: "12px",
+      };
+    }
+
+    const center = mainMapBounds.getCenter();
+    const lat = center.lat;
+    const lng = center.lng;
+
+    const xPercent = ((lng + 180) / 360) * 100;
+    const yPercent = ((90 - lat) / 180) * 100;
+
+    return {
+      left: `calc(${xPercent}% - 6px)`, // 12/2
+      top: `calc(${yPercent}% - 6px)`,
+      width: "12px",
+      height: "12px",
+    };
+  };
 
   return (
     <div className="fixed left-0 top-0 h-screen w-60 bg-black text-white p-1 border-r-2 border-black flex flex-col">
@@ -162,25 +222,24 @@ const OverlayList: React.FC<OverlayListProps> = ({ onSelectNode }) => {
         </div>
       </div>
 
-      {/* World map (ยัง fix marker ไว้) */}
+      {/* World map (เลื่อนตาม MapView) */}
       <div className="bg-slate-700 rounded p-1 relative overflow-hidden border-8 border-gray-500 mb-1">
         <img
           src="img/world.svg"
           alt="World Map"
           className="w-full h-24 object-contain rounded"
         />
+
+        {/* กรอบสี่เหลี่ยมตาม center ของ MapView */}
         <div
           className="absolute border-3 border-green-500 animate-pulse"
-          style={{ left: "72%", top: "40%", width: "25px", height: "25px" }}
+          style={getWorldMarkerStyle()}
         ></div>
+
+        {/* จุดเรืองแสงตรงกลางกรอบ */}
         <div
           className="absolute rounded-full bg-green-400 opacity-50 blur-sm"
-          style={{
-            left: "calc(73% - 3px)",
-            top: "calc(48% - 3px)",
-            width: "12px",
-            height: "12px",
-          }}
+          style={getWorldGlowStyle()}
         ></div>
       </div>
 

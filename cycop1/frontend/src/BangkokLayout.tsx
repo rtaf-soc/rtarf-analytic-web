@@ -45,7 +45,7 @@ const BangkokLayout = () => {
       {/* ล่าง – Bangkok Threat แนวนอน (เหมือนเดิม) */}
       <div className="fixed bottom-0 right-59 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
         <div className="flex items-center gap-2 h-full">
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 custom-scroll">
             <BangkokThreat
               title="กองบัญชาการกองทัพไทย"
               filterSeverity="all"
@@ -54,7 +54,7 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
             />
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 custom-scroll">
             <BangkokThreat
               title="กองทัพบก"
               filterSeverity="medium"
@@ -63,7 +63,7 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
             />
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 custom-scroll">
             <BangkokThreat
               title="กองทัพอากาศ"
               filterSeverity="high"
@@ -72,7 +72,7 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
             />
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 custom-scroll">
             <BangkokThreat
               title="กองทัพเรือ"
               filterSeverity="low"
@@ -81,7 +81,7 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
             />
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 custom-scroll">
             <BangkokThreat
               title="สำนักงานตำรวจแห่งชาติ"
               filterSeverity="all"
