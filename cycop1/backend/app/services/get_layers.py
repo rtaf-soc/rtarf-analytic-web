@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 # โหลดค่า .env
 load_dotenv(".env")
 
-API_PATH = os.getenv("API_HTTP_ENDPOINT")
-API_KEY = os.getenv("API_KEY")
-ORG_ID = os.getenv("ORG_ID")
+API_PATH = os.getenv("API_PATH")
+API_KEY = os.getenv("API_AUTHEN_PASSWORD")
+ORG_ID = "default"
 print("API_PATH = ", API_PATH)
 print("API_KEY = ", API_KEY)
 print("ORG_ID = ", ORG_ID)
