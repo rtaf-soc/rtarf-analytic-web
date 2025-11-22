@@ -13,6 +13,9 @@ RUN npm install
 # Copy project files
 COPY . .
 
+# Create .env file
+RUN echo "VITE_API_BASE_URL=https://defnex-api.please-scan.com" > .env
+
 # Expose Vite dev server port
 EXPOSE 5173
 
