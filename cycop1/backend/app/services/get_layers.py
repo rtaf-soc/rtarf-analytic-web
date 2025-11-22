@@ -21,7 +21,7 @@ def get_all_layers():
 
     response = requests.get(
         url,
-        auth=HTTPBasicAuth("api", API_KEY)
+        auth=HTTPBasicAuth(ORG_ID, API_KEY)
     )
 
     print("Status code:", response.status_code)
