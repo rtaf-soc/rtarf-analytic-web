@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Create .env file
-RUN echo "VITE_API_BASE_URL=https://defnex-api.please-scan.com" > .env
+RUN echo "VITE_API_BASE_URL=https://defnex-api.please-scan.com" > /app/src/.env
 
 # Expose Vite dev server port
 EXPOSE 5173
