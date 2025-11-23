@@ -6,5 +6,107 @@
   filter: hue-rotate(175deg) saturate(1.6) brightness(0.9);
 }
 
+/* ===========================
+   ALERT ICON PULSE + GLOW
+   =========================== */
+.alert-pulse-glow {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* ทำให้มันเต้น + glow ไปด้วยกัน */
+  animation: alertPulseScale 1.1s infinite ease-in-out,
+             alertPulseGlow 1.1s infinite ease-in-out;
+}
+
+.alert-pulse-glow img {
+  width: 70%;
+  height: 70%;
+}
+
+.bangkok-glow {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: red;
+  box-shadow: 0 0 15px 5px rgba(255,0,0,0.7);
+  border: 2px solid white;
+}
 
 
+/* ขยาย → ย่อ */
+@keyframes alertPulseScale {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Glow สีแดงกระพริบ */
+@keyframes alertPulseGlow {
+  0% {
+    box-shadow:
+      0 0 0px rgba(255, 0, 0, 0.0),
+      0 0 6px rgba(255, 80, 80, 0.5);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 10px rgba(255, 0, 0, 0.9),
+      0 0 25px rgba(255, 0, 0, 0.7);
+    filter: brightness(1.25);
+  }
+  100% {
+    box-shadow:
+      0 0 0px rgba(255, 0, 0, 0.0),
+      0 0 6px rgba(255, 80, 80, 0.5);
+    filter: brightness(1);
+  }
+}
+
+/* ถ้ายังไม่มี เอาไว้เพิ่ม glow ให้จุดบนเส้นด้วย */
+.circle-marker-glow {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 0.9));
+}
+
+
+
+
+/* ==============================
+   NETWORK LINK GLOW & DEPTH
+   ============================== */
+
+.link-line-outer {
+  /* ฮาโลนอก ให้ดูฟุ้ง ๆ แบบในรูปตัวอย่าง */
+  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 0.9));
+}
+
+.link-line-inner {
+  stroke-linecap: round;
+  stroke-dasharray: 6 14;              /* ลายขีด */
+  animation: dash-move 2.8s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(160, 255, 255, 1));
+}
+
+/* glow เพิ่มสำหรับจุดที่วิ่งบนเส้น */
+.circle-marker-glow {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 1));
+}
+
+/* ให้ dash บนเส้นดูเหมือนวิ่งเข้าหา HQ */
+@keyframes dash-move {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -40;
+  }
+}

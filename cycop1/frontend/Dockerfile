@@ -1,20 +1,18 @@
-# Frontend Dockerfile
 FROM node:20
 
-# Set working directory
 WORKDIR /app/src
 
-# Copy package files
 COPY package*.json ./
 
-# Install dependencies
 RUN npm install
 
-# Copy project files
 COPY . .
 
-# Expose Vite dev server port
+# ลบ .env เก่า แล้วสร้างใหม่
+RUN rm -f /app/src/.env && \
+    echo "VITE_API_BASE_URL=https://defnex-api.please-scan.com" > /app/src/.env && \
+    cat /app/src/.env
+
 EXPOSE 5173
 
-# Default command for development (change to "npm run build" for production)
 CMD ["npm", "run", "dev", "--", "--host"]

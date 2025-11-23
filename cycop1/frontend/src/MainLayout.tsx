@@ -7,16 +7,27 @@ import "./index.css";
 
 const MainLayout = () => {
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
+  const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
 
   return (
     <div className="bg-black h-screen relative overflow-hidden">
       {/* ซ้าย - Sidebar */}
-      <OverlayList mainMapBounds={mapBounds} />
+      <OverlayList
+        mainMapBounds={mapBounds}
+        selectedLayerValue={selectedLayer}
+        onLayerChange={setSelectedLayer}
+      />
 
       {/* เนื้อหากลาง - Main Map */}
-      <div className="fixed left-60 top-0 bottom-0 h-full" style={{ right: '240px' }}>
+      <div
+        className="fixed left-60 top-0 bottom-0 h-full"
+        style={{ right: "240px" }}
+      >
         {/* left-60 = 240px (Sidebar), right = ปรับตามขนาดจริงของ Defcon */}
-        <MapView onBoundsChange={setMapBounds} />
+        <MapView
+          onBoundsChange={setMapBounds}
+          selectedLayer={selectedLayer}
+        />
       </div>
 
       {/* ขวา - Defcon panel */}

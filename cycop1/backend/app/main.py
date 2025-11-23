@@ -41,10 +41,16 @@ async def log_requests(request, call_next):
 
     return response
 
+allowed_origins = [
+    "https://defnex-analytic.please-scan.com", #อันนี้ devlopment environment
+    "https://ads-analytic.rtarf-prod.its-software-services.com", #อันนี้ prod environment (ต้องใช้ผ่าน RTARF network)
+    "http://localhost:5173",      # ไว้ dev
+]
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # แก้เป็น frontend domain จริงถ้าต้องการ
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,6 +161,26 @@ def nodeplot(layer: str = Query(..., description="Layer name")):
         })
 
     return nodes_list
+
+@app.get("/api/defstatus", tags=["DefconStatus"])
+def get_defcon_status():
+    from app.services.get_defcon_status import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetDefConStatus")
+
+@app.get("/api/severities", tags=["Severities"])
+def get_threat_severities():
+    from app.services.get_threat_severities import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatSeverities")
+
+@app.get("/api/threatdistributions", tags=["ThreatDistributions"])
+def get_threat_alertsdistributions():
+    from app.services.get_threat_distributions import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatDistributions")
+
+@app.get("/api/threatalerts", tags=["ThreatAlerts"])
+def get_threat_alerts():
+    from app.services.get_threat_alerts import call_api, ORG_ID
+    return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatAlerts")
 
 # @app.get("/api/scheduler/status", tags=["Scheduler"])
 # def get_scheduler_status():

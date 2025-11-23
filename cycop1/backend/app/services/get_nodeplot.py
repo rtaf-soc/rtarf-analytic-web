@@ -6,18 +6,21 @@ from dotenv import load_dotenv
 
 load_dotenv(".env")
 
-API_PATH = os.getenv("API_PATH", "https://defnex-api.please-scan.com")
-ORG_ID = os.getenv("ORG_ID", "default")
-API_AUTHEN_PASSWORD = os.getenv("API_AUTHEN_PASSWORD", "")
+API_PATH = os.getenv("API_PATH")
+API_KEY = os.getenv("API_AUTHEN_PASSWORD")
+ORG_ID = "default"
+# print("API_PATH = ", API_PATH)
+# print("API_KEY = ", API_KEY)
+# print("ORG_ID = ", ORG_ID)
 
 def make_request(method, api_url, params=None):
     """Make HTTP request to API with BasicAuth"""
     url = f"{API_PATH}/{api_url}"
     try:
         if method.lower() == "get":
-            response = requests.get(url, params=params, auth=HTTPBasicAuth(ORG_ID, API_AUTHEN_PASSWORD))
+            response = requests.get(url, params=params, auth=HTTPBasicAuth("api", API_KEY))
         else:
-            response = requests.post(url, json=params, auth=HTTPBasicAuth(ORG_ID, API_AUTHEN_PASSWORD))
+            response = requests.post(url, json=params, auth=HTTPBasicAuth("api", API_KEY))
         response.raise_for_status()
         print(f"[DEBUG] Request successful: {url}")
         try:
