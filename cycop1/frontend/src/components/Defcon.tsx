@@ -62,9 +62,9 @@ const DevConDashboard = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
     
-  console.log("ENV:", import.meta.env.VITE_API_BASE_URL);
+  // console.log("ENV:", import.meta.env.VITE_API_BASE_URL);
 
   const getThreatColor = (level: number): string => {
     const colorMap: Record<number, string> = {
@@ -97,10 +97,10 @@ const DevConDashboard = () => {
     try {
       const [defconRes, severitiesRes, distributionsRes, alertsRes] =
         await Promise.all([
-          fetch(`${API_BASE_URL}/api/defstatus`),
-          fetch(`${API_BASE_URL}/api/severities`),
-          fetch(`${API_BASE_URL}/api/threatdistributions`),
-          fetch(`${API_BASE_URL}/api/threatalerts`),
+          fetch(`/api/defstatus`),
+          fetch(`/api/severities`),
+          fetch(`/api/threatdistributions`),
+          fetch(`/api/threatalerts`),
         ]);
 
       if (
@@ -133,7 +133,7 @@ const DevConDashboard = () => {
 
       setTopCountries(sortedSeverities);
 
-      // Threat Distribution (Pie chart) - ใช้ threatName
+      // Threat Distribution (Pie chart) - ใช้ threatName !!!
       const distributionsArray = Array.isArray(distributionsData.distributions)
         ? distributionsData.distributions
         : Array.isArray(distributionsData)
@@ -155,7 +155,7 @@ const DevConDashboard = () => {
       );
       setPieData(formattedDistributions);
 
-      // Threat Alerts
+      // Threat Alerts !!!
       const alertsArray = Array.isArray(alertsData.alerts)
         ? alertsData.alerts
         : Array.isArray(alertsData)

@@ -42,7 +42,7 @@ async def log_requests(request, call_next):
     return response
 
 allowed_origins = [
-    "https://defnex-analytic.please-scan.com", #อันนี้ devlopment environment
+    "https://defnex-analytic.please-scan.com", #อันนี้ development environment
     "https://ads-analytic.rtarf-prod.its-software-services.com", #อันนี้ prod environment (ต้องใช้ผ่าน RTARF network)
     "http://localhost:5173",      # ไว้ dev
 ]

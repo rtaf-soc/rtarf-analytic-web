@@ -141,9 +141,8 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
       <TileLayer
-        className="ocean-layer"
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-        opacity={0.35}
+        url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
+        opacity={0.1}
       />
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
@@ -181,7 +180,6 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
           linkPairs.add(key);
 
           return (
-
             <Polyline
               key={key}
               positions={[
