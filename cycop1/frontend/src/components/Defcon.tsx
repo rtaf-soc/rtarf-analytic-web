@@ -133,7 +133,7 @@ const DevConDashboard = () => {
 
       setTopCountries(sortedSeverities);
 
-      // Threat Distribution (Pie chart) - ใช้ threatName
+      // Threat Distribution (Pie chart) - ใช้ threatName !!!
       const distributionsArray = Array.isArray(distributionsData.distributions)
         ? distributionsData.distributions
         : Array.isArray(distributionsData)
@@ -155,7 +155,7 @@ const DevConDashboard = () => {
       );
       setPieData(formattedDistributions);
 
-      // Threat Alerts
+      // Threat Alerts !!!
       const alertsArray = Array.isArray(alertsData.alerts)
         ? alertsData.alerts
         : Array.isArray(alertsData)
