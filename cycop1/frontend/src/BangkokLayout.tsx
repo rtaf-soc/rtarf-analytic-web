@@ -21,12 +21,12 @@ const BangkokLayout = () => {
         <MapViewBangkok onBoundsChange={setMapBounds} />
       </div>
 
-      {/* ขวา */}
+      {/*ขวา*/}
       <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 w-60">
         <DefconBangkok />
       </div>
 
-      {/* ล่าง - Bangkok Threat แนวนอน */}
+      {/* ล่าง-Bangkok Threat แนวนอน */}
       <div className="fixed bottom-0 right-59 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
         <div className="flex items-center gap-2 h-full">
           <div className="flex-shrink-0">

@@ -6,6 +6,11 @@
   filter: hue-rotate(175deg) saturate(1.6) brightness(0.9);
 }
 
+.ocean-layer {
+  filter: saturate(0.6) brightness(0.8); /* ทำให้ดูแบบ stylized ลดความ realistic */
+  mix-blend-mode: multiply; /* ผสมกับชั้นล่างให้ดูเรียบ */
+}
+
 /* ===========================
    ALERT ICON PULSE + GLOW
    =========================== */
