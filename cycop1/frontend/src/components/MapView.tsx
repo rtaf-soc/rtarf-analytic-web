@@ -143,7 +143,6 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
       <TileLayer
         url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
         opacity={0.1}
-        className="ocean-layer"
       />
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
