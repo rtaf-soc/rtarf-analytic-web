@@ -1,7 +1,9 @@
 @import "tailwindcss";
+
 .blue-tone {
   filter: hue-rotate(170deg) saturate(1.6) brightness(0.8);
 }
+
 .ocean-blue .leaflet-tile {
   filter: hue-rotate(175deg) saturate(1.6) brightness(0.9);
 }
@@ -19,7 +21,7 @@
 
   /* ทำให้มันเต้น + glow ไปด้วยกัน */
   animation: alertPulseScale 1.1s infinite ease-in-out,
-             alertPulseGlow 1.1s infinite ease-in-out;
+    alertPulseGlow 1.1s infinite ease-in-out;
 }
 
 .alert-pulse-glow img {
@@ -32,7 +34,7 @@
   height: 24px;
   border-radius: 50%;
   background-color: red;
-  box-shadow: 0 0 15px 5px rgba(255,0,0,0.7);
+  box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.7);
   border: 2px solid white;
 }
 
@@ -42,9 +44,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.4);
   }
+
   100% {
     transform: scale(1);
   }
@@ -58,12 +62,14 @@
       0 0 6px rgba(255, 80, 80, 0.5);
     filter: brightness(1);
   }
+
   50% {
     box-shadow:
       0 0 10px rgba(255, 0, 0, 0.9),
       0 0 25px rgba(255, 0, 0, 0.7);
     filter: brightness(1.25);
   }
+
   100% {
     box-shadow:
       0 0 0px rgba(255, 0, 0, 0.0),
@@ -91,7 +97,8 @@
 
 .link-line-inner {
   stroke-linecap: round;
-  stroke-dasharray: 6 14;              /* ลายขีด */
+  stroke-dasharray: 6 14;
+  /* ลายขีด */
   animation: dash-move 2.8s linear infinite;
   filter: drop-shadow(0 0 8px rgba(160, 255, 255, 1));
 }
@@ -106,7 +113,16 @@
   from {
     stroke-dashoffset: 0;
   }
+
   to {
     stroke-dashoffset: -40;
   }
 }
+
+/* สีน้ำทะเล */
+.leaflet-tile.ocean-layer {
+  filter: hue-rotate(215deg) saturate(2.8) brightness(0.20);
+}
+
+
+
