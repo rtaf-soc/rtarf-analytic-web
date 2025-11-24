@@ -111,11 +111,11 @@
 
 
 /* MOVING DOT */
-.circle-marker-glow {
+/* .circle-marker-glow {
   filter:
     drop-shadow(0 0 4px rgba(0, 255, 255, 0.8))
     drop-shadow(0 0 9px rgba(0, 255, 255, 0.7));
-}
+} */
 
 /* OCEAN COLORING */
 .ocean-tile {

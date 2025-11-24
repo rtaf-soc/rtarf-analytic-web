@@ -125,46 +125,46 @@ function createBezierCurve(
 // MOVING GLOW DOT (เม็ดแสงวิ่งตามโค้ง)
 // ===============================
 
-const MovingGlowDot = ({ curve }: { curve: LatLngTuple[] }) => {
-  const [pos, setPos] = useState<LatLngTuple>(curve[0] || [0, 0]);
-  const progress = useRef(0);
+// const MovingGlowDot = ({ curve }: { curve: LatLngTuple[] }) => {
+//   const [pos, setPos] = useState<LatLngTuple>(curve[0] || [0, 0]);
+//   const progress = useRef(0);
 
-  useEffect(() => {
-    if (!curve || curve.length === 0) return;
+//   useEffect(() => {
+//     if (!curve || curve.length === 0) return;
 
-    let frame: number;
+//     let frame: number;
 
-    const animate = () => {
-      // ปรับความเร็วที่นี่ (0.004 ช้ากว่า / 0.01 เร็วกว่า)
-      progress.current += 0.007;
-      if (progress.current > 1) progress.current = 0;
+//     const animate = () => {
+//       // ปรับความเร็วที่นี่ (0.004 ช้ากว่า / 0.01 เร็วกว่า)
+//       progress.current += 0.007;
+//       if (progress.current > 1) progress.current = 0;
 
-      const idx = Math.floor(progress.current * (curve.length - 1));
-      setPos(curve[idx]);
+//       const idx = Math.floor(progress.current * (curve.length - 1));
+//       setPos(curve[idx]);
 
-      frame = requestAnimationFrame(animate);
-    };
+//       frame = requestAnimationFrame(animate);
+//     };
 
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [curve]);
+//     frame = requestAnimationFrame(animate);
+//     return () => cancelAnimationFrame(frame);
+//   }, [curve]);
 
-  if (!curve || curve.length === 0) return null;
+//   if (!curve || curve.length === 0) return null;
 
-  return (
-    <CircleMarker
-      center={pos}
-      radius={3.5}
-      pathOptions={{
-        color: "#00FFFF",
-        fillColor: "#00FFFF",
-        fillOpacity: 1,
-        weight: 1,
-      }}
-      className="circle-marker-glow"
-    />
-  );
-};
+//   return (
+//     <CircleMarker
+//       center={pos}
+//       radius={3.5}
+//       pathOptions={{
+//         color: "#00FFFF",
+//         fillColor: "#00FFFF",
+//         fillOpacity: 1,
+//         weight: 1,
+//       }}
+//       className="circle-marker-glow"
+//     />
+//   );
+// };
 
 // ===============================
 // MAIN MAP VIEW
@@ -344,7 +344,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
               />
 
               {/* เม็ดแสงวิ่งตามโค้ง */}
-              <MovingGlowDot curve={curve} />
+              {/* <MovingGlowDot curve={curve} /> */}
             </React.Fragment>
           );
         })
