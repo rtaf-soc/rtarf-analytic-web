@@ -91,42 +91,56 @@
 
 
 
-/* ==============================
-   NETWORK LINK GLOW & DEPTH
-   ============================== */
+/* ===============================
+   NETWORK LINK GLOW (FINAL)
+================================ */
 
 .link-line-outer {
-  /* ฮาโลนอก ให้ดูฟุ้ง ๆ แบบในรูปตัวอย่าง */
-  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 0.9));
+  filter:
+    drop-shadow(0 0 6px rgba(0, 255, 255, 0.55))
+    drop-shadow(0 0 12px rgba(0, 255, 255, 0.6));
 }
 
+/* Inner neon – คมแต่ไม่ฟุ้งเกินไป */
 .link-line-inner {
   stroke-linecap: round;
-  stroke-dasharray: 6 14;
-  /* ลายขีด */
-  animation: dash-move 2.8s linear infinite;
-  filter: drop-shadow(0 0 8px rgba(160, 255, 255, 1));
+  filter:
+    drop-shadow(0 0 4px rgba(150, 255, 255, 0.5))
+    drop-shadow(0 0 8px rgba(150, 255, 255, 0.3));
 }
 
-/* glow เพิ่มสำหรับจุดที่วิ่งบนเส้น */
+
+/* MOVING DOT */
 .circle-marker-glow {
-  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 1));
+  filter:
+    drop-shadow(0 0 4px rgba(0, 255, 255, 0.8))
+    drop-shadow(0 0 9px rgba(0, 255, 255, 0.7));
 }
 
-/* ให้ dash บนเส้นดูเหมือนวิ่งเข้าหา HQ */
-@keyframes dash-move {
-  from {
-    stroke-dashoffset: 0;
-  }
-
-  to {
-    stroke-dashoffset: -40;
-  }
-}
-
-/* สีน้ำทะเล */
+/* OCEAN COLORING */
 .ocean-tile {
-  filter: hue-rotate(10100deg) saturate(3.2) brightness(0.55) contrast(3) !important;
+  filter: hue-rotate(10100deg) saturate(3.2) brightness(0.55)
+    contrast(3) !important;
+}
+
+
+/* Scroll */
+.custom-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #1b1d20;
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #2c2f33;
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3a3d41;
 }
 
 

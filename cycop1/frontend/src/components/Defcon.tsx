@@ -60,14 +60,36 @@ const DevConDashboard = () => {
 
   const getThreatTypeColor = (type: string): { color: string; hex: string } => {
     const colorMap: Record<string, { color: string; hex: string }> = {
+      // Original mappings
       "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
       "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
       "DDoS": { color: "bg-green-500", hex: "#22c55e" },
       "Phising": { color: "bg-yellow-400", hex: "#facc15" },
-      "Others": { color: "bg-gray-500", hex: "#6b7280" },
       "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
       "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
       "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
+      
+      // API threat types
+      "Spyware Detected via Anti-Spyware profile": { color: "bg-pink-500", hex: "#ec4899" },
+      "Vulnerability": { color: "bg-orange-500", hex: "#f97316" },
+      "Scan Detected via Zone Protection Profile": { color: "bg-purple-500", hex: "#a855f7" },
+      "Malware": { color: "bg-red-500", hex: "#ef4444" },
+      "Other": { color: "bg-gray-500", hex: "#6b7280" },
+      "Lateral Movement": { color: "bg-blue-500", hex: "#3b82f6" },
+      "Credential Access": { color: "bg-yellow-500", hex: "#eab308" },
+      "Reconnaissance": { color: "bg-cyan-500", hex: "#06b6d4" },
+      "Antivirus": { color: "bg-green-500", hex: "#22c55e" },
+      "Persistence": { color: "bg-indigo-500", hex: "#6366f1" },
+      "Discovery": { color: "bg-teal-500", hex: "#14b8a6" },
+      "Execution": { color: "bg-rose-500", hex: "#f43f5e" },
+      "Command and Control": { color: "bg-violet-500", hex: "#8b5cf6" },
+      "Initial Access": { color: "bg-amber-500", hex: "#f59e0b" },
+      "Flood Detected via Zone Protection Profile": { color: "bg-red-400", hex: "#f87171" },
+      "Exfiltration": { color: "bg-fuchsia-500", hex: "#d946ef" },
+      "Collection": { color: "bg-lime-500", hex: "#84cc16" },
+      "anomaly": { color: "bg-gray-400", hex: "#9ca3af" },
+      
+      "Others": { color: "bg-gray-500", hex: "#6b7280" },
     };
     return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
   };
@@ -123,42 +145,81 @@ const DevConDashboard = () => {
         ? distributionsData
         : [];
 
-      // กรองเฉพาะ items ที่มี percentage > 0
+      // กรองเฉพาะ items ที่มี quantity > 0 หรือ percentage > 0 (รองรับทั้ง local และ production)
       const validDistributions = distributionsArray.filter(
-        (item: any) => (item.percentage || item.value || 0) > 0
+        (item: any) => (item.quantity || 0) > 0 || (item.percentage || item.value || 0) > 0
       );
 
       let formattedDistributions: PieDataItem[];
 
       if (validDistributions.length === 0) {
-        // ถ้าไม่มีข้อมูล ไม่แสดงอะไร
         formattedDistributions = [];
       } else {
-        // เรียงตาม percentage จากมากไปน้อย
+        // คำนวณ total quantity สำหรับคำนวณ percentage
+        const totalQuantity = validDistributions.reduce(
+          (sum: number, item: any) => sum + (item.quantity || 0),
+          0
+        );
+
+        // เช็คว่าข้อมูลมี percentage พร้อมใช้หรือไม่
+        const hasPercentage = validDistributions.some(
+          (item: any) => (item.percentage || item.value || 0) > 0
+        );
+
+        // เรียงตาม quantity หรือ percentage (ขึ้นกับว่ามีอะไร)
         const sortedDistributions = [...validDistributions].sort(
-          (a: any, b: any) =>
-            (b.percentage || b.value || 0) - (a.percentage || a.value || 0)
+          (a: any, b: any) => {
+            if (hasPercentage) {
+              return (b.percentage || b.value || 0) - (a.percentage || a.value || 0);
+            }
+            return (b.quantity || 0) - (a.quantity || 0);
+          }
         );
 
         // แยกเป็น top 4 และที่เหลือ
         const top4 = sortedDistributions.slice(0, 4);
         const others = sortedDistributions.slice(4);
 
-        // รวม percentage ของ others
-        const othersTotal = others.reduce(
+        // รวมค่าของ others
+        const othersQuantity = others.reduce(
+          (sum: number, item: any) => sum + (item.quantity || 0),
+          0
+        );
+        const othersPercentageValue = others.reduce(
           (sum: number, item: any) => sum + (item.percentage || item.value || 0),
           0
         );
 
-        // format top 4
+        // คำนวณ percentage สำหรับ others
+        let othersPercentage;
+        if (hasPercentage) {
+          othersPercentage = othersPercentageValue;
+        } else {
+          othersPercentage = totalQuantity > 0 
+            ? Math.round((othersQuantity / totalQuantity) * 100) 
+            : 0;
+        }
+
+        // format top 4 พร้อมคำนวณ percentage
         formattedDistributions = top4.map(
           (item: any): PieDataItem => {
             const label =
               item.threatName || item.type || item.label || item.name || "";
             const colors = getThreatTypeColor(label);
+            
+            // ใช้ percentage ที่มีอยู่แล้ว หรือคำนวณจาก quantity
+            let percentage;
+            if (hasPercentage) {
+              percentage = item.percentage || item.value || 0;
+            } else {
+              percentage = totalQuantity > 0 
+                ? Math.round(((item.quantity || 0) / totalQuantity) * 100) 
+                : 0;
+            }
+            
             return {
               label,
-              value: item.percentage || item.value || 0,
+              value: percentage,
               color: colors.color,
               hex: colors.hex,
             };
@@ -166,11 +227,11 @@ const DevConDashboard = () => {
         );
 
         // เพิ่ม Others ถ้ามี
-        if (othersTotal > 0) {
+        if (othersQuantity > 0 || othersPercentageValue > 0) {
           const colors = getThreatTypeColor("Others");
           formattedDistributions.push({
             label: "Others",
-            value: othersTotal,
+            value: othersPercentage,
             color: colors.color,
             hex: colors.hex,
           });

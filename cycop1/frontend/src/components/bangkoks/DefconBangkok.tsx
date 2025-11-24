@@ -372,7 +372,7 @@ const DevConBangkok = () => {
           THREAT ALERT LIST
         </div>
 
-        <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+        <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 custom-scroll">
           {threats.map((threat, idx) => (
             <div
               key={idx}

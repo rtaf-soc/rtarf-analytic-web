@@ -9,7 +9,7 @@ const Sitrep: React.FC = () => {
                     SITREP
                 </div>
 
-                <div className="bg-cyan-50 rounded p-2 space-y-1.5 text-[15px] h-full overflow-y-auto">
+                <div className="bg-cyan-50 rounded p-2 space-y-1.5 text-[15px] h-full overflow-y-auto custom-scroll">
                     {/* H/W Information */}
                     <div>
                         <div className="text-black font-semibold mb-0.5">
