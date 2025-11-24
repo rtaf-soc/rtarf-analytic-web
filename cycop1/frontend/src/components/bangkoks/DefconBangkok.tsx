@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-
+import { RefreshCw } from "lucide-react";
 
 // Define types
 interface Threat {
   id: string;
-  code: string;
+  incident: number;
   color: string;
 }
 
@@ -31,29 +30,14 @@ interface ApiSeverity {
   mitrTacticName?: string | null;
 }
 
-// interface ApiCountry {
-//   name?: string;
-//   country?: string;
-//   count?: number;
-//   value?: number;
-//   quantity?: number;
-// }
-
-// interface ApiDistribution {
-//   type?: string;
-//   label?: string;
-//   name?: string;
-//   percentage?: number;
-//   value?: number;
-// }
-
 interface ApiAlert {
-  id?: string;
-  code?: string;
-  timestamp?: string;
+  threatName?: string;
+  threatDetail?: string;
   level?: number;
+  incidentID?: string;
   severity?: number;
 }
+
 const DevConBangkok = () => {
   const [defconLevel, setDefconLevel] = useState<number>(1);
   const [threats, setThreats] = useState<Threat[]>([]);
@@ -61,10 +45,6 @@ const DevConBangkok = () => {
   const [topCountries, setTopCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-    
-  // console.log("ENV:", import.meta.env.VITE_API_BASE_URL);
 
   const getThreatColor = (level: number): string => {
     const colorMap: Record<number, string> = {
@@ -83,7 +63,7 @@ const DevConBangkok = () => {
       "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
       "DDoS": { color: "bg-green-500", hex: "#22c55e" },
       "Phising": { color: "bg-yellow-400", hex: "#facc15" },
-      "Others": { color: "bg-blue-400", hex: "#60a5fa" },
+      "Others": { color: "bg-gray-500", hex: "#6b7280" },
       "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
       "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
       "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
@@ -119,6 +99,7 @@ const DevConBangkok = () => {
 
       setDefconLevel(defconData.level || defconData.defconLevel || 1);
 
+      // Severities (Bar chart)
       const severityArray: ApiSeverity[] = Array.isArray(severitiesData)
         ? severitiesData
         : [];
@@ -128,39 +109,81 @@ const DevConBangkok = () => {
         .slice(0, 3)
         .map((item) => ({
           name: item.serverity || "Unknown",
-          percentage: Math.min(100, Math.max(20, item.quantity || 0) / 50), // ปรับ scale ให้อยู่ในกราฟ
+          percentage: Math.min(100, Math.max(20, item.quantity || 0) / 50),
         }));
 
       setTopCountries(sortedSeverities);
 
-      // Threat Distribution (Pie chart) - ใช้ threatName
+      // Threat Distribution (Pie chart)
       const distributionsArray = Array.isArray(distributionsData.distributions)
         ? distributionsData.distributions
         : Array.isArray(distributionsData)
         ? distributionsData
         : [];
 
-      const formattedDistributions = distributionsArray.map(
-        (item: any): PieDataItem => {
-          const label =
-            item.threatName || item.type || item.label || item.name || "";
-          const colors = getThreatTypeColor(label);
-          return {
-            label,
-            value: item.percentage || item.value || 0,
+      // กรองเฉพาะ items ที่มี percentage > 0
+      const validDistributions = distributionsArray.filter(
+        (item: any) => (item.percentage || item.value || 0) > 0
+      );
+
+      let formattedDistributions: PieDataItem[];
+
+      if (validDistributions.length === 0) {
+        // ถ้าไม่มีข้อมูล ไม่แสดงอะไร
+        formattedDistributions = [];
+      } else {
+        // เรียงตาม percentage จากมากไปน้อย
+        const sortedDistributions = [...validDistributions].sort(
+          (a: any, b: any) =>
+            (b.percentage || b.value || 0) - (a.percentage || a.value || 0)
+        );
+
+        // แยกเป็น top 4 และที่เหลือ
+        const top4 = sortedDistributions.slice(0, 4);
+        const others = sortedDistributions.slice(4);
+
+        // รวม percentage ของ others
+        const othersTotal = others.reduce(
+          (sum: number, item: any) => sum + (item.percentage || item.value || 0),
+          0
+        );
+
+        // format top 4
+        formattedDistributions = top4.map(
+          (item: any): PieDataItem => {
+            const label =
+              item.threatName || item.type || item.label || item.name || "";
+            const colors = getThreatTypeColor(label);
+            return {
+              label,
+              value: item.percentage || item.value || 0,
+              color: colors.color,
+              hex: colors.hex,
+            };
+          }
+        );
+
+        // เพิ่ม Others ถ้ามี
+        if (othersTotal > 0) {
+          const colors = getThreatTypeColor("Others");
+          formattedDistributions.push({
+            label: "Others",
+            value: othersTotal,
             color: colors.color,
             hex: colors.hex,
-          };
+          });
         }
-      );
+      }
+
       setPieData(formattedDistributions);
 
-      // Threat Alerts
+      // Threat Alerts - ใช้ threatName และ incidentID
       const alertsArray = Array.isArray(alertsData.alerts)
         ? alertsData.alerts
         : Array.isArray(alertsData)
         ? alertsData
         : [];
+      
       const formattedAlerts = alertsArray
         .sort(
           (a: ApiAlert, b: ApiAlert) =>
@@ -168,8 +191,8 @@ const DevConBangkok = () => {
         )
         .map(
           (alert: ApiAlert, idx: number): Threat => ({
-            id: alert.id || `THREAT ${idx + 1}`,
-            code: alert.code || alert.timestamp || `CODE${idx}`,
+            id: alert.threatName || `THREAT ${idx + 1}`,
+            incident: parseInt(alert.incidentID || `${idx}`),
             color: getThreatColor(alert.level || alert.severity || 5),
           })
         );
@@ -359,7 +382,7 @@ const DevConBangkok = () => {
               <div className="flex flex-col text-[15px] leading-tight">
                 <span className="text-white font-semibold">{threat.id}</span>
                 <span className="text-white font-mono text-[12px]">
-                  {threat.code}
+                  {threat.incident}
                 </span>
               </div>
             </div>
