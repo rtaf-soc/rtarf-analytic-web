@@ -136,14 +136,28 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
+      {/* base dark map */}
       <TileLayer
         attribution="&copy; OpenStreetMap & CartoDB"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
+
+      {/* ocean layer – บังคับใส่ class ให้รูป tile ทุกอัน */}
       <TileLayer
-        url="https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-        opacity={0.1}
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
+        opacity={0.20}
+        maxZoom={5}
+        eventHandlers={{
+          tileload: (e: any) => {
+            const tile = e.tile as HTMLImageElement | null;
+            if (tile) {
+              tile.classList.add("ocean-tile");
+            }
+          },
+        }}
       />
+
+      {/* labels / boundaries */}
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
@@ -188,7 +202,7 @@ const MapView: React.FC<MapViewProps> = ({ onBoundsChange, selectedLayer }) => {
               ]}
               pathOptions={{
                 color: "#AFFFFF",
-                weight: 3, // ลดจาก 2 → 1.4
+                weight: 3,
                 opacity: 2,
               }}
               className="link-line-inner"
