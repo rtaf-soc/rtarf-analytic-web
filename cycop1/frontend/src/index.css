@@ -125,9 +125,18 @@
 }
 
 /* สีน้ำทะเล */
-.leaflet-tile.ocean-layer {
-  filter: hue-rotate(215deg) saturate(2.8) brightness(0.20);
+.ocean-tile {
+  filter: hue-rotate(10100deg) saturate(3.2) brightness(0.55) contrast(3) !important;
 }
+
+
+
+
+
+
+
+
+
 
 
 

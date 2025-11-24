@@ -177,7 +177,16 @@ const MapViewBangkok: React.FC<MapViewProps> = ({ onBoundsChange }) => {
       />
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-        opacity={0.1}
+        opacity={0.20}
+        maxZoom={5}
+        eventHandlers={{
+          tileload: (e: any) => {
+            const tile = e.tile as HTMLImageElement | null;
+            if (tile) {
+              tile.classList.add("ocean-tile");
+            }
+          },
+        }}
       />
 
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
