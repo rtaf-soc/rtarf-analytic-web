@@ -133,7 +133,7 @@ const DevConDashboard = () => {
         .map((item) => ({
           name: item.serverity || "Unknown",
           quantity: item.quantity || 0,
-          percentage: Math.min(100, Math.max(20, (item.quantity || 0) / 20)),
+          percentage: Math.min(100, Math.max(10, (item.quantity || 0) / 30)),
         }));
 
       setTopCountries(sortedSeverities);
@@ -161,10 +161,12 @@ const DevConDashboard = () => {
           0
         );
 
-        // เช็คว่าข้อมูลมี percentage พร้อมใช้หรือไม่
-        const hasPercentage = validDistributions.some(
-          (item: any) => (item.percentage || item.value || 0) > 0
+        // เช็คว่าข้อมูลมี percentage ที่ใช้งานได้จริงหรือไม่ (ต้องมากกว่า 0)
+        const totalPercentage = validDistributions.reduce(
+          (sum: number, item: any) => sum + (item.percentage || item.value || 0),
+          0
         );
+        const hasPercentage = totalPercentage > 0;
 
         // เรียงตาม quantity หรือ percentage (ขึ้นกับว่ามีอะไร)
         const sortedDistributions = [...validDistributions].sort(
@@ -427,16 +429,17 @@ const DevConDashboard = () => {
                 {pieData.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-[4px] text-[8px]"
+                    className="flex items-center gap-[4px] text-[7px]"
                   >
-                    <div className={`w-2 h-2 rounded-sm ${item.color}`}></div>
+                    <div className={`w-2 h-2 rounded-sm ${item.color} flex-shrink-0`}></div>
                     <span
-                      className="flex-1 truncate"
+                      className="flex-1 truncate text-ellipsis overflow-hidden whitespace-nowrap"
                       style={{ color: item.hex }}
+                      title={item.label}
                     >
                       {item.label}
                     </span>
-                    <span className="text-white">{item.value}%</span>
+                    <span className="text-white flex-shrink-0">{item.value}%</span>
                   </div>
                 ))}
               </div>
