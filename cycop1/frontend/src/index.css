@@ -144,6 +144,73 @@
 }
 
 
+/* ================================
+   HQ ALERT HEARTBEAT
+================================ */
+.rtarf-alert-heartbeat {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rtarf-alert-heartbeat img {
+  width: 32px;
+  height: 32px;
+  animation: rtarf-heartbeat 1.2s infinite ease-in-out;
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.9));
+}
+
+.rtarf-alert-heartbeat::after {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 0, 0, 0.7);
+  animation: rtarf-heartbeat-ring 1.2s infinite ease-out;
+}
+
+@keyframes rtarf-heartbeat {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.25); }
+  35% { transform: scale(1); }
+  55% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rtarf-heartbeat-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* ================================
+   NORMAL HQ GLOW (ฟ้า)
+================================ */
+.hq-normal-glow img {
+  width: 100%;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9));
+  animation: hq-glow-breath 3s ease-in-out infinite;
+}
+
+@keyframes hq-glow-breath {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9));
+  }
+  50% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 1));
+  }
+}
+
+
 
 
 
