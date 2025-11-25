@@ -55,7 +55,7 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
     };
     loadDefinitions();
   }, []);
-
+  console.log("🚀 Frontend Sending Date:",dateRange)
   // 2. ฟังก์ชันยิง API (POST /api/mitrestats)
   const fetchData = useCallback(async (isRefresh = false) => {
     // ต้องรอให้ loadDefinitions เสร็จก่อนถึงจะยิง API ได้ (กันพลาด)

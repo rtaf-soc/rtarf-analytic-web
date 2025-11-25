@@ -97,9 +97,24 @@ const MitreAttackNavigator: React.FC = () => {
     return []; 
   };
 
-  const detectedCount = useMemo(() => 
-    techniques.filter((t) => (techniqueStats[t.id]?.count || 0) > 0).length,
-  [techniques, techniqueStats]);
+  // แก้ไขการนับจำนวน: ให้นับเฉพาะ "Parent ID" ที่ไม่ซ้ำกัน
+  const detectedCount = useMemo(() => {
+    const activeParentIds = new Set<string>();
+
+    // วนลูปตรวจสอบทุกเทคนิคที่มีข้อมูล Stats
+    Object.entries(techniqueStats).forEach(([id, stat]) => {
+      if (stat.count > 0) {
+        const parentId = id.split('.')[0];
+        const isValidParent = techniques.some(t => t.id === parentId);
+        
+        if (isValidParent) {
+          activeParentIds.add(parentId);
+        }
+      }
+    });
+
+    return activeParentIds.size;
+  }, [techniqueStats, techniques]);
 
   // --- 5. Date Handlers ---
   const handleDatePreset = (days: number) => {
