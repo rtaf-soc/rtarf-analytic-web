@@ -47,6 +47,31 @@ const DevConDashboard = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  //Helper Function: ย่อชื่อ Threat ที่ยาวเกินไป
+  const formatThreatName = (name: string): string => {
+    const nameMap: Record<string, string> = {
+      "Spyware Detected via Anti-Spyware profile": "Spyware (Anti-Spyware)",
+      "Scan Detected via Zone Protection Profile": "Zone Protection Scan",
+      "Flood Detected via Zone Protection Profile": "Zone Protection Flood",
+      "Command and Control": "C2",
+      "Vulnerability Protection": "Vulnerability",
+      "Cryptominer Detected via Anti-Spyware profile": "Cryptominer",
+      // เพิ่มรายการอื่นๆ ตามต้องการ
+    };
+
+    // ถ้ามีใน Map ให้ใช้ชื่อย่อ ถ้าไม่มีให้ใช้ชื่อเดิม
+    if (nameMap[name]) {
+      return nameMap[name];
+    }
+
+    // Optional: ถ้ายังยาวเกิน 25 ตัวอักษร ให้ตัดคำอัตโนมัติ
+    if (name.length > 25) {
+      return name.substring(0, 23) + "...";
+    }
+
+    return name;
+  };
+
   const getThreatColor = (level: number): string => {
     const colorMap: Record<number, string> = {
       1: "bg-red-600",
@@ -70,9 +95,9 @@ const DevConDashboard = () => {
       "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
       
       // API threat types
-      "Spyware Detected via Anti-Spyware profile": { color: "bg-pink-500", hex: "#ec4899" },
-      "Vulnerability": { color: "bg-orange-500", hex: "#f97316" },
-      "Scan Detected via Zone Protection Profile": { color: "bg-purple-500", hex: "#a855f7" },
+      "Spyware Detected via Anti-Spyware profile": { color: "bg-purple-500", hex: "#a855f7" },
+      "Vulnerability": { color: "bg-pink-500", hex: "#ec4899" },
+      "Scan Detected via Zone Protection Profile": { color: "bg-green-500", hex: "#22c55e" },
       "Malware": { color: "bg-red-500", hex: "#ef4444" },
       "Other": { color: "bg-gray-500", hex: "#6b7280" },
       "Lateral Movement": { color: "bg-blue-500", hex: "#3b82f6" },
@@ -435,9 +460,10 @@ const DevConDashboard = () => {
                     <span
                       className="flex-1 truncate text-ellipsis overflow-hidden whitespace-nowrap"
                       style={{ color: item.hex }}
-                      title={item.label}
+                      title={item.label} // แสดงชื่อเต็มเมื่อเอาเมาส์ชี้
                     >
-                      {item.label}
+                      {/* เรียกใช้ฟังก์ชันย่อชื่อที่นี่ */}
+                      {formatThreatName(item.label)}
                     </span>
                     <span className="text-white flex-shrink-0">{item.value}%</span>
                   </div>
@@ -462,7 +488,10 @@ const DevConDashboard = () => {
             >
               <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
               <div className="flex flex-col text-[15px] leading-tight">
-                <span className="text-white font-semibold">{threat.id}</span>
+                <span className="text-white font-semibold">
+                    {/* สามารถใช้ formatThreatName ที่นี่ได้ด้วยถ้าต้องการ */}
+                    {formatThreatName(threat.id)}
+                </span>
                 <span className="text-white font-mono text-[12px]">
                   {threat.incident}
                 </span>

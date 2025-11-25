@@ -33,7 +33,7 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
   const [eventStats, setEventStats] = useState({
     total: 0, critical: 0, high: 0, medium: 0, low: 0, tactics: 0,
   });
-  // --- เพิ่ม State นี้สำหรับหน้า Analytics โดยเฉพาะ ---
+  // --- เพิ่ม State นี้สำหรับหน้า Analytics ---
   const [summaryStats, setSummaryStats] = useState<any>(null);
 
   const getDaysInRange = useCallback(() => {
