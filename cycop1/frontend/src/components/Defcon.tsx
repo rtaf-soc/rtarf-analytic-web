@@ -3,505 +3,509 @@ import { RefreshCw } from "lucide-react";
 
 // Define types
 interface Threat {
-  id: string;
-  incident: number;
-  color: string;
+  id: string;
+  incident: number;
+  color: string;
 }
 
 interface PieDataItem {
-  label: string;
-  value: number;
-  color: string;
-  hex: string;
+  label: string;
+  value: number;
+  color: string;
+  hex: string;
 }
 
 interface Country {
-  name: string;
-  percentage: number;
-  quantity: number;
+  name: string;
+  percentage: number;
+  quantity: number;
 }
 
 interface ApiSeverity {
-  threatName?: string;
-  threatDetail?: string;
-  serverity?: string;
-  quantity?: number;
-  percentage?: number;
-  mitrTechniqueName?: string | null;
-  mitrTacticName?: string | null;
+  threatName?: string;
+  threatDetail?: string;
+  serverity?: string;
+  quantity?: number;
+  percentage?: number;
+  mitrTechniqueName?: string | null;
+  mitrTacticName?: string | null;
 }
 
 interface ApiAlert {
-  threatName?: string;
-  threatDetail?: string;
-  level?: number;
-  incidentID?: string;
-  severity?: number;
+  threatName?: string;
+  threatDetail?: string;
+  level?: number;
+  incidentID?: string;
+  severity?: number;
 }
 
 const DevConDashboard = () => {
-  const [defconLevel, setDefconLevel] = useState<number>(1);
-  const [threats, setThreats] = useState<Threat[]>([]);
-  const [pieData, setPieData] = useState<PieDataItem[]>([]);
-  const [topCountries, setTopCountries] = useState<Country[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [defconLevel, setDefconLevel] = useState<number>(1);
+  const [threats, setThreats] = useState<Threat[]>([]);
+  const [pieData, setPieData] = useState<PieDataItem[]>([]);
+  const [topCountries, setTopCountries] = useState<Country[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  //Helper Function: ย่อชื่อ Threat ที่ยาวเกินไป
+  const formatThreatName = (name: string): string => {
+    const nameMap: Record<string, string> = {
+      "Spyware Detected via Anti-Spyware profile": "Spyware (Anti-Spyware)",
+      "Scan Detected via Zone Protection Profile": "Zone Protection Scan",
+      "Flood Detected via Zone Protection Profile": "Zone Protection Flood",
+      "Command and Control": "C2",
+      "Vulnerability Protection": "Vulnerability",
+      "Cryptominer Detected via Anti-Spyware profile": "Cryptominer",
+      // เพิ่มรายการอื่นๆ ตามต้องการ
+    };
 
-  //Helper Function: ย่อชื่อ Threat ที่ยาวเกินไป
-  const formatThreatName = (name: string): string => {
-    const nameMap: Record<string, string> = {
-      "Spyware Detected via Anti-Spyware profile": "Spyware (Anti-Spyware)",
-      "Scan Detected via Zone Protection Profile": "Zone Protection Scan",
-      "Flood Detected via Zone Protection Profile": "Zone Protection Flood",
-      "Command and Control": "C2",
-      "Vulnerability Protection": "Vulnerability",
-      "Cryptominer Detected via Anti-Spyware profile": "Cryptominer",
-      // เพิ่มรายการอื่นๆ ตามต้องการ
-    };
+    if (nameMap[name]) {
+      return nameMap[name];
+    }
 
-    // ถ้ามีใน Map ให้ใช้ชื่อย่อ ถ้าไม่มีให้ใช้ชื่อเดิม
-    if (nameMap[name]) {
-      return nameMap[name];
-    }
+    if (name.length > 25) {
+      return name.substring(0, 23) + "...";
+    }
 
-    // Optional: ถ้ายังยาวเกิน 25 ตัวอักษร ให้ตัดคำอัตโนมัติ
-    if (name.length > 25) {
-      return name.substring(0, 23) + "...";
-    }
+    return name;
+  };
 
-    return name;
-  };
+  const getThreatColor = (level: number): string => {
+    const colorMap: Record<number, string> = {
+      1: "bg-red-600",
+      2: "bg-red-500",
+      3: "bg-orange-500",
+      4: "bg-yellow-400",
+      5: "bg-yellow-300",
+    };
+    return colorMap[level] || "bg-gray-500";
+  };
 
-  const getThreatColor = (level: number): string => {
-    const colorMap: Record<number, string> = {
-      1: "bg-red-600",
-      2: "bg-red-500",
-      3: "bg-orange-500",
-      4: "bg-yellow-400",
-      5: "bg-yellow-300",
-    };
-    return colorMap[level] || "bg-gray-500";
-  };
+  const getThreatTypeColor = (type: string): { color: string; hex: string } => {
+    const colorMap: Record<string, { color: string; hex: string }> = {
+      // Original mappings
+      "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
+      "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
+      "DDoS": { color: "bg-green-500", hex: "#22c55e" },
+      "Phising": { color: "bg-yellow-400", hex: "#facc15" },
+      "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
+      "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
+      "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
 
-  const getThreatTypeColor = (type: string): { color: string; hex: string } => {
-    const colorMap: Record<string, { color: string; hex: string }> = {
-      // Original mappings
-      "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
-      "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
-      "DDoS": { color: "bg-green-500", hex: "#22c55e" },
-      "Phising": { color: "bg-yellow-400", hex: "#facc15" },
-      "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
-      "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
-      "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
-      
-      // API threat types
-      "Spyware Detected via Anti-Spyware profile": { color: "bg-purple-500", hex: "#a855f7" },
-      "Vulnerability": { color: "bg-pink-500", hex: "#ec4899" },
-      "Scan Detected via Zone Protection Profile": { color: "bg-green-500", hex: "#22c55e" },
-      "Malware": { color: "bg-red-500", hex: "#ef4444" },
-      "Other": { color: "bg-gray-500", hex: "#6b7280" },
-      "Lateral Movement": { color: "bg-blue-500", hex: "#3b82f6" },
-      "Credential Access": { color: "bg-yellow-500", hex: "#eab308" },
-      "Reconnaissance": { color: "bg-cyan-500", hex: "#06b6d4" },
-      "Antivirus": { color: "bg-green-500", hex: "#22c55e" },
-      "Persistence": { color: "bg-indigo-500", hex: "#6366f1" },
-      "Discovery": { color: "bg-teal-500", hex: "#14b8a6" },
-      "Execution": { color: "bg-rose-500", hex: "#f43f5e" },
-      "Command and Control": { color: "bg-violet-500", hex: "#8b5cf6" },
-      "Initial Access": { color: "bg-amber-500", hex: "#f59e0b" },
-      "Flood Detected via Zone Protection Profile": { color: "bg-red-400", hex: "#f87171" },
-      "Exfiltration": { color: "bg-fuchsia-500", hex: "#d946ef" },
-      "Collection": { color: "bg-lime-500", hex: "#84cc16" },
-      "anomaly": { color: "bg-gray-400", hex: "#9ca3af" },
-      
-      "Others": { color: "bg-gray-500", hex: "#6b7280" },
-    };
-    return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
-  };
+      // API threat types
+      "Spyware Detected via Anti-Spyware profile": {
+        color: "bg-pink-500",
+        hex: "#ec4899",
+      },
+      "Vulnerability": { color: "bg-orange-500", hex: "#f97316" },
+      "Scan Detected via Zone Protection Profile": {
+        color: "bg-purple-500",
+        hex: "#a855f7",
+      },
+      "Malware": { color: "bg-red-500", hex: "#ef4444" },
+      "Other": { color: "bg-gray-500", hex: "#6b7280" },
+      "Lateral Movement": { color: "bg-blue-500", hex: "#3b82f6" },
+      "Credential Access": { color: "bg-yellow-500", hex: "#eab308" },
+      "Reconnaissance": { color: "bg-cyan-500", hex: "#06b6d4" },
+      "Antivirus": { color: "bg-green-500", hex: "#22c55e" },
+      "Persistence": { color: "bg-indigo-500", hex: "#6366f1" },
+      "Discovery": { color: "bg-teal-500", hex: "#14b8a6" },
+      "Execution": { color: "bg-rose-500", hex: "#f43f5e" },
+      "Command and Control": { color: "bg-violet-500", hex: "#8b5cf6" },
+      "Initial Access": { color: "bg-amber-500", hex: "#f59e0b" },
+      "Flood Detected via Zone Protection Profile": {
+        color: "bg-red-400",
+        hex: "#f87171",
+      },
+      "Exfiltration": { color: "bg-fuchsia-500", hex: "#d946ef" },
+      "Collection": { color: "bg-lime-500", hex: "#84cc16" },
+      "anomaly": { color: "bg-gray-400", hex: "#9ca3af" },
+      "Others": { color: "bg-gray-500", hex: "#6b7280" },
+    };
+    return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
+  };
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [defconRes, severitiesRes, distributionsRes, alertsRes] =
-        await Promise.all([
-          fetch(`/api/defstatus`),
-          fetch(`/api/severities`),
-          fetch(`/api/threatdistributions`),
-          fetch(`/api/threatalerts`),
-        ]);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [defconRes, severitiesRes, distributionsRes, alertsRes] =
+        await Promise.all([
+          fetch(`/api/defstatus`),
+          fetch(`/api/severities`),
+          fetch(`/api/threatdistributions`),
+          fetch(`/api/threatalerts`),
+        ]);
 
-      if (
-        !defconRes.ok ||
-        !severitiesRes.ok ||
-        !distributionsRes.ok ||
-        !alertsRes.ok
-      ) {
-        throw new Error("Failed to fetch data from one or more APIs");
-      }
+      if (
+        !defconRes.ok ||
+        !severitiesRes.ok ||
+        !distributionsRes.ok ||
+        !alertsRes.ok
+      ) {
+        throw new Error("Failed to fetch data from one or more APIs");
+      }
 
-      const defconData = await defconRes.json();
-      const severitiesData = await severitiesRes.json();
-      const distributionsData = await distributionsRes.json();
-      const alertsData = await alertsRes.json();
+      const defconData = await defconRes.json();
+      const severitiesData = await severitiesRes.json();
+      const distributionsData = await distributionsRes.json();
+      const alertsData = await alertsRes.json();
 
-      setDefconLevel(defconData.level || defconData.defconLevel || 1);
+      setDefconLevel(defconData.level || defconData.defconLevel || 1);
 
-      // Severities (Bar chart)
-      const severityArray: ApiSeverity[] = Array.isArray(severitiesData)
-        ? severitiesData
-        : [];
+      // Severities (Bar chart)
+      const severityArray: ApiSeverity[] = Array.isArray(severitiesData)
+        ? severitiesData
+        : [];
 
-      const sortedSeverities: Country[] = severityArray
-        .sort((a, b) => (b.quantity || 0) - (a.quantity || 0))
-        .slice(0, 3)
-        .map((item) => ({
-          name: item.serverity || "Unknown",
-          quantity: item.quantity || 0,
-          percentage: Math.min(100, Math.max(10, (item.quantity || 0) / 30)),
-        }));
+      const sortedSeverities: Country[] = severityArray
+        .sort((a, b) => (b.quantity || 0) - (a.quantity || 0))
+        .slice(0, 3)
+        .map((item) => ({
+          name: item.serverity || "Unknown",
+          quantity: item.quantity || 0,
+          percentage: Math.min(100, Math.max(20, (item.quantity || 0) / 20)),
+        }));
 
-      setTopCountries(sortedSeverities);
+      setTopCountries(sortedSeverities);
 
-      // Threat Distribution (Pie chart)
-      const distributionsArray = Array.isArray(distributionsData.distributions)
-        ? distributionsData.distributions
-        : Array.isArray(distributionsData)
-        ? distributionsData
-        : [];
+      // Threat Distribution (Pie chart)
+      const distributionsArray = Array.isArray(distributionsData.distributions)
+        ? distributionsData.distributions
+        : Array.isArray(distributionsData)
+        ? distributionsData
+        : [];
 
-      // กรองเฉพาะ items ที่มี quantity > 0 หรือ percentage > 0 (รองรับทั้ง local และ production)
-      const validDistributions = distributionsArray.filter(
-        (item: any) => (item.quantity || 0) > 0 || (item.percentage || item.value || 0) > 0
-      );
+      // กรองเฉพาะ items ที่มี quantity > 0 หรือ percentage > 0 (รองรับทั้ง local และ production)
+      const validDistributions = distributionsArray.filter(
+        (item: any) =>
+          (item.quantity || 0) > 0 || (item.percentage || item.value || 0) > 0
+      );
 
-      let formattedDistributions: PieDataItem[];
+      let formattedDistributions: PieDataItem[];
 
-      if (validDistributions.length === 0) {
-        formattedDistributions = [];
-      } else {
-        // คำนวณ total quantity สำหรับคำนวณ percentage
-        const totalQuantity = validDistributions.reduce(
-          (sum: number, item: any) => sum + (item.quantity || 0),
-          0
-        );
+      if (validDistributions.length === 0) {
+        formattedDistributions = [];
+      } else {
+        // คำนวณ total quantity สำหรับคำนวณ percentage
+        const totalQuantity = validDistributions.reduce(
+          (sum: number, item: any) => sum + (item.quantity || 0),
+          0
+        );
 
-        // เช็คว่าข้อมูลมี percentage ที่ใช้งานได้จริงหรือไม่ (ต้องมากกว่า 0)
-        const totalPercentage = validDistributions.reduce(
-          (sum: number, item: any) => sum + (item.percentage || item.value || 0),
-          0
-        );
-        const hasPercentage = totalPercentage > 0;
+        // เช็คว่าข้อมูลมี percentage พร้อมใช้หรือไม่
+        const hasPercentage = validDistributions.some(
+          (item: any) => (item.percentage || item.value || 0) > 0
+        );
 
-        // เรียงตาม quantity หรือ percentage (ขึ้นกับว่ามีอะไร)
-        const sortedDistributions = [...validDistributions].sort(
-          (a: any, b: any) => {
-            if (hasPercentage) {
-              return (b.percentage || b.value || 0) - (a.percentage || a.value || 0);
-            }
-            return (b.quantity || 0) - (a.quantity || 0);
-          }
-        );
+        // เรียงตาม quantity หรือ percentage (ขึ้นกับว่ามีอะไร)
+        const sortedDistributions = [...validDistributions].sort(
+          (a: any, b: any) => {
+            if (hasPercentage) {
+              return (
+                (b.percentage || b.value || 0) - (a.percentage || a.value || 0)
+              );
+            }
+            return (b.quantity || 0) - (a.quantity || 0);
+          }
+        );
 
-        // แยกเป็น top 4 และที่เหลือ
-        const top4 = sortedDistributions.slice(0, 4);
-        const others = sortedDistributions.slice(4);
+        // แยกเป็น top 4 และที่เหลือ
+        const top4 = sortedDistributions.slice(0, 4);
+        const others = sortedDistributions.slice(4);
 
-        // รวมค่าของ others
-        const othersQuantity = others.reduce(
-          (sum: number, item: any) => sum + (item.quantity || 0),
-          0
-        );
-        const othersPercentageValue = others.reduce(
-          (sum: number, item: any) => sum + (item.percentage || item.value || 0),
-          0
-        );
+        // รวมค่าของ others
+        const othersQuantity = others.reduce(
+          (sum: number, item: any) => sum + (item.quantity || 0),
+          0
+        );
+        const othersPercentageValue = others.reduce(
+          (sum: number, item: any) =>
+            sum + (item.percentage || item.value || 0),
+          0
+        );
 
-        // คำนวณ percentage สำหรับ others
-        let othersPercentage;
-        if (hasPercentage) {
-          othersPercentage = othersPercentageValue;
-        } else {
-          othersPercentage = totalQuantity > 0 
-            ? Math.round((othersQuantity / totalQuantity) * 100) 
-            : 0;
-        }
+        // คำนวณ percentage สำหรับ others
+        let othersPercentage;
+        if (hasPercentage) {
+          othersPercentage = othersPercentageValue;
+        } else {
+          othersPercentage =
+            totalQuantity > 0
+              ? Math.round((othersQuantity / totalQuantity) * 100)
+              : 0;
+        }
 
-        // format top 4 พร้อมคำนวณ percentage
-        formattedDistributions = top4.map(
-          (item: any): PieDataItem => {
-            const label =
-              item.threatName || item.type || item.label || item.name || "";
-            const colors = getThreatTypeColor(label);
-            
-            // ใช้ percentage ที่มีอยู่แล้ว หรือคำนวณจาก quantity
-            let percentage;
-            if (hasPercentage) {
-              percentage = item.percentage || item.value || 0;
-            } else {
-              percentage = totalQuantity > 0 
-                ? Math.round(((item.quantity || 0) / totalQuantity) * 100) 
-                : 0;
-            }
-            
-            return {
-              label,
-              value: percentage,
-              color: colors.color,
-              hex: colors.hex,
-            };
-          }
-        );
+        // format top 4 พร้อมคำนวณ percentage
+        formattedDistributions = top4.map((item: any): PieDataItem => {
+          const label =
+            item.threatName || item.type || item.label || item.name || "";
+          const colors = getThreatTypeColor(label);
 
-        // เพิ่ม Others ถ้ามี
-        if (othersQuantity > 0 || othersPercentageValue > 0) {
-          const colors = getThreatTypeColor("Others");
-          formattedDistributions.push({
-            label: "Others",
-            value: othersPercentage,
-            color: colors.color,
-            hex: colors.hex,
-          });
-        }
-      }
+          // ใช้ percentage ที่มีอยู่แล้ว หรือคำนวณจาก quantity
+          let percentage;
+          if (hasPercentage) {
+            percentage = item.percentage || item.value || 0;
+          } else {
+            percentage =
+              totalQuantity > 0
+                ? Math.round(((item.quantity || 0) / totalQuantity) * 100)
+                : 0;
+          }
 
-      setPieData(formattedDistributions);
+          return {
+            label,
+            value: percentage,
+            color: colors.color,
+            hex: colors.hex,
+          };
+        });
 
-      // Threat Alerts - ใช้ threatName และ incidentID
-      const alertsArray = Array.isArray(alertsData.alerts)
-        ? alertsData.alerts
-        : Array.isArray(alertsData)
-        ? alertsData
-        : [];
-      
-      const formattedAlerts = alertsArray
-        .sort(
-          (a: ApiAlert, b: ApiAlert) =>
-            (a.level || a.severity || 99) - (b.level || b.severity || 99)
-        )
-        .map(
-          (alert: ApiAlert, idx: number): Threat => ({
-            id: alert.threatName || `THREAT ${idx + 1}`,
-            incident: parseInt(alert.incidentID || `${idx + 1}`),
-            color: getThreatColor(alert.level || alert.severity || 5),
-          })
-        );
-      setThreats(formattedAlerts);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error occurred");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // เพิ่ม Others ถ้ามี
+        if (othersQuantity > 0 || othersPercentageValue > 0) {
+          const colors = getThreatTypeColor("Others");
+          formattedDistributions.push({
+            label: "Others",
+            value: othersPercentage,
+            color: colors.color,
+            hex: colors.hex,
+          });
+        }
+      }
 
-  useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(() => fetchDashboardData(), 30000);
-    return () => clearInterval(interval);
-  }, []);
+      setPieData(formattedDistributions);
 
-  const generatePieChart = () => {
-    let currentAngle = 0;
-    return pieData.map((item, idx) => {
-      const angle = (item.value / 100) * 360;
-      const startAngle = currentAngle;
-      currentAngle += angle;
-      const x1 = 50 + 45 * Math.cos((startAngle * Math.PI) / 180);
-      const y1 = 50 + 45 * Math.sin((startAngle * Math.PI) / 180);
-      const x2 = 50 + 45 * Math.cos(((startAngle + angle) * Math.PI) / 180);
-      const y2 = 50 + 45 * Math.sin(((startAngle + angle) * Math.PI) / 180);
-      const largeArc = angle > 180 ? 1 : 0;
-      return (
-        <path
-          key={idx}
-          d={`M 50 50 L ${x1} ${y1} A 45 45 0 ${largeArc} 1 ${x2} ${y2} Z`}
-          fill={item.hex}
-        />
-      );
-    });
-  };
+      // Threat Alerts - ใช้ threatName และ incidentID
+      const alertsArray = Array.isArray(alertsData.alerts)
+        ? alertsData.alerts
+        : Array.isArray(alertsData)
+        ? alertsData
+        : [];
 
-  return (
-    <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden relative">
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <RefreshCw className="w-6 h-6 text-white animate-spin" />
-        </div>
-      )}
+      const formattedAlerts = alertsArray
+        .sort(
+          (a: ApiAlert, b: ApiAlert) =>
+            (a.level || a.severity || 99) - (b.level || b.severity || 99)
+        )
+        .map(
+          (alert: ApiAlert, idx: number): Threat => ({
+            id: alert.threatName || `THREAT ${idx + 1}`,
+            incident: parseInt(alert.incidentID || `${idx + 1}`),
+            color: getThreatColor(alert.level || alert.severity || 5),
+          })
+        );
+      setThreats(formattedAlerts);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      {/* Refresh Button */}
-      <button
-        onClick={fetchDashboardData}
-        disabled={loading}
-        className="absolute top-4 right-4 z-10 p-1.5 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-      >
-        <RefreshCw
-          className={`w-3 h-3 text-white ${loading ? "animate-spin" : ""}`}
-        />
-      </button>
+  useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(() => fetchDashboardData(), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-      {/* DEFCON Status */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
-        <div className="text-[14px] text-white font-bold mb-3 tracking-wider text-center">
-          สถานการณ์ทางไซเบอร์
-        </div>
+  const generatePieChart = () => {
+    let currentAngle = 0;
+    return pieData.map((item, idx) => {
+      const angle = (item.value / 100) * 360;
+      const startAngle = currentAngle;
+      currentAngle += angle;
+      const x1 = 50 + 45 * Math.cos((startAngle * Math.PI) / 180);
+      const y1 = 50 + 45 * Math.sin((startAngle * Math.PI) / 180);
+      const x2 = 50 + 45 * Math.cos(((startAngle + angle) * Math.PI) / 180);
+      const y2 = 50 + 45 * Math.sin(((startAngle + angle) * Math.PI) / 180);
+      const largeArc = angle > 180 ? 1 : 0;
+      return (
+        <path
+          key={idx}
+          d={`M 50 50 L ${x1} ${y1} A 45 45 0 ${largeArc} 1 ${x2} ${y2} Z`}
+          fill={item.hex}
+        />
+      );
+    });
+  };
 
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col justify-center gap-1.5">
-            {[4, 3, 2, 1].map((level) => (
-              <div
-                key={level}
-                className={`w-12 h-4 border-2 ${
-                  level === defconLevel
-                    ? "border-green-500 bg-green-400 shadow-[0_0_10px_rgba(0,255,0,0.7)]"
-                    : "border-gray-600 bg-transparent"
-                }`}
-              ></div>
-            ))}
-          </div>
+  return (
+    <div className="fixed left-0 top-0 h-screen w-60 bg-black text-white p-1 border-r-2 border-gray-700 flex flex-col relative">
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <RefreshCw className="w-6 h-6 text-white animate-spin" />
+        </div>
+      )}
 
-          <div className="relative">
-            <div className="w-28 h-28 rounded-full border-8 border-green-500 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,255,0,0.3)]">
-              <span className="text-8xl font-bold text-green-400">
-                {defconLevel}
-              </span>
-            </div>
-            <div className="absolute -inset-1 rounded-full border-4 border-green-400/30 animate-pulse"></div>
-          </div>
-        </div>
-      </div>
+      {/* Refresh Button */}
+      <button
+        onClick={fetchDashboardData}
+        disabled={loading}
+        className="absolute top-4 right-4 z-10 p-1.5 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+      >
+        <RefreshCw
+          className={`w-3 h-3 text-white ${loading ? "animate-spin" : ""}`}
+        />
+      </button>
 
-      {/* Activity Chart */}
-      <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1">
-        <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
-          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
-            จำนวนการแจ้งเตือนแยกตามระดับความรุนแรง
-          </div>
+      {/* DEFCON Status */}
+      <div className="relative bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
+        <div className="text-[14px] text-white font-bold mb-3 tracking-wider text-center">
+          สถานการณ์ทางไซเบอร์
+        </div>
 
-          <div className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]">
-            <div className="h-14 flex items-end justify-center gap-3">
-              {topCountries.length > 0 ? (
-                topCountries.map((country, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-10 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)] ${
-                      idx === 0
-                        ? "bg-red-500"
-                        : idx === 1
-                        ? "bg-orange-500"
-                        : "bg-yellow-500"
-                    }`}
-                    style={{ height: `${country.percentage}%` }}
-                  ></div>
-                ))
-              ) : (
-                <>
-                  <div
-                    className="w-10 bg-pink-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                    style={{ height: "55%" }}
-                  ></div>
-                  <div
-                    className="w-10 bg-orange-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                    style={{ height: "40%" }}
-                  ></div>
-                  <div
-                    className="w-10 bg-cyan-400 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                    style={{ height: "75%" }}
-                  ></div>
-                </>
-              )}
-            </div>
-            
-            {/* Quantity and Severity Labels */}
-            {topCountries.length > 0 && (
-              <div className="flex justify-center gap-3 mt-1">
-                {topCountries.map((country, idx) => (
-                  <div key={idx} className="flex flex-col items-center w-10">
-                    <span className="text-[8px] text-white font-bold">
-                      {country.quantity}
-                    </span>
-                    <span className="text-[7px] text-white">
-                      {country.name.replace(' (M)', '')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col justify-center gap-1.5">
+            {[4, 3, 2, 1].map((level) => (
+              <div
+                key={level}
+                className={`w-12 h-4 border-2 ${
+                  level === defconLevel
+                    ? "border-green-500 bg-green-400 shadow-[0_0_10px_rgba(0,255,0,0.7)]"
+                    : "border-gray-600 bg-transparent"
+                }`}
+              ></div>
+            ))}
+          </div>
 
-      {/* Pie Chart */}
-      <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_10px_rgba(0,150,255,0.25)] mt-[2px] mb-[2px]">
-        <div className="bg-black rounded-lg p-[6px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.15),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
-          <div className="text-[9px] text-white mb-[4px] tracking-wide text-center font-bold">
-            THREAT DISTRIBUTION
-          </div>
+          <div className="relative">
+            <div className="w-28 h-28 rounded-full border-8 border-green-500 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,255,0,0.3)]">
+              <span className="text-8xl font-bold text-green-400">
+                {defconLevel}
+              </span>
+            </div>
+            <div className="absolute -inset-1 rounded-full border-4 border-green-400/30 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
 
-          <div className="bg-gray-900/70 p-[6px] rounded-lg border-[1.5px] border-[#5c6e87] shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_2px_3px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center gap-[6px]">
-              <div className="relative w-20 h-20 flex-shrink-0">
-                {pieData.length > 0 && (
-                  <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                    {generatePieChart()}
-                  </svg>
-                )}
-              </div>
+      {/* Activity Chart */}
+      <div className="relative bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
+        <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
+          <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
+            จำนวนการแจ้งเตือนแยกตามระดับความรุนแรง
+          </div>
 
-              <div className="flex-1 space-y-[2px]">
-                {pieData.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-[4px] text-[7px]"
-                  >
-                    <div className={`w-2 h-2 rounded-sm ${item.color} flex-shrink-0`}></div>
-                    <span
-                      className="flex-1 truncate text-ellipsis overflow-hidden whitespace-nowrap"
-                      style={{ color: item.hex }}
-                      title={item.label} // แสดงชื่อเต็มเมื่อเอาเมาส์ชี้
-                    >
-                      {/* เรียกใช้ฟังก์ชันย่อชื่อที่นี่ */}
-                      {formatThreatName(item.label)}
-                    </span>
-                    <span className="text-white flex-shrink-0">{item.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+          <div className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]">
+            <div className="h-14 flex items-end justify-center gap-3">
+              {topCountries.length > 0 ? (
+                topCountries.map((country, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-10 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)] ${
+                      idx === 0
+                        ? "bg-red-500"
+                        : idx === 1
+                        ? "bg-orange-500"
+                        : "bg-yellow-500"
+                    }`}
+                    style={{ height: `${country.percentage}%` }}
+                  ></div>
+                ))
+              ) : (
+                <>
+                  <div
+                    className="w-10 bg-pink-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
+                    style={{ height: "55%" }}
+                  ></div>
+                  <div
+                    className="w-10 bg-orange-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
+                    style={{ height: "40%" }}
+                  ></div>
+                  <div
+                    className="w-10 bg-cyan-400 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
+                    style={{ height: "75%" }}
+                  ></div>
+                </>
+              )}
+            </div>
 
-      {/* Threat Alert List */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500">
-        <div className="text-[15px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
-          THREAT ALERT LIST
-        </div>
+            {/* Quantity and Severity Labels */}
+            {topCountries.length > 0 && (
+              <div className="flex justify-center gap-3 mt-1">
+                {topCountries.map((country, idx) => (
+                  <div key={idx} className="flex flex-col items-center w-10">
+                    <span className="text-[8px] text-white font-bold">
+                      {country.quantity}
+                    </span>
+                    <span className="text-[7px] text-white">
+                      {country.name.replace(" (M)", "")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-        <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 custom-scroll">
-          {threats.map((threat, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-2 bg-black rounded-md"
-            >
-              <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
-              <div className="flex flex-col text-[15px] leading-tight">
-                <span className="text-white font-semibold">
-                    {/* สามารถใช้ formatThreatName ที่นี่ได้ด้วยถ้าต้องการ */}
-                    {formatThreatName(threat.id)}
-                </span>
-                <span className="text-white font-mono text-[12px]">
-                  {threat.incident}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+      {/* Pie Chart */}
+      <div className="relative bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
+        <div className="bg-black rounded-lg p-[6px] shadow-[inset_0_1px_3px_rgba(255,255,255,0.15),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
+          <div className="text-[9px] text-white mb-[4px] tracking-wide text-center font-bold">
+            THREAT DISTRIBUTION
+          </div>
+
+          <div className="bg-gray-900/70 p-[6px] rounded-lg border-[1.5px] border-[#5c6e87] shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_2px_3px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-[6px]">
+              <div className="relative w-20 h-20 flex-shrink-0">
+                {pieData.length > 0 && (
+                  <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                    {generatePieChart()}
+                  </svg>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-[2px]">
+                {pieData.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-[4px] text-[8px]"
+                  >
+                    <div className={`w-2 h-2 rounded-sm ${item.color}`}></div>
+                    <span
+                      className="flex-1 truncate"
+                      style={{ color: item.hex }}
+                      title={item.label} // แสดงชื่อเต็มเมื่อเอาเมาส์ชี้
+                    >
+                      {/* เรียกใช้ฟังก์ชันย่อชื่อที่นี่ */}
+                      {formatThreatName(item.label)}
+                    </span>
+                    <span className="text-white">{item.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Threat Alert List */}
+      <div className="relative bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex-1 overflow-hidden">
+        <div className="text-[15px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
+          THREAT ALERT LIST
+        </div>
+
+        <div className="space-y-1.5 text-[15px] h-full overflow-y-auto custom-scroll">
+          {threats.map((threat, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 bg-black rounded-md"
+            >
+              <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
+              <div className="flex flex-col text-[15px] leading-tight">
+                <span className="text-white font-semibold">{threat.id}</span>
+                <span className="text-white font-mono text-[12px]">
+                  {threat.incident}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default DevConDashboard;

@@ -2,6 +2,8 @@ import { useState } from "react";
 import Defcon from "./components/Defcon";
 import OverlayList from "./components/OverlayList";
 import MapView from "./components/MapView";
+import React from "react";
+import "leaflet/dist/leaflet.css"; // Import Leaflet CSS if available, or ignore
 import L from "leaflet";
 import "./index.css";
 
