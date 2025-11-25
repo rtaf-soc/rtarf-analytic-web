@@ -112,5 +112,37 @@ export interface FilterStateFramework {
   severity: string;
 }
 
+// Interface สำหรับ Response ใหม่จาก API
+export interface MitreStatsResponse {
+  totalEvent: number;
+  totalTechnique: number;
+  tacticSummary: Array<{
+    tacticName: string;
+    tacticId: string;
+    techniqueName: string;
+    techniqueId: string;
+    severityName: string;
+    quantity: number;
+    lastSeen: string | null;
+  }>;
+  severitySummary: Array<{
+    severityName: string;
+    quantity: number;
+  }>;
+  calculatedSeveritySummary: Array<{
+    severityName: string;
+    quantity: number;
+  }>;
+  tacticTechniqueSummary: Array<{
+    tacticName: string;
+    tacticId: string;
+    techniqueName: string;
+    techniqueId: string;
+    severityName: string;
+    quantity: number;
+    lastSeen: string | null;
+  }>;
+}
+
 
 

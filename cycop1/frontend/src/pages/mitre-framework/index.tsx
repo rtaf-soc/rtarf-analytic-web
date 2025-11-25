@@ -1,376 +1,126 @@
-import React, { useState, useEffect } from "react";
-import { Shield, Search, RefreshCw, Calendar, Grid3x3, BarChart3, TrendingUp } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import {
+  Shield,
+  Search,
+  RefreshCw,
+  Calendar,
+  Grid3x3,
+  BarChart3,
+  TrendingUp,
+} from "lucide-react";
+
+// Components
 import TechniqueCard from "../../components/mitreCard/TechniqueCard";
 import TechniqueModal from "../../components/mitreCard/TechniqueModal";
-import type {
-  MitreTacticFramework,
-  MitreTechniqueFramework,
-  TechniqueStatsFramework,
-} from "../../types/mitre";
-import { loadMitreData } from "../../components/mitreCard/mitreData";
+import SummaryView from "../../components/mitreCard/SummaryView";
+import CoveragedashboardStat from "../killchain"; // ตรวจสอบ path ว่าถูกต้อง
 import { getSeverityColor } from "../../components/mitreCard/mitreData";
 
+// Hook & Types
+import { useMitreData } from "../../hooks/useMitreData"; // <-- Import Hook ที่เราเพิ่งทำ
+import type { MitreTechniqueFramework } from "../../types/mitre";
 
-// PostgreSQL service 
-import {
-  fetchPostgresStats,
-  fetchPostgresSummaryStats,
-  fetchPostgresAggregateStats,
-  flattenTechniqueStats,
-  type FlattenedTechniqueStats,
-} from "../../services/postgreService";
-
-import SummaryView, { type SummaryStats } from "../../components/mitreCard/SummaryView";
-import type { SoloSummaryStats } from "../../services/multiMitreService";
-import CoveragedashboardStat from "../killchain";
-
-type ViewMode = "matrix" | "summary" | "kill chain";
-type DataSourceType = "elasticsearch" | "postgresql";
-
+// Helper Component: StatCard (เพื่อลด code ซ้ำในหน้าหลัก)
+const StatCard = ({ title, value, colorClass = "text-white" }: { title: string, value: string | number, colorClass?: string }) => (
+  <div className="bg-gray-900 rounded p-3">
+    <div className="text-gray-400 text-xs mb-1">{title}</div>
+    <div className={`text-2xl font-bold ${colorClass}`}>{value}</div>
+  </div>
+);
 
 const MitreAttackNavigator: React.FC = () => {
-  const [selectedTechnique, setSelectedTechnique] =
-    useState<MitreTechniqueFramework | null>(null);
+  // --- 1. UI State (เก็บเฉพาะ State ที่เกี่ยวกับหน้าจอ) ---
+  const [selectedTechnique, setSelectedTechnique] = useState<MitreTechniqueFramework | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const [tactics, setTactics] = useState<MitreTacticFramework[]>([]);
-  const [techniques, setTechniques] = useState<MitreTechniqueFramework[]>([]);
-  const [techniqueStats, setTechniqueStats] = useState<FlattenedTechniqueStats>({});
+  const [viewMode, setViewMode] = useState<"matrix" | "summary" | "kill chain">("matrix");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Date Range State
   const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     end: new Date().toISOString().split("T")[0],
   });
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [summaryStats, setSummaryStats] = useState<SummaryStats>({
-    total: 0,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    tactics: [],
-    sources: {},
-  })
-  const [stats, setStats] = useState<SoloSummaryStats>({
-    total: 0,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    tactics: 0,
-  });
 
-  // Separate state for event-level severity (direct from events)
-  const [eventStats, setEventStats] = useState<SoloSummaryStats>({
-    total: 0,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    tactics: 0,
-  });
+  // --- 2. Call Custom Hook (หัวใจหลักที่เปลี่ยนไป) ---
+  // ดึงข้อมูลทั้งหมดผ่าน Hook ตัวเดียว ไม่ต้อง fetch เองในหน้านี้แล้ว
+  const {
+    loading,
+    refreshing,
+    refresh,
+    tactics,
+    techniques,
+    techniqueStats,
+    calculatedStats,
+    eventStats,
+    summaryStats,
+    getDaysInRange
+  } = useMitreData({ dateRange });
 
-  // Helper function to validate the stored view mode
-  const getInitialViewMode = (): ViewMode => {
-    const savedViewMode = localStorage.getItem("mitreViewMode");
-    if (
-      savedViewMode === "matrix" ||
-      savedViewMode === "summary" ||
-      savedViewMode === "kill chain"
-    ) {
-      return savedViewMode;
-    }
-    return "matrix";
-  };
-
-  const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode());
-
-  useEffect(() => {
-    localStorage.setItem("mitreViewMode", viewMode);
-  }, [viewMode]);
-
-  const datePresets = [
-    { label: "Last 24h", hours: 24 },
-    { label: "Last 7d", days: 7 },
-    { label: "Last 30d", days: 30 },
-    { label: "Last 90d", days: 90 },
-  ];
-
-  // Data source type selection
-  const [dataSourceType, setDataSourceType] = useState<DataSourceType>(
-    () => (localStorage.getItem("dataSourceType") as DataSourceType) || "postgresql"
-  );
-
-  useEffect(() => {
-    localStorage.setItem("dataSourceType", dataSourceType);
-  }, [dataSourceType]);
-
-  // Elasticsearch index - single index now
-  const ES_INDEX = "rtarf-events-beat-*";
-
-  // Helper function to check if a technique is a parent (no dot in ID)
-  const isParentTechnique = (techniqueId: string): boolean => {
-    return !techniqueId.includes('.');
-  };
-
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const dateDropdown = document.getElementById("date-dropdown");
-
-      if (dateDropdown && !dateDropdown.contains(event.target as Node)) {
-        setShowDatePicker(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const { tactics: tacticsData, techniques: techniquesData } =
-        await loadMitreData();
-
-      setTactics(tacticsData);
-      setTechniques(techniquesData);
-
-      await loadStats(techniquesData);
-      await loadOverallStats();
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadOverallStats();
-  }, [dateRange]);
-
-  // Load technique statistics
-  const loadStats = async (_techniquesData: MitreTechniqueFramework[]) => {
-    try {
+  // --- 3. Filtering Logic (Client-Side) ---
+  // API ใหม่ Filter แค่วันที่ ดังนั้นเราต้องมา Filter Search/Severity ที่หน้าบ้านผ่าน useMemo
+  const filteredTechniques = useMemo(() => {
+    return techniques.filter((tech) => {
+      // Filter by Search Term
+      const matchesSearch =
+        tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tech.id.toLowerCase().includes(searchTerm.toLowerCase());
       
-        console.log("🚀 Fetching stats from PostgreSQL using aggregate endpoint");
+      // Filter by Severity
+      const stats = techniqueStats[tech.id];
+      const matchesSeverity =
+        severityFilter === "all" ||
+        stats?.severity === severityFilter ||
+        (severityFilter === "detected" && (stats?.count || 0) > 0);
 
-        const dayRange = getDaysInRange();
+      return matchesSearch && matchesSeverity;
+    });
+  }, [techniques, searchTerm, severityFilter, techniqueStats]);
 
-        // Use the aggregate stats endpoint
-        const aggregateResponse = await fetchPostgresAggregateStats({
-          dayRange: dayRange,
-          search: searchTerm || undefined,
-          tactic: "all",
-          severity: severityFilter === "all" ? "all" : severityFilter,
-          includeSubTechniques: true,
-          includeCrowdStrikeSpecific: false,
-        });
+  // --- 4. Helper Functions ---
+  
+  const isParentTechnique = (id: string) => !id.includes(".");
 
-        // Flatten the response for TechniqueCard compatibility
-        const flattenedStats = flattenTechniqueStats(aggregateResponse);
-        setTechniqueStats(flattenedStats);
-
-        console.log("✅ Loaded stats from aggregate endpoint:", {
-          total: aggregateResponse.total,
-          techniquesCount: Object.keys(aggregateResponse.techniques).length,
-          severityCounts: aggregateResponse.severityCounts,
-        });
-
-    } catch (error) {
-      console.error("Error loading stats:", error);
-      setTechniqueStats({});
-    }
+  const getTechniquesForTactic = (tacticShortName: string) => {
+    // หา Techniques ที่อยู่ใน Tactic นั้นๆ และผ่าน Filter ด้านบนแล้ว
+    return filteredTechniques
+      .filter((t) => t.tactics.some((tn) => tn.toLowerCase() === tacticShortName.toLowerCase()))
+      .filter((t) => isParentTechnique(t.id));
   };
 
-  // Load overall statistics
-  const loadOverallStats = async () => {
-    try {
-      const dayRange = getDaysInRange();
-
-        console.log("🚀 Fetching overall stats from PostgreSQL");
-        // Get calculated severity from aggregate endpoint (technique-based)
-        const aggregateResponse = await fetchPostgresAggregateStats({
-          dayRange: dayRange,
-          search: undefined,
-          tactic: "all",
-          severity: "all",
-          includeSubTechniques: true,
-          includeCrowdStrikeSpecific: false,
-        });
-
-        // Get direct event severity from stats endpoint
-        const eventStatsData = await fetchPostgresStats({
-          search: undefined,
-          tactic: "all",
-          severity: "all",
-          dayRange: dayRange,
-        });
-
-        const sumstatsData = await fetchPostgresSummaryStats({
-          search: undefined,
-          tactic: "all",
-          severity: "all",
-          dayRange: dayRange,
-        });
-
-        setSummaryStats(sumstatsData);
-        
-        // Set calculated severity (from techniques)
-        setStats({
-          total: aggregateResponse.total,
-          critical: aggregateResponse.severityCounts.critical,
-          high: aggregateResponse.severityCounts.high,
-          medium: aggregateResponse.severityCounts.medium,
-          low: aggregateResponse.severityCounts.low,
-          tactics: Object.keys(aggregateResponse.techniques).length,
-        });
-
-        // Set event-level severity (direct from events)
-        setEventStats(eventStatsData);
-     
-    } catch (error) {
-      console.error("Error loading overall stats:", error);
-      setStats({
-        total: 0,
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0,
-        tactics: 0,
-      });
-      setEventStats({
-        total: 0,
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0,
-        tactics: 0,
-      });
-    }
+  const getSubTechniques = (parentId: string) => {
+    // หา Sub-techniques (ถ้า API รองรับ subTechnique stats ก็จะแสดงตรงนี้)
+    // หมายเหตุ: โค้ดนี้รองรับไว้เผื่อ API ส่ง subTechniques มา ถ้าไม่มีจะ return ว่าง
+    const parentStats = techniqueStats[parentId];
+    // *ถ้า Data structure ของ techniqueStats เปลี่ยน อาจต้องแก้ตรงนี้* // แต่เบื้องต้น API ใหม่ส่งมาเป็น Flatten List ดังนั้นเราอาจต้อง Mapping เองถ้าต้องการ Sub-technique
+    // สำหรับตอนนี้ให้ return ว่างไปก่อน หรือเขียน logic map จาก techniques array ได้
+    return []; 
   };
 
-  // Reload stats when data source or date range changes
-  useEffect(() => {
-    if (techniques.length > 0) {
-      loadStats(techniques);
-      loadOverallStats();
-    }
-  }, [dataSourceType, dateRange]);
+  const detectedCount = useMemo(() => 
+    techniques.filter((t) => (techniqueStats[t.id]?.count || 0) > 0).length,
+  [techniques, techniqueStats]);
 
-  const handleDatePreset = (preset: {
-    label: string;
-    hours?: number;
-    days?: number;
-  }) => {
+  // --- 5. Date Handlers ---
+  const handleDatePreset = (days: number) => {
     const end = new Date();
     const start = new Date();
-
-    if (preset.hours) {
-      start.setHours(start.getHours() - preset.hours);
-    } else if (preset.days) {
-      start.setDate(start.getDate() - preset.days);
-    }
-
+    start.setDate(start.getDate() - days);
     setDateRange({
       start: start.toISOString().split("T")[0],
       end: end.toISOString().split("T")[0],
     });
+    setShowDatePicker(false);
   };
 
-  const handleDateChange = (field: "start" | "end", value: string) => {
-    setDateRange((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadStats(techniques);
-    await loadOverallStats();
-    setRefreshing(false);
-  };
-
-  const getDaysInRange = () => {
-    const start = new Date(dateRange.start);
-    const end = new Date(dateRange.end);
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return days;
-  };
-
-  const filteredTechniques = techniques.filter((tech) => {
-    const matchesSearch =
-      tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tech.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const stats = techniqueStats[tech.id];
-    const matchesSeverity =
-      severityFilter === "all" ||
-      stats?.severity === severityFilter ||
-      (severityFilter === "detected" && stats?.count > 0);
-    return matchesSearch && matchesSeverity;
-  });
-
-  const getTechniquesForTactic = (tacticShortName: string) => {
-    const allMatching = filteredTechniques.filter((tech) =>
-      tech.tactics.some(
-        (t) => t.toLowerCase() === tacticShortName.toLowerCase()
-      )
-    );
-
-    return allMatching.filter(t => isParentTechnique(t.id));
-  };
-
-  const getSubTechniquesForParent = (parentId: string) => {
-    // Get sub-techniques from the flattened stats
-    const parentStats = techniqueStats[parentId];
-    if (!parentStats?.subTechniques) {
-      return [];
-    }
-
-    return parentStats.subTechniques
-      .map(sub => {
-        // Find the full technique object
-        const subTechnique = techniques.find(t => t.id === sub.id);
-        
-        // Only return if we found the technique definition
-        if (!subTechnique) {
-          console.warn(`Sub-technique ${sub.id} not found in techniques list`);
-          return null;
-        }
-
-        return {
-          technique: subTechnique,
-          stats: {
-            count: sub.count,
-            severity: sub.severity,
-            lastSeen: sub.lastSeen,
-          }
-        };
-      })
-      .filter((item): item is { technique: MitreTechniqueFramework; stats: TechniqueStatsFramework } => item !== null);
-  };
-
-  const detectedCount = techniques.filter((tech) => {
-    const stats = techniqueStats[tech.id];
-    return stats && stats.count > 0;
-  }).length;
-
-  const parentTechniquesCount = techniques.filter(t => isParentTechnique(t.id)).length;
+  // --- 6. Render ---
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-3"></div>
-          <p className="text-white">Loading MITRE ATT&CK</p>
+          <p className="text-white">Loading MITRE ATT&CK Data...</p>
         </div>
       </div>
     );
@@ -379,6 +129,8 @@ const MitreAttackNavigator: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 p-4">
       <div className="max-w-[1600px] mx-auto space-y-4">
+        
+        {/* === HEADER SECTION === */}
         <div className="bg-gray-800 rounded-lg shadow-xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -390,25 +142,15 @@ const MitreAttackNavigator: React.FC = () => {
                   MITRE ATT&CK Navigator
                 </h1>
                 <p className="text-gray-400 text-xs">
-                  {parentTechniquesCount} Parent Techniques ({techniques.length} total with sub-techniques)
+                  {techniques.filter((t) => isParentTechnique(t.id)).length} Parent Techniques
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              {/* Data Source Type Selector */}
-              <div className="flex bg-gray-700 rounded overflow-hidden">
-                <button
-                  onClick={() => setDataSourceType("postgresql")}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${dataSourceType === "postgresql"
-                    ? "bg-red-600 text-white"
-                    : "text-gray-300 hover:bg-gray-600"
-                    }`}
-                >
-                  PostgreSQL
-                </button>
-              </div>
 
-              <div className="relative" id="date-dropdown">
+            {/* Controls Right Side */}
+            <div className="flex gap-2">
+              {/* Date Picker Button */}
+              <div className="relative">
                 <button
                   onClick={() => setShowDatePicker(!showDatePicker)}
                   className="px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm"
@@ -418,62 +160,36 @@ const MitreAttackNavigator: React.FC = () => {
                 </button>
 
                 {showDatePicker && (
-                  <div className="absolute right-0 mt-2 bg-gray-700 rounded-lg shadow-xl p-4 z-50 w-80">
-                    <div className="mb-3">
-                      <div className="text-white text-sm font-bold mb-2">
-                        Quick Select
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {datePresets.map((preset) => (
-                          <button
-                            key={preset.label}
-                            onClick={() => handleDatePreset(preset)}
-                            className="px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors text-xs"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="absolute right-0 mt-2 bg-gray-700 rounded-lg shadow-xl p-4 z-50 w-64 border border-gray-600">
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {[1, 7, 30, 90].map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => handleDatePreset(d)}
+                          className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-500"
+                        >
+                          Last {d}d
+                        </button>
+                      ))}
                     </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-white text-xs mb-1 block">
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          value={dateRange.start}
-                          onChange={(e) =>
-                            handleDateChange("start", e.target.value)
-                          }
-                          max={dateRange.end}
-                          className="w-full px-3 py-1.5 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-white text-xs mb-1 block">
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          value={dateRange.end}
-                          onChange={(e) =>
-                            handleDateChange("end", e.target.value)
-                          }
-                          min={dateRange.start}
-                          max={new Date().toISOString().split("T")[0]}
-                          className="w-full px-3 py-1.5 bg-gray-600 border border-gray-500 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={dateRange.start}
+                        onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                        className="w-full px-2 py-1 bg-gray-800 text-white text-xs rounded border border-gray-600"
+                      />
+                      <input
+                        type="date"
+                        value={dateRange.end}
+                        onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                        className="w-full px-2 py-1 bg-gray-800 text-white text-xs rounded border border-gray-600"
+                      />
                       <button
-                        onClick={() => {
-                          setShowDatePicker(false);
-                          handleRefresh();
-                        }}
-                        className="w-full px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm font-medium"
+                        onClick={() => { refresh(); setShowDatePicker(false); }}
+                        className="w-full bg-red-600 text-white text-xs py-1.5 rounded hover:bg-red-700"
                       >
-                        Apply Date Range
+                        Apply & Refresh
                       </button>
                     </div>
                   </div>
@@ -481,13 +197,11 @@ const MitreAttackNavigator: React.FC = () => {
               </div>
 
               <button
-                onClick={handleRefresh}
+                onClick={refresh}
                 disabled={refreshing}
                 className="px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
               >
-                <RefreshCw
-                  className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
-                />
+                <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
                 Refresh
               </button>
             </div>
@@ -495,191 +209,100 @@ const MitreAttackNavigator: React.FC = () => {
 
           {/* View Mode Tabs */}
           <div className="flex gap-2 mb-4 border-b border-gray-700">
-            <button
-              onClick={() => setViewMode("matrix")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${viewMode === "matrix"
-                ? "text-white border-b-2 border-red-500"
-                : "text-gray-400 hover:text-white"
+            {[
+              { id: "matrix", icon: Grid3x3, label: "Matrix View" },
+              { id: "summary", icon: BarChart3, label: "Analytics" },
+              { id: "kill chain", icon: TrendingUp, label: "Kill Chain" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setViewMode(tab.id as any)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === tab.id
+                    ? "text-white border-b-2 border-red-500"
+                    : "text-gray-400 hover:text-white"
                 }`}
-            >
-              <Grid3x3 className="w-4 h-4" />
-              Matrix View
-            </button>
-            <button
-              onClick={() => setViewMode("summary")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${viewMode === "summary"
-                ? "text-white border-b-2 border-red-500"
-                : "text-gray-400 hover:text-white"
-                }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Analytics
-            </button>
-            <button
-              onClick={() => setViewMode("kill chain")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${viewMode === "kill chain"
-                ? "text-white border-b-2 border-red-500"
-                : "text-gray-400 hover:text-white"
-                }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              Kill Chain Statistics
-            </button>
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Data Source Info */}
-          <div className="bg-gray-900 rounded p-3 mb-4">
-            <div className="text-gray-400 text-xs mb-2 font-semibold">
-              Active Data Source
-            </div>
-            <div className="bg-gray-800 rounded p-2 flex justify-between items-center">
-              <span className="text-white text-sm">
-                {dataSourceType === "postgresql" ? "PostgreSQL (rtarf_event table)" : "Elasticsearch (rtarf-events-beat-*)"}
-              </span>
-              <span className="text-red-400 font-bold text-sm">
-                {stats.total.toLocaleString()} events
-              </span>
-            </div>
-          </div>
-
+          {/* Overview Stats Cards */}
           {(viewMode === "matrix" || viewMode === "summary") && (
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">
-                  Detected Events ({getDaysInRange()} Days)
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {stats.total.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">Data Source</div>
-                <div className="text-2xl font-bold text-white">
-                  {dataSourceType === "postgresql" ? "PostgreSQL" : "Elasticsearch"}
-                </div>
-              </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">
-                  Techniques Detected
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {detectedCount} / {techniques.length}
-                </div>
-              </div>
+              <StatCard title={`Total Events (${getDaysInRange()} Days)`} value={calculatedStats.total.toLocaleString()} />
+              <StatCard title="Data Source" value="PostgreSQL" />
+              <StatCard title="Techniques Detected" value={`${detectedCount} / ${techniques.length}`} />
             </div>
+            
           )}
 
-          
-          {/* Severity from event logs */}
+          {/* Matrix Controls & Specific Stats */}
           {viewMode === "matrix" && (
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">
-                  Critical Severity (Event)
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {eventStats.critical.toLocaleString()}
-                </div>
+            <>
+              {/* Event Severity Stats */}
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                <StatCard title="Critical Severity (Event)" value={eventStats.critical.toLocaleString()} />
+                <StatCard title="High Severity (Event)" value={eventStats.high.toLocaleString()} />
+                <StatCard title="Medium Severity (Event)" value={eventStats.medium.toLocaleString()} />
+                <StatCard title="Low Severity (Event)" value={eventStats.low.toLocaleString()} />
               </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">High Severity (Event)</div>
-                <div className="text-2xl font-bold text-white">
-                  {eventStats.high.toLocaleString()}
-                </div>
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                <StatCard title="Critical Severity (Calculated)" value={calculatedStats.critical.toLocaleString()} />
+                <StatCard title="High Severity (Calculated)" value={calculatedStats.high.toLocaleString()} />
+                <StatCard title="Medium Severity (Calculated)" value={calculatedStats.medium.toLocaleString()} />
+                <StatCard title="Low Severity (Calculated)" value={calculatedStats.low.toLocaleString()} />
               </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">Medium Severity (Event)</div>
-                <div className="text-2xl font-bold text-white">
-                  {eventStats.medium.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">Low Severity (Event)</div>
-                <div className="text-2xl font-bold text-white">
-                  {eventStats.low.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          )}
 
+              {/* Filters */}
+              <div className="flex gap-2 mb-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search techniques (e.g., T1592)..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+                  />
+                </div>
+                <select
+                  value={severityFilter}
+                  onChange={(e) => setSeverityFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+                >
+                  <option value="all">All Severity</option>
+                  <option value="detected">Detected Only</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
 
-          {/* Calculated severity from techniques and sub-techniques */}
-          {viewMode === "matrix" && (
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">
-                  Critical Severity (Calculated)
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {stats.critical.toLocaleString()}
-                </div>
+              {/* Legend */}
+              <div className="flex items-center gap-4 text-xs mb-2">
+                <span className="text-gray-400">Legend:</span>
+                {["critical", "high", "medium", "low", "none"].map((sev) => (
+                  <div key={sev} className="flex items-center gap-1.5">
+                    <div className={`w-3 h-3 rounded ${getSeverityColor(sev)}`}></div>
+                    <span className="text-gray-300 capitalize">{sev}</span>
+                  </div>
+                ))}
               </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">High Severity (Calculated)</div>
-                <div className="text-2xl font-bold text-white">
-                  {stats.high.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">Medium Severity (Calculated)</div>
-                <div className="text-2xl font-bold text-white">
-                  {stats.medium.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-gray-900 rounded p-3">
-                <div className="text-gray-400 text-xs mb-1">Low Severity (Calculated)</div>
-                <div className="text-2xl font-bold text-white">
-                  {stats.low.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {viewMode === "matrix" && (
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search techniques..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                />
-              </div>
-              <select
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value)}
-                className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
-              >
-                <option value="all">All</option>
-                <option value="detected">Detected</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-          )}
-
-          {viewMode === "matrix" && (
-            <div className="mt-3 flex items-center gap-4 text-xs">
-              <span className="text-gray-400">Severity:</span>
-              {["critical", "high", "medium", "low", "none"].map((sev) => (
-                <div key={sev} className="flex items-center gap-1.5">
-                  <div
-                    className={`w-3 h-3 rounded ${getSeverityColor(sev)}`}
-                  ></div>
-                  <span className="text-gray-300 capitalize">{sev}</span>
-                </div>
-              ))}
-            </div>
+            </>
           )}
         </div>
 
+        {/* === CONTENT VIEW === */}
+
+        {/* 1. Matrix Grid View */}
         {viewMode === "matrix" && (
           <div className="bg-gray-800 rounded-lg shadow-xl p-3 overflow-x-auto">
             <div className="min-w-[1600px]">
+              {/* Grid Header (Tactics) */}
               <div
                 className="gap-1.5 mb-1.5"
                 style={{
@@ -688,34 +311,28 @@ const MitreAttackNavigator: React.FC = () => {
                 }}
               >
                 {tactics.map((tactic) => {
-                  const tacticTechCount = getTechniquesForTactic(tactic.shortName).length;
-                  const detectedInTactic = getTechniquesForTactic(tactic.shortName).filter(
-                    tech => {
-                      const parentDetected = techniqueStats[tech.id]?.count > 0;
-                      const subDetected = getSubTechniquesForParent(tech.id).some(
-                        sub => sub.stats.count > 0
-                      );
-                      return parentDetected || subDetected;
-                    }
-                  ).length;
+                  const techList = getTechniquesForTactic(tactic.shortName);
+                  // Count detected in this column
+                  const detected = techList.filter(t => (techniqueStats[t.id]?.count || 0) > 0).length;
 
                   return (
                     <div
                       key={tactic.id}
                       className="bg-red-600 rounded-t p-2 text-center"
-                      title={`${tactic.description}\n\nParent Techniques: ${tacticTechCount}\nDetected: ${detectedInTactic}`}
+                      title={`${tactic.description}`}
                     >
                       <div className="text-white font-bold text-[10px] leading-tight mb-1">
                         {tactic.name}
                       </div>
                       <div className="text-white text-[9px] opacity-90">
-                        {detectedInTactic}/{tacticTechCount}
+                        {detected}/{techList.length}
                       </div>
                     </div>
                   );
                 })}
               </div>
 
+              {/* Grid Body (Techniques) */}
               <div
                 className="gap-1.5"
                 style={{
@@ -723,65 +340,59 @@ const MitreAttackNavigator: React.FC = () => {
                   gridTemplateColumns: `repeat(${tactics.length}, minmax(0, 1fr))`,
                 }}
               >
-                {tactics.map((tactic) => {
-                  const tacticTechniques = getTechniquesForTactic(
-                    tactic.shortName
-                  );
-                  return (
-                    <div key={tactic.id} className="space-y-1.5">
-                      {tacticTechniques.map((tech) => {
-                        const subTechniques = getSubTechniquesForParent(tech.id);
-                        const techStats = techniqueStats[tech.id];
-                        
-                        return (
-                          <TechniqueCard
-                            key={tech.id}
-                            technique={tech}
-                            stats={{
-                              count: techStats?.count || 0,
-                              severity: techStats?.severity || "none",
-                              lastSeen: techStats?.lastSeen || null,
-                            }}
-                            isSelected={selectedTechnique?.id === tech.id}
-                            onClick={() => setSelectedTechnique(tech)}
-                            subTechniques={subTechniques}
-                            onSubTechniqueClick={(subTech) => setSelectedTechnique(subTech)}
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                {tactics.map((tactic) => (
+                  <div key={tactic.id} className="space-y-1.5">
+                    {getTechniquesForTactic(tactic.shortName).map((tech) => (
+                      <TechniqueCard
+                        key={tech.id}
+                        technique={tech}
+                        stats={
+                          techniqueStats[tech.id] || {
+                            count: 0,
+                            severity: "none",
+                            lastSeen: null,
+                          }
+                        }
+                        isSelected={selectedTechnique?.id === tech.id}
+                        onClick={() => setSelectedTechnique(tech)}
+                        subTechniques={getSubTechniques(tech.id)} // รอ Implement ถ้ามี sub-tech
+                        onSubTechniqueClick={(sub) => setSelectedTechnique(sub)}
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {viewMode === "summary" && (
+        {/* 2. Summary View */}
+        {viewMode === "summary" && summaryStats && (
           <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-            <div className="text-center text-gray-400 py-0">
-              <SummaryView
-                stats={summaryStats}
+            {/* Note: SummaryView อาจจะต้องปรับ Prop ให้รับ calculatedStats แทน 
+                ถ้า SummaryView เดิมรับ structure ที่ต่างจากนี้อาจต้องแก้ Component นั้นด้วย
+                ตอนนี้ส่งไปแบบ any หรือ structure ที่ใกล้เคียง
+            */}
+             <SummaryView
+                stats={summaryStats} // Cast เพื่อให้ใช้งานได้ชั่วคราว
                 loading={refreshing}
                 dayRange={getDaysInRange()}
               />
-            </div>
           </div>
         )}
 
+        {/* 3. Kill Chain View */}
         {viewMode === "kill chain" && (
           <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-              <div className="text-center text-gray-400 py-2">
-                <CoveragedashboardStat
-                  selectedIndices={ES_INDEX}
-                  dayRange={getDaysInRange()}
-            
-                />
-              </div>
+            <CoveragedashboardStat
+              selectedIndices="rtarf-events-beat-*"
+              dayRange={getDaysInRange()}
+            />
           </div>
         )}
       </div>
 
+      {/* Modal Details */}
       {selectedTechnique && (
         <TechniqueModal
           technique={selectedTechnique}
