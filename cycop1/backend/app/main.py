@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.services.get_nodes import get_all_nodes
 from app.services.get_layers import get_all_layers
 from app.services.get_nodeplot import get_nodes_and_links_by_layer
+from pydantic import BaseModel
 # from . import elastic_client, database, models, scheduler
 # from .routers import nodes, connections, rtarf_events, alerts, dashboard, network_graph, node_events
 import json
@@ -55,6 +56,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class MitreStatsRequest(BaseModel):
+    FromDate: str
+    ToDate: str
+    
 # @app.on_event("startup")
 # async def startup_initialize():
 #     """Initialize connections and start scheduler on startup"""
@@ -181,6 +187,16 @@ def get_threat_alertsdistributions():
 def get_threat_alerts():
     from app.services.get_threat_alerts import call_api, ORG_ID
     return call_api(f"api/Analytic/org/{ORG_ID}/action/GetThreatAlerts")
+
+@app.post("/api/mitrestats", tags=["Mitrestats"])
+def get_mitre_stats(body: MitreStatsRequest):
+    from app.services.get_mitre_stats import call_api, ORG_ID
+    
+    return call_api(
+        f"api/Analytic/org/{ORG_ID}/action/GetMitreStats",
+        payload=body.model_dump()
+    )
+
 
 # @app.get("/api/scheduler/status", tags=["Scheduler"])
 # def get_scheduler_status():

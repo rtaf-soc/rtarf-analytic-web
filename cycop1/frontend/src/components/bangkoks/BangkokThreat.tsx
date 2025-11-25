@@ -123,7 +123,7 @@ const BangkokThreat = ({
           </div>
           <div className="w-8 flex-shrink-0"></div>
         </div>
-        <div className="space-y-1 overflow-y-auto flex-1 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+        <div className="space-y-1 overflow-y-auto flex-1 pr-1 custom-scroll">
           {threats.length > 0 ? (
             threats.map((threat, idx) => (
               <div

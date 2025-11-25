@@ -42,11 +42,11 @@ const ThreatAlertList: React.FC = () => {
             <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500 shadow-lg">
                 <div className="text-[14px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
                     <span className="animate-pulse text-red-500">⚠</span>
-                    THREAT ALERT LIST
+                    THREAT ALERT LIST 1
                     <span className="animate-pulse text-red-500">⚠</span>
                 </div>
 
-                <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+                <div className="space-y-1 overflow-y-auto max-h-44 pr-1 custom-scroll">
                     {threats.map((threat, idx) => (
                         <div
                             key={idx}

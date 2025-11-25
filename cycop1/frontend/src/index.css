@@ -91,42 +91,123 @@
 
 
 
-/* ==============================
-   NETWORK LINK GLOW & DEPTH
-   ============================== */
+/* ===============================
+   NETWORK LINK GLOW (FINAL)
+================================ */
 
 .link-line-outer {
-  /* ฮาโลนอก ให้ดูฟุ้ง ๆ แบบในรูปตัวอย่าง */
-  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 0.9));
+  filter:
+    drop-shadow(0 0 6px rgba(0, 255, 255, 0.55))
+    drop-shadow(0 0 12px rgba(0, 255, 255, 0.6));
 }
 
+/* Inner neon – คมแต่ไม่ฟุ้งเกินไป */
 .link-line-inner {
   stroke-linecap: round;
-  stroke-dasharray: 6 14;
-  /* ลายขีด */
-  animation: dash-move 2.8s linear infinite;
-  filter: drop-shadow(0 0 8px rgba(160, 255, 255, 1));
+  filter:
+    drop-shadow(0 0 4px rgba(150, 255, 255, 0.5))
+    drop-shadow(0 0 8px rgba(150, 255, 255, 0.3));
 }
 
-/* glow เพิ่มสำหรับจุดที่วิ่งบนเส้น */
-.circle-marker-glow {
-  filter: drop-shadow(0 0 6px rgba(0, 255, 255, 1));
-}
 
-/* ให้ dash บนเส้นดูเหมือนวิ่งเข้าหา HQ */
-@keyframes dash-move {
-  from {
-    stroke-dashoffset: 0;
-  }
+/* MOVING DOT */
+/* .circle-marker-glow {
+  filter:
+    drop-shadow(0 0 4px rgba(0, 255, 255, 0.8))
+    drop-shadow(0 0 9px rgba(0, 255, 255, 0.7));
+} */
 
-  to {
-    stroke-dashoffset: -40;
-  }
-}
-
-/* สีน้ำทะเล */
+/* OCEAN COLORING */
 .ocean-tile {
-  filter: hue-rotate(10100deg) saturate(3.2) brightness(0.55) contrast(3) !important;
+  filter: hue-rotate(10100deg) saturate(3.2) brightness(0.55)
+    contrast(3) !important;
+}
+
+
+/* Scroll */
+.custom-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #1b1d20;
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #2c2f33;
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3a3d41;
+}
+
+
+/* ================================
+   HQ ALERT HEARTBEAT
+================================ */
+.rtarf-alert-heartbeat {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rtarf-alert-heartbeat img {
+  width: 32px;
+  height: 32px;
+  animation: rtarf-heartbeat 1.2s infinite ease-in-out;
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.9));
+}
+
+.rtarf-alert-heartbeat::after {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 0, 0, 0.7);
+  animation: rtarf-heartbeat-ring 1.2s infinite ease-out;
+}
+
+@keyframes rtarf-heartbeat {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.25); }
+  35% { transform: scale(1); }
+  55% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rtarf-heartbeat-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* ================================
+   NORMAL HQ GLOW (ฟ้า)
+================================ */
+.hq-normal-glow img {
+  width: 100%;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9));
+  animation: hq-glow-breath 3s ease-in-out infinite;
+}
+
+@keyframes hq-glow-breath {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9));
+  }
+  50% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 1));
+  }
 }
 
 
