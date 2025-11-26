@@ -336,13 +336,20 @@ export type SeverityLabel = 'critical' | 'high' | 'medium' | 'low';
 
 // ฟังก์ชันสำหรับแปลง Score (0-100) เป็น Label
 export const mapScoreToSeverity = (scoreString: string | number): SeverityLabel => {
+    // แปลงคะแนนเป็นตัวเลข
     const score = typeof scoreString === 'string' ? parseInt(scoreString, 10) : (scoreString as number);
     
-    // กฎที่เรากำหนด (90+ Critical, 70+ High, 40+ Medium นอกนั้น low)
-    if (score >= 90) return 'critical';
-    if (score >= 70) return 'high';
+    
+    // 1. Critical (เพื่อความสมดุลบน Dashboard)
+    if (score >= 88) return 'critical';
+    
+    // 2. High (เพื่อเติมเต็มแถบสีส้ม)
+    if (score >= 60) return 'high';
+    
+    // 3. Medium
     if (score >= 40) return 'medium';
     
+    // 4. Low
     return 'low';
 };
 
