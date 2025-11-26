@@ -15,7 +15,7 @@ interface PieDataItem {
   hex: string;
 }
 
-interface Country {
+interface SeverityStats {
   name: string;
   percentage: number;
   quantity: number;
@@ -43,11 +43,13 @@ const DevConDashboard = () => {
   const [defconLevel, setDefconLevel] = useState<number>(1);
   const [threats, setThreats] = useState<Threat[]>([]);
   const [pieData, setPieData] = useState<PieDataItem[]>([]);
-  const [topCountries, setTopCountries] = useState<Country[]>([]);
+  
+  const [severityStats, setSeverityStats] = useState<SeverityStats[]>([]);
+  
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  //Helper Function: ย่อชื่อ Threat ที่ยาวเกินไป
+  // Helper Function: ย่อชื่อ Threat ที่ยาวเกินไป
   const formatThreatName = (name: string): string => {
     const nameMap: Record<string, string> = {
       "Spyware Detected via Anti-Spyware profile": "Spyware (Anti-Spyware)",
@@ -56,20 +58,35 @@ const DevConDashboard = () => {
       "Command and Control": "C2",
       "Vulnerability Protection": "Vulnerability",
       "Cryptominer Detected via Anti-Spyware profile": "Cryptominer",
-      // เพิ่มรายการอื่นๆ ตามต้องการ
     };
 
-    // ถ้ามีใน Map ให้ใช้ชื่อย่อ ถ้าไม่มีให้ใช้ชื่อเดิม
     if (nameMap[name]) {
       return nameMap[name];
     }
 
-    // Optional: ถ้ายังยาวเกิน 25 ตัวอักษร ให้ตัดคำอัตโนมัติ
     if (name.length > 25) {
       return name.substring(0, 23) + "...";
     }
 
     return name;
+  };
+
+  // Helper: เลือกสีแท่งกราฟตามชื่อ
+  const getSeverityBarColor = (name: string, index: number): string => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("critical")) return "bg-red-500";
+    if (lowerName.includes("high")) return "bg-orange-500";
+    if (lowerName.includes("medium")) return "bg-yellow-500";
+    if (lowerName.includes("low")) return "bg-green-500";
+    if (lowerName.includes("info")) return "bg-blue-500";
+
+    const defaultColors = [
+      "bg-red-500",
+      "bg-orange-500",
+      "bg-yellow-500",
+      "bg-green-500",
+    ];
+    return defaultColors[index] || "bg-gray-500";
   };
 
   const getThreatColor = (level: number): string => {
@@ -85,7 +102,6 @@ const DevConDashboard = () => {
 
   const getThreatTypeColor = (type: string): { color: string; hex: string } => {
     const colorMap: Record<string, { color: string; hex: string }> = {
-      // Original mappings
       "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
       "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
       "DDoS": { color: "bg-green-500", hex: "#22c55e" },
@@ -93,8 +109,6 @@ const DevConDashboard = () => {
       "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
       "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
       "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
-      
-      // API threat types
       "Spyware Detected via Anti-Spyware profile": { color: "bg-purple-500", hex: "#a855f7" },
       "Vulnerability": { color: "bg-pink-500", hex: "#ec4899" },
       "Scan Detected via Zone Protection Profile": { color: "bg-green-500", hex: "#22c55e" },
@@ -113,7 +127,6 @@ const DevConDashboard = () => {
       "Exfiltration": { color: "bg-fuchsia-500", hex: "#d946ef" },
       "Collection": { color: "bg-lime-500", hex: "#84cc16" },
       "anomaly": { color: "bg-gray-400", hex: "#9ca3af" },
-      
       "Others": { color: "bg-gray-500", hex: "#6b7280" },
     };
     return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
@@ -131,12 +144,7 @@ const DevConDashboard = () => {
           fetch(`/api/threatalerts`),
         ]);
 
-      if (
-        !defconRes.ok ||
-        !severitiesRes.ok ||
-        !distributionsRes.ok ||
-        !alertsRes.ok
-      ) {
+      if (!defconRes.ok || !severitiesRes.ok || !distributionsRes.ok || !alertsRes.ok) {
         throw new Error("Failed to fetch data from one or more APIs");
       }
 
@@ -147,21 +155,43 @@ const DevConDashboard = () => {
 
       setDefconLevel(defconData.level || defconData.defconLevel || 1);
 
-      // Severities (Bar chart)
+      // --- Severities (Bar chart) ---
       const severityArray: ApiSeverity[] = Array.isArray(severitiesData)
         ? severitiesData
         : [];
 
-      const sortedSeverities: Country[] = severityArray
-        .sort((a, b) => (b.quantity || 0) - (a.quantity || 0))
-        .slice(0, 3)
-        .map((item) => ({
-          name: item.serverity || "Unknown",
-          quantity: item.quantity || 0,
-          percentage: Math.min(100, Math.max(10, (item.quantity || 0) / 30)),
-        }));
+      const targetSeverities = ["Critical", "High", "Medium", "Low"];
 
-      setTopCountries(sortedSeverities);
+      const rawData = targetSeverities.map(target => {
+        const found = severityArray.find(item => 
+          (item.serverity || "").toLowerCase().includes(target.toLowerCase())
+        );
+        return {
+          name: target,
+          qty: found ? (found.quantity || 0) : 0
+        };
+      });
+
+      const maxQty = Math.max(...rawData.map(i => i.qty)) || 1;
+
+      const processedStats: SeverityStats[] = rawData.map(item => {
+        let calculatedPercent = (item.qty / maxQty) * 100;
+        
+        let displayPercent;
+        if (item.qty === 0) {
+             displayPercent = 1; 
+        } else {
+             displayPercent = Math.max(15, calculatedPercent); 
+        }
+
+        return {
+          name: item.name,
+          quantity: item.qty,
+          percentage: displayPercent,
+        };
+      });
+
+      setSeverityStats(processedStats);
 
       // Threat Distribution (Pie chart)
       const distributionsArray = Array.isArray(distributionsData.distributions)
@@ -170,9 +200,9 @@ const DevConDashboard = () => {
         ? distributionsData
         : [];
 
-      // กรองเฉพาะ items ที่มี quantity > 0 หรือ percentage > 0 (รองรับทั้ง local และ production)
       const validDistributions = distributionsArray.filter(
-        (item: any) => (item.quantity || 0) > 0 || (item.percentage || item.value || 0) > 0
+        (item: any) =>
+          (item.quantity || 0) > 0 || (item.percentage || item.value || 0) > 0
       );
 
       let formattedDistributions: PieDataItem[];
@@ -180,80 +210,75 @@ const DevConDashboard = () => {
       if (validDistributions.length === 0) {
         formattedDistributions = [];
       } else {
-        // คำนวณ total quantity สำหรับคำนวณ percentage
         const totalQuantity = validDistributions.reduce(
           (sum: number, item: any) => sum + (item.quantity || 0),
           0
         );
 
-        // เช็คว่าข้อมูลมี percentage ที่ใช้งานได้จริงหรือไม่ (ต้องมากกว่า 0)
         const totalPercentage = validDistributions.reduce(
-          (sum: number, item: any) => sum + (item.percentage || item.value || 0),
+          (sum: number, item: any) =>
+            sum + (item.percentage || item.value || 0),
           0
         );
         const hasPercentage = totalPercentage > 0;
 
-        // เรียงตาม quantity หรือ percentage (ขึ้นกับว่ามีอะไร)
         const sortedDistributions = [...validDistributions].sort(
           (a: any, b: any) => {
             if (hasPercentage) {
-              return (b.percentage || b.value || 0) - (a.percentage || a.value || 0);
+              return (
+                (b.percentage || b.value || 0) - (a.percentage || a.value || 0)
+              );
             }
             return (b.quantity || 0) - (a.quantity || 0);
           }
         );
 
-        // แยกเป็น top 4 และที่เหลือ
         const top4 = sortedDistributions.slice(0, 4);
         const others = sortedDistributions.slice(4);
 
-        // รวมค่าของ others
         const othersQuantity = others.reduce(
           (sum: number, item: any) => sum + (item.quantity || 0),
           0
         );
         const othersPercentageValue = others.reduce(
-          (sum: number, item: any) => sum + (item.percentage || item.value || 0),
+          (sum: number, item: any) =>
+            sum + (item.percentage || item.value || 0),
           0
         );
 
-        // คำนวณ percentage สำหรับ others
         let othersPercentage;
         if (hasPercentage) {
           othersPercentage = othersPercentageValue;
         } else {
-          othersPercentage = totalQuantity > 0 
-            ? Math.round((othersQuantity / totalQuantity) * 100) 
-            : 0;
+          othersPercentage =
+            totalQuantity > 0
+              ? Math.round((othersQuantity / totalQuantity) * 100)
+              : 0;
         }
 
-        // format top 4 พร้อมคำนวณ percentage
-        formattedDistributions = top4.map(
-          (item: any): PieDataItem => {
-            const label =
-              item.threatName || item.type || item.label || item.name || "";
-            const colors = getThreatTypeColor(label);
-            
-            // ใช้ percentage ที่มีอยู่แล้ว หรือคำนวณจาก quantity
-            let percentage;
-            if (hasPercentage) {
-              percentage = item.percentage || item.value || 0;
-            } else {
-              percentage = totalQuantity > 0 
-                ? Math.round(((item.quantity || 0) / totalQuantity) * 100) 
-                : 0;
-            }
-            
-            return {
-              label,
-              value: percentage,
-              color: colors.color,
-              hex: colors.hex,
-            };
-          }
-        );
+        formattedDistributions = top4.map((item: any): PieDataItem => {
+          const label =
+            item.threatName || item.type || item.label || item.name || "";
+          const colors = getThreatTypeColor(label);
 
-        // เพิ่ม Others ถ้ามี
+          let percentage;
+          if (hasPercentage) {
+            percentage = item.percentage || item.value || 0;
+          } else {
+            percentage =
+              totalQuantity > 0
+                ? Math.round(((item.quantity || 0) / totalQuantity) * 100)
+                : 0;
+          }
+
+          return {
+            label,
+            value: percentage,
+            color: colors.color,
+            hex: colors.hex,
+          };
+        });
+
         if (othersQuantity > 0 || othersPercentageValue > 0) {
           const colors = getThreatTypeColor("Others");
           formattedDistributions.push({
@@ -267,13 +292,13 @@ const DevConDashboard = () => {
 
       setPieData(formattedDistributions);
 
-      // Threat Alerts - ใช้ threatName และ incidentID
+      // Threat Alerts
       const alertsArray = Array.isArray(alertsData.alerts)
         ? alertsData.alerts
         : Array.isArray(alertsData)
         ? alertsData
         : [];
-      
+
       const formattedAlerts = alertsArray
         .sort(
           (a: ApiAlert, b: ApiAlert) =>
@@ -323,7 +348,7 @@ const DevConDashboard = () => {
   };
 
   return (
-    <div className="w-60 h-[100vh] bg-black p-2 rounded-2xl shadow-2xl flex flex-col justify-between overflow-hidden relative">
+    <div className="w-60 h-[100vh] bg-slate-800 border-gray-700 p-2 shadow-2xl flex flex-col justify-start overflow-hidden relative">
       {/* Loading Overlay */}
       {loading && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -373,7 +398,7 @@ const DevConDashboard = () => {
         </div>
       </div>
 
-      {/* Activity Chart */}
+      {/* Activity Chart (SEVERITY) */}
       <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1">
         <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
           <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
@@ -381,54 +406,87 @@ const DevConDashboard = () => {
           </div>
 
           <div className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]">
-            <div className="h-14 flex items-end justify-center gap-3">
-              {topCountries.length > 0 ? (
-                topCountries.map((country, idx) => (
+            {/* Container หลัก */}
+            <div className="flex items-end justify-center gap-2 h-24 pb-1">
+              {severityStats.length > 0 ? (
+                // เปลี่ยนจาก topCountries.map เป็น severityStats.map
+                severityStats.map((stat, idx) => (
                   <div
                     key={idx}
-                    className={`w-10 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)] ${
-                      idx === 0
-                        ? "bg-red-500"
-                        : idx === 1
-                        ? "bg-orange-500"
-                        : "bg-yellow-500"
-                    }`}
-                    style={{ height: `${country.percentage}%` }}
-                  ></div>
+                    className="flex flex-col items-center justify-end h-full w-10"
+                  >
+                    {/* แท่งกราฟ */}
+                    <div className="flex items-end justify-center h-16 w-full mb-1">
+                      <div
+                        className={`w-8 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)] ${getSeverityBarColor(
+                          stat.name,
+                          idx
+                        )}`}
+                        style={{ height: `${stat.percentage}%` }}
+                      ></div>
+                    </div>
+
+                    {/* ตัวหนังสือ */}
+                    <div className="flex flex-col items-center w-full">
+                      <span className="text-[9px] text-white font-bold leading-tight drop-shadow-md">
+                        {stat.quantity}
+                      </span>
+                      {/* เปลี่ยน country.name เป็น stat.name */}
+                      <span className="text-[8px] text-gray-300 leading-tight truncate w-full text-center mt-0.5">
+                        {stat.name.replace(" (M)", "")}
+                      </span>
+                    </div>
+                  </div>
                 ))
               ) : (
+                // Placeholder กรณีไม่มีข้อมูล
                 <>
-                  <div
-                    className="w-10 bg-pink-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                    style={{ height: "55%" }}
-                  ></div>
-                  <div
-                    className="w-10 bg-orange-500 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                    style={{ height: "40%" }}
-                  ></div>
-                  <div
-                    className="w-10 bg-cyan-400 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)]"
-                    style={{ height: "75%" }}
-                  ></div>
+                   {/* Mock Critical */}
+                   <div className="flex flex-col items-center justify-end h-full w-10">
+                      <div className="flex items-end justify-center h-16 w-full mb-1">
+                         <div className="w-8 bg-red-600 rounded-t-md h-[20%]"></div>
+                      </div>
+                      <div className="flex flex-col items-center w-full">
+                         <span className="text-[9px] text-white font-bold">0</span>
+                         <span className="text-[8px] text-gray-300">Critical</span>
+                      </div>
+                   </div>
+                   
+                   {/* Mock High */}
+                   <div className="flex flex-col items-center justify-end h-full w-10">
+                      <div className="flex items-end justify-center h-16 w-full mb-1">
+                         <div className="w-8 bg-orange-500 rounded-t-md h-[55%]"></div>
+                      </div>
+                      <div className="flex flex-col items-center w-full">
+                         <span className="text-[9px] text-white font-bold">0</span>
+                         <span className="text-[8px] text-gray-300">High</span>
+                      </div>
+                   </div>
+
+                   {/* Mock Medium */}
+                   <div className="flex flex-col items-center justify-end h-full w-10">
+                      <div className="flex items-end justify-center h-16 w-full mb-1">
+                         <div className="w-8 bg-yellow-500 rounded-t-md h-[40%]"></div>
+                      </div>
+                      <div className="flex flex-col items-center w-full">
+                         <span className="text-[9px] text-white font-bold">0</span>
+                         <span className="text-[8px] text-gray-300">Medium</span>
+                      </div>
+                   </div>
+
+                   {/* Mock Low */}
+                   <div className="flex flex-col items-center justify-end h-full w-10">
+                      <div className="flex items-end justify-center h-16 w-full mb-1">
+                         <div className="w-8 bg-green-400 rounded-t-md h-[75%]"></div>
+                      </div>
+                      <div className="flex flex-col items-center w-full">
+                         <span className="text-[9px] text-white font-bold">0</span>
+                         <span className="text-[8px] text-gray-300">Low</span>
+                      </div>
+                   </div>
                 </>
               )}
             </div>
-            
-            {/* Quantity and Severity Labels */}
-            {topCountries.length > 0 && (
-              <div className="flex justify-center gap-3 mt-1">
-                {topCountries.map((country, idx) => (
-                  <div key={idx} className="flex flex-col items-center w-10">
-                    <span className="text-[8px] text-white font-bold">
-                      {country.quantity}
-                    </span>
-                    <span className="text-[7px] text-white">
-                      {country.name.replace(' (M)', '')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -456,16 +514,19 @@ const DevConDashboard = () => {
                     key={idx}
                     className="flex items-center gap-[4px] text-[7px]"
                   >
-                    <div className={`w-2 h-2 rounded-sm ${item.color} flex-shrink-0`}></div>
+                    <div
+                      className={`w-2 h-2 rounded-sm ${item.color} flex-shrink-0`}
+                    ></div>
                     <span
                       className="flex-1 truncate text-ellipsis overflow-hidden whitespace-nowrap"
                       style={{ color: item.hex }}
-                      title={item.label} // แสดงชื่อเต็มเมื่อเอาเมาส์ชี้
+                      title={item.label}
                     >
-                      {/* เรียกใช้ฟังก์ชันย่อชื่อที่นี่ */}
                       {formatThreatName(item.label)}
                     </span>
-                    <span className="text-white flex-shrink-0">{item.value}%</span>
+                    <span className="text-white flex-shrink-0">
+                      {item.value}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -475,12 +536,12 @@ const DevConDashboard = () => {
       </div>
 
       {/* Threat Alert List */}
-      <div className="bg-black backdrop-blur-sm rounded-lg p-2 mt-1 mb-1 border-8 border-gray-500">
-        <div className="text-[15px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold">
+      <div className="bg-black backdrop-blur-sm rounded-lg p-2 border-8 border-gray-500 flex-1 flex flex-col min-h-0">
+        <div className="text-[15px] mb-2 text-white flex items-center gap-1.5 justify-center font-bold flex-shrink-0">
           THREAT ALERT LIST
         </div>
 
-        <div className="space-y-1 overflow-y-auto max-h-44 pr-1 scrollbar-thin scrollbar-thumb-gray-700 custom-scroll">
+        <div className="space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 custom-scroll flex-1">
           {threats.map((threat, idx) => (
             <div
               key={idx}
@@ -489,8 +550,7 @@ const DevConDashboard = () => {
               <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
               <div className="flex flex-col text-[15px] leading-tight">
                 <span className="text-white font-semibold">
-                    {/* สามารถใช้ formatThreatName ที่นี่ได้ด้วยถ้าต้องการ */}
-                    {formatThreatName(threat.id)}
+                  {formatThreatName(threat.id)}
                 </span>
                 <span className="text-white font-mono text-[12px]">
                   {threat.incident}
