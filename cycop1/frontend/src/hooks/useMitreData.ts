@@ -1,12 +1,12 @@
-// hooks/useMitreData.ts
 import { useState, useEffect, useCallback } from "react";
-import { loadMitreData } from "../../../frontend/src/components/mitreCard/mitreData";
+import { loadMitreData } from "../../src/components/mitreCard/mitreData"; // ตรวจสอบ path ว่าถูกต้อง
 import type { 
   MitreTacticFramework, 
   MitreTechniqueFramework,
   TechniqueStatsFramework,
-  MitreStatsResponse // Import Type ที่เพิ่งแก้ไป
-} from "../../../frontend/src/types/mitre";
+  MitreStatsResponse,
+  SummaryStats
+} from "../../src//types/mitre";
 
 // Type สำหรับเก็บ state ของกราฟ Matrix (Key = Technique ID)
 export type FlattenedTechniqueStats = Record<string, TechniqueStatsFramework>;
@@ -33,8 +33,9 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
   const [eventStats, setEventStats] = useState({
     total: 0, critical: 0, high: 0, medium: 0, low: 0, tactics: 0,
   });
-  // --- เพิ่ม State นี้สำหรับหน้า Analytics ---
-  const [summaryStats, setSummaryStats] = useState<any>(null);
+
+  // *** State สำคัญสำหรับหน้า Analytics ***
+  const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
 
   const getDaysInRange = useCallback(() => {
     const start = new Date(dateRange.start);
@@ -55,7 +56,7 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
     };
     loadDefinitions();
   }, []);
-  console.log("🚀 Frontend Sending Date:",dateRange)
+
   // 2. ฟังก์ชันยิง API (POST /api/mitrestats)
   const fetchData = useCallback(async (isRefresh = false) => {
     // ต้องรอให้ loadDefinitions เสร็จก่อนถึงจะยิง API ได้ (กันพลาด)
@@ -93,11 +94,13 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
       });
       setTechniqueStats(newTechniqueStats);
 
-      // B. Map Event Stats (Severity Summary)
+      // Helper Map for Severity
       const sevMap = data.severitySummary.reduce((acc: any, item) => {
         acc[item.severityName.toLowerCase()] = item.quantity;
         return acc;
       }, {});
+
+      // B. Map Event Stats (Severity Summary)
       setEventStats({
         total: data.totalEvent,
         critical: sevMap["critical"] || 0,
@@ -121,13 +124,45 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
         tactics: data.totalTechnique,
       });
 
+      // --- D. Map Summary Stats (ส่วนที่เพิ่มใหม่เพื่อให้หน้า Analytics ทำงาน) ---
+      
+      // 1. แปลง Tactic Summary ให้เป็น Format ที่กราฟต้องการ
+      const tacticsData = data.tacticSummary.map(t => {
+        // หาข้อมูล Tactic ตัวเต็มจาก Static Data เพื่อเอาชื่อสวยๆ
+        const tacticDef = tactics.find(
+          staticT => staticT.name.toLowerCase() === t.tacticName?.toLowerCase() 
+                  || staticT.id === t.tacticId
+        );
+        
+        return {
+          id: t.tacticId || tacticDef?.id || "Unknown",
+          name: t.tacticName || tacticDef?.name || "Unknown Tactic",
+          count: t.quantity,
+          sources: {} // API ยังไม่มี breakdown source ราย tactic ให้ใส่ว่างไว้
+        };
+      }).sort((a, b) => b.count - a.count); // เรียงจากมากไปน้อย
+
+      // 2. สร้าง Object SummaryStats
+      const newSummaryStats: SummaryStats = {
+        total: data.totalEvent,
+        critical: sevMap["critical"] || 0,
+        high: sevMap["high"] || 0,
+        medium: sevMap["medium"] || 0,
+        low: sevMap["low"] || 0,
+        tactics: tacticsData,
+        // Mock Source รวม (เนื่องจาก API ชุดนี้ยังไม่ส่ง Sources มา)
+        sources: { "Elasticsearch / API": data.totalEvent } 
+      };
+
+      setSummaryStats(newSummaryStats);
+
     } catch (error) {
       console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [techniques, dateRange]);
+  }, [techniques, tactics, dateRange]); // เพิ่ม tactics ใน dependency
 
   // ยิง API เมื่อ dateRange หรือ techniques เปลี่ยน
   useEffect(() => {
@@ -142,7 +177,7 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
     techniqueStats,
     calculatedStats,
     eventStats,
-    summaryStats,
+    summaryStats, // ส่งค่าออกไปให้หน้า UI
     refresh: () => fetchData(true),
     getDaysInRange
   };

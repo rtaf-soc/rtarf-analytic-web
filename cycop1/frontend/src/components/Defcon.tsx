@@ -77,14 +77,14 @@ const DevConDashboard = () => {
     if (lowerName.includes("critical")) return "bg-red-500";
     if (lowerName.includes("high")) return "bg-orange-500";
     if (lowerName.includes("medium")) return "bg-yellow-500";
-    if (lowerName.includes("low")) return "bg-green-500";
-    if (lowerName.includes("info")) return "bg-blue-500";
+    if (lowerName.includes("low")) return "bg-blue-500";
+    if (lowerName.includes("info")) return "bg-gray-500";
 
     const defaultColors = [
       "bg-red-500",
       "bg-orange-500",
       "bg-yellow-500",
-      "bg-green-500",
+      "bg-blue-500",
     ];
     return defaultColors[index] || "bg-gray-500";
   };
