@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
+import { mapScoreToSeverity, getSeverityColor } from "../mitreCard/mitreData"; 
 
-// Define types
+// 1. INTERFACES (Types)
+
 interface Threat {
   id: string;
   incident: number;
-  color: string;
+  color: string; 
+  severityLabel: string; 
 }
 
 interface PieDataItem {
@@ -21,22 +24,23 @@ interface SeverityStats {
   quantity: number;
 }
 
-interface ApiSeverity {
-  threatName?: string;
-  threatDetail?: string;
-  serverity?: string;
-  quantity?: number;
-  percentage?: number;
-  mitrTechniqueName?: string | null;
-  mitrTacticName?: string | null;
-}
-
 interface ApiAlert {
   threatName?: string;
   threatDetail?: string;
   level?: number;
   incidentID?: string;
   severity?: number;
+  serverity?: string; 
+}
+
+interface ApiSeverity {
+  threatName?: string;
+  threatDetail?: string;
+  serverity?: string; 
+  quantity?: number;
+  percentage?: number;
+  mitrTechniqueName?: string | null;
+  mitrTacticName?: string | null;
 }
 
 const DevConBangkok = () => {
@@ -71,35 +75,24 @@ const DevConBangkok = () => {
     return name;
   };
 
-  // Helper: เลือกสีแท่งกราฟตามชื่อ
+  // Helper: เลือกสีแท่งกราฟตามชื่อ 
   const getSeverityBarColor = (name: string, index: number): string => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes("critical")) return "bg-red-500";
     if (lowerName.includes("high")) return "bg-orange-500";
     if (lowerName.includes("medium")) return "bg-yellow-500";
-    if (lowerName.includes("low")) return "bg-green-500";
-    if (lowerName.includes("info")) return "bg-blue-500";
+    if (lowerName.includes("low")) return "bg-blue-500";
+    if (lowerName.includes("info")) return "bg-gray-500";
 
     const defaultColors = [
       "bg-red-500",
       "bg-orange-500",
       "bg-yellow-500",
-      "bg-green-500",
+      "bg-blue-500",
     ];
     return defaultColors[index] || "bg-gray-500";
   };
-
-  const getThreatColor = (level: number): string => {
-    const colorMap: Record<number, string> = {
-      1: "bg-red-600",
-      2: "bg-red-500",
-      3: "bg-orange-500",
-      4: "bg-yellow-400",
-      5: "bg-yellow-300",
-    };
-    return colorMap[level] || "bg-gray-500";
-  };
-
+  
   const getThreatTypeColor = (type: string): { color: string; hex: string } => {
     const colorMap: Record<string, { color: string; hex: string }> = {
       "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
@@ -155,7 +148,7 @@ const DevConBangkok = () => {
 
       setDefconLevel(defconData.level || defconData.defconLevel || 1);
 
-      // --- Severities (Bar chart) ---
+
       const severityArray: ApiSeverity[] = Array.isArray(severitiesData)
         ? severitiesData
         : [];
@@ -179,9 +172,9 @@ const DevConBangkok = () => {
         
         let displayPercent;
         if (item.qty === 0) {
-             displayPercent = 1; 
+            displayPercent = 1; 
         } else {
-             displayPercent = Math.max(15, calculatedPercent); 
+            displayPercent = Math.max(15, calculatedPercent); 
         }
 
         return {
@@ -193,7 +186,7 @@ const DevConBangkok = () => {
 
       setSeverityStats(processedStats);
 
-      // Threat Distribution (Pie chart)
+      // --- Threat Distribution (Pie chart) ---
       const distributionsArray = Array.isArray(distributionsData.distributions)
         ? distributionsData.distributions
         : Array.isArray(distributionsData)
@@ -292,7 +285,7 @@ const DevConBangkok = () => {
 
       setPieData(formattedDistributions);
 
-      // Threat Alerts
+      // --- Threat Alerts (Mapping Logic) ---
       const alertsArray = Array.isArray(alertsData.alerts)
         ? alertsData.alerts
         : Array.isArray(alertsData)
@@ -300,16 +293,26 @@ const DevConBangkok = () => {
         : [];
 
       const formattedAlerts = alertsArray
+        // ✅ 1. Sort ตามคะแนนตัวเลข serverity (มากไปน้อย)
         .sort(
           (a: ApiAlert, b: ApiAlert) =>
-            (a.level || a.severity || 99) - (b.level || b.severity || 99)
+            parseInt(b.serverity || "0") - parseInt(a.serverity || "0")
         )
         .map(
-          (alert: ApiAlert, idx: number): Threat => ({
-            id: alert.threatName || `THREAT ${idx + 1}`,
-            incident: parseInt(alert.incidentID || `${idx + 1}`),
-            color: getThreatColor(alert.level || alert.severity || 5),
-          })
+          (alert: ApiAlert, idx: number): Threat => {
+            // ✅ 2. แปลงคะแนนตัวเลข (e.g., "95") ให้เป็น Label (e.g., "critical")
+            const severityLabel = mapScoreToSeverity(alert.serverity || "0");
+            
+            // ✅ 3. ใช้ Label นั้นไปหา class สี Tailwind (e.g., "bg-red-600")
+            const colorClass = getSeverityColor(severityLabel);
+            
+            return {
+              id: alert.threatName || `THREAT ${idx + 1}`,
+              incident: parseInt(alert.incidentID || `${idx + 1}`),
+              color: colorClass, // ✅ ใช้สีที่ได้จากการ Map Score
+              severityLabel: severityLabel // ✅ ส่ง Label เพื่อใช้แสดงใน UI
+            };
+          }
         );
       setThreats(formattedAlerts);
     } catch (err) {
@@ -368,6 +371,7 @@ const DevConBangkok = () => {
       </button>
 
       {/* DEFCON Status */}
+      {/* ... (DEFCON Status rendering) ... */}
       <div className="bg-black backdrop-blur-sm rounded-lg p-3 border-8 border-gray-500 flex flex-col">
         <div className="text-[14px] text-white font-bold mb-3 tracking-wider text-center">
           สถานการณ์ทางไซเบอร์
@@ -398,7 +402,9 @@ const DevConBangkok = () => {
         </div>
       </div>
 
+
       {/* Activity Chart (SEVERITY) */}
+      {/* ... (Severity Bar Chart rendering) ... */}
       <div className="relative bg-black p-[6px] bg-gradient-to-b from-[#b0c4de] to-[#4a5568] shadow-[0_0_14px_rgba(0,150,255,0.3)] mt-1 mb-1">
         <div className="bg-black rounded-lg p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-2px_4px_rgba(0,0,0,0.7)]">
           <div className="text-[9px] text-white mb-1 tracking-wide text-center font-bold">
@@ -406,16 +412,13 @@ const DevConBangkok = () => {
           </div>
 
           <div className="bg-gray-900/70 p-2 rounded-lg border-[2px] border-[#5c6e87] shadow-[inset_0_1px_3px_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.6)]">
-            {/* Container หลัก */}
             <div className="flex items-end justify-center gap-2 h-24 pb-1">
               {severityStats.length > 0 ? (
-                // เปลี่ยนจาก topCountries.map เป็น severityStats.map
                 severityStats.map((stat, idx) => (
                   <div
                     key={idx}
                     className="flex flex-col items-center justify-end h-full w-10"
                   >
-                    {/* แท่งกราฟ */}
                     <div className="flex items-end justify-center h-16 w-full mb-1">
                       <div
                         className={`w-8 rounded-t-md shadow-[0_-2px_6px_rgba(255,255,255,0.2),0_2px_6px_rgba(0,0,0,0.6)] ${getSeverityBarColor(
@@ -426,12 +429,10 @@ const DevConBangkok = () => {
                       ></div>
                     </div>
 
-                    {/* ตัวหนังสือ */}
                     <div className="flex flex-col items-center w-full">
                       <span className="text-[9px] text-white font-bold leading-tight drop-shadow-md">
                         {stat.quantity}
                       </span>
-                      {/* เปลี่ยน country.name เป็น stat.name */}
                       <span className="text-[8px] text-gray-300 leading-tight truncate w-full text-center mt-0.5">
                         {stat.name.replace(" (M)", "")}
                       </span>
@@ -439,51 +440,51 @@ const DevConBangkok = () => {
                   </div>
                 ))
               ) : (
-                // Placeholder กรณีไม่มีข้อมูล
+                // Mock Data (Placeholder)
                 <>
-                   {/* Mock Critical */}
-                   <div className="flex flex-col items-center justify-end h-full w-10">
-                      <div className="flex items-end justify-center h-16 w-full mb-1">
-                         <div className="w-8 bg-red-600 rounded-t-md h-[20%]"></div>
-                      </div>
-                      <div className="flex flex-col items-center w-full">
-                         <span className="text-[9px] text-white font-bold">0</span>
-                         <span className="text-[8px] text-gray-300">Critical</span>
-                      </div>
-                   </div>
-                   
-                   {/* Mock High */}
-                   <div className="flex flex-col items-center justify-end h-full w-10">
-                      <div className="flex items-end justify-center h-16 w-full mb-1">
-                         <div className="w-8 bg-orange-500 rounded-t-md h-[55%]"></div>
-                      </div>
-                      <div className="flex flex-col items-center w-full">
-                         <span className="text-[9px] text-white font-bold">0</span>
-                         <span className="text-[8px] text-gray-300">High</span>
-                      </div>
-                   </div>
+                    {/* Mock Critical */}
+                    <div className="flex flex-col items-center justify-end h-full w-10">
+                        <div className="flex items-end justify-center h-16 w-full mb-1">
+                             <div className="w-8 bg-red-600 rounded-t-md h-[20%]"></div>
+                        </div>
+                        <div className="flex flex-col items-center w-full">
+                             <span className="text-[9px] text-white font-bold">0</span>
+                             <span className="text-[8px] text-gray-300">Critical</span>
+                        </div>
+                    </div>
+                    
+                    {/* Mock High */}
+                    <div className="flex flex-col items-center justify-end h-full w-10">
+                        <div className="flex items-end justify-center h-16 w-full mb-1">
+                             <div className="w-8 bg-orange-500 rounded-t-md h-[55%]"></div>
+                        </div>
+                        <div className="flex flex-col items-center w-full">
+                             <span className="text-[9px] text-white font-bold">0</span>
+                             <span className="text-[8px] text-gray-300">High</span>
+                        </div>
+                    </div>
 
-                   {/* Mock Medium */}
-                   <div className="flex flex-col items-center justify-end h-full w-10">
-                      <div className="flex items-end justify-center h-16 w-full mb-1">
-                         <div className="w-8 bg-yellow-500 rounded-t-md h-[40%]"></div>
-                      </div>
-                      <div className="flex flex-col items-center w-full">
-                         <span className="text-[9px] text-white font-bold">0</span>
-                         <span className="text-[8px] text-gray-300">Medium</span>
-                      </div>
-                   </div>
+                    {/* Mock Medium */}
+                    <div className="flex flex-col items-center justify-end h-full w-10">
+                        <div className="flex items-end justify-center h-16 w-full mb-1">
+                             <div className="w-8 bg-yellow-500 rounded-t-md h-[40%]"></div>
+                        </div>
+                        <div className="flex flex-col items-center w-full">
+                             <span className="text-[9px] text-white font-bold">0</span>
+                             <span className="text-[8px] text-gray-300">Medium</span>
+                        </div>
+                    </div>
 
-                   {/* Mock Low */}
-                   <div className="flex flex-col items-center justify-end h-full w-10">
-                      <div className="flex items-end justify-center h-16 w-full mb-1">
-                         <div className="w-8 bg-green-400 rounded-t-md h-[75%]"></div>
-                      </div>
-                      <div className="flex flex-col items-center w-full">
-                         <span className="text-[9px] text-white font-bold">0</span>
-                         <span className="text-[8px] text-gray-300">Low</span>
-                      </div>
-                   </div>
+                    {/* Mock Low */}
+                    <div className="flex flex-col items-center justify-end h-full w-10">
+                        <div className="flex items-end justify-center h-16 w-full mb-1">
+                             <div className="w-8 bg-green-400 rounded-t-md h-[75%]"></div>
+                        </div>
+                        <div className="flex flex-col items-center w-full">
+                             <span className="text-[9px] text-white font-bold">0</span>
+                             <span className="text-[8px] text-gray-300">Low</span>
+                        </div>
+                    </div>
                 </>
               )}
             </div>
@@ -547,10 +548,16 @@ const DevConBangkok = () => {
               key={idx}
               className="flex items-center gap-2 bg-black rounded-md"
             >
+              {/* ✅ ใช้ threat.color ที่ถูก map จาก severity score แล้ว */}
               <div className={`${threat.color} w-4 h-8 flex-shrink-0`}></div>
+              
               <div className="flex flex-col text-[15px] leading-tight">
                 <span className="text-white font-semibold">
                   {formatThreatName(threat.id)}
+                  {/* แสดง Label เพื่อตรวจสอบ */}
+                  <span className={`ml-2 text-[10px] uppercase font-mono ${threat.color.replace('bg', 'text')}`}>
+                    {threat.severityLabel}
+                  </span>
                 </span>
                 <span className="text-white font-mono text-[12px]">
                   {threat.incident}
