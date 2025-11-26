@@ -331,6 +331,22 @@ export async function loadMitreData(): Promise<{
   return { tactics, techniques };
 }
 
+// กำหนด Type ของ Label ที่เป็นมาตรฐาน
+export type SeverityLabel = 'critical' | 'high' | 'medium' | 'low';
+
+// ฟังก์ชันสำหรับแปลง Score (0-100) เป็น Label
+export const mapScoreToSeverity = (scoreString: string | number): SeverityLabel => {
+    const score = typeof scoreString === 'string' ? parseInt(scoreString, 10) : (scoreString as number);
+    
+    // กฎที่เรากำหนด (90+ Critical, 70+ High, 40+ Medium นอกนั้น low)
+    if (score >= 90) return 'critical';
+    if (score >= 70) return 'high';
+    if (score >= 40) return 'medium';
+    
+    return 'low';
+};
+
+
 // ===================================
 // Severity & Display Helpers
 // ===================================
