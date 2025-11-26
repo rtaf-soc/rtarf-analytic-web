@@ -13,14 +13,14 @@ import {
 import TechniqueCard from "../../components/mitreCard/TechniqueCard";
 import TechniqueModal from "../../components/mitreCard/TechniqueModal";
 import SummaryView from "../../components/mitreCard/SummaryView";
-import CoveragedashboardStat from "../killchain"; // ตรวจสอบ path ว่าถูกต้อง
+import CoveragedashboardStat from "../killchain"; 
 import { getSeverityColor } from "../../components/mitreCard/mitreData";
 
 // Hook & Types
-import { useMitreData } from "../../hooks/useMitreData"; // <-- Import Hook ที่เราเพิ่งทำ
+import { useMitreData } from "../../hooks/useMitreData";
 import type { MitreTechniqueFramework } from "../../types/mitre";
 
-// Helper Component: StatCard (เพื่อลด code ซ้ำในหน้าหลัก)
+// Helper Component
 const StatCard = ({ title, value, colorClass = "text-white" }: { title: string, value: string | number, colorClass?: string }) => (
   <div className="bg-gray-900 rounded p-3">
     <div className="text-gray-400 text-xs mb-1">{title}</div>
@@ -29,21 +29,24 @@ const StatCard = ({ title, value, colorClass = "text-white" }: { title: string, 
 );
 
 const MitreAttackNavigator: React.FC = () => {
-  // --- 1. UI State (เก็บเฉพาะ State ที่เกี่ยวกับหน้าจอ) ---
+  // --- 1. UI State ---
   const [selectedTechnique, setSelectedTechnique] = useState<MitreTechniqueFramework | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"matrix" | "summary" | "kill chain">("matrix");
   const [showDatePicker, setShowDatePicker] = useState(false);
   
-  // Date Range State
-  const [dateRange, setDateRange] = useState({
-    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    end: new Date().toISOString().split("T")[0],
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 7); 
+    return {
+      start: start.toISOString(), 
+      end: end.toISOString(),
+    };
   });
 
-  // --- 2. Call Custom Hook (หัวใจหลักที่เปลี่ยนไป) ---
-  // ดึงข้อมูลทั้งหมดผ่าน Hook ตัวเดียว ไม่ต้อง fetch เองในหน้านี้แล้ว
+  // --- 2. Call Custom Hook ---
   const {
     loading,
     refreshing,
@@ -53,20 +56,17 @@ const MitreAttackNavigator: React.FC = () => {
     techniqueStats,
     calculatedStats,
     eventStats,
-    summaryStats,
+    summaryStats, // ดึงค่านี้มาใช้
     getDaysInRange
   } = useMitreData({ dateRange });
 
   // --- 3. Filtering Logic (Client-Side) ---
-  // API ใหม่ Filter แค่วันที่ ดังนั้นเราต้องมา Filter Search/Severity ที่หน้าบ้านผ่าน useMemo
   const filteredTechniques = useMemo(() => {
     return techniques.filter((tech) => {
-      // Filter by Search Term
       const matchesSearch =
         tech.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tech.id.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Filter by Severity
       const stats = techniqueStats[tech.id];
       const matchesSeverity =
         severityFilter === "all" ||
@@ -78,54 +78,46 @@ const MitreAttackNavigator: React.FC = () => {
   }, [techniques, searchTerm, severityFilter, techniqueStats]);
 
   // --- 4. Helper Functions ---
-  
   const isParentTechnique = (id: string) => !id.includes(".");
 
   const getTechniquesForTactic = (tacticShortName: string) => {
-    // หา Techniques ที่อยู่ใน Tactic นั้นๆ และผ่าน Filter ด้านบนแล้ว
     return filteredTechniques
       .filter((t) => t.tactics.some((tn) => tn.toLowerCase() === tacticShortName.toLowerCase()))
       .filter((t) => isParentTechnique(t.id));
   };
 
-  const getSubTechniques = (parentId: string) => {
-    // หา Sub-techniques (ถ้า API รองรับ subTechnique stats ก็จะแสดงตรงนี้)
-    // หมายเหตุ: โค้ดนี้รองรับไว้เผื่อ API ส่ง subTechniques มา ถ้าไม่มีจะ return ว่าง
-    const parentStats = techniqueStats[parentId];
-    // *ถ้า Data structure ของ techniqueStats เปลี่ยน อาจต้องแก้ตรงนี้* // แต่เบื้องต้น API ใหม่ส่งมาเป็น Flatten List ดังนั้นเราอาจต้อง Mapping เองถ้าต้องการ Sub-technique
-    // สำหรับตอนนี้ให้ return ว่างไปก่อน หรือเขียน logic map จาก techniques array ได้
-    return []; 
-  };
+  const getSubTechniques = (parentId: string) => []; // Placeholder for sub-techniques
 
-  // แก้ไขการนับจำนวน: ให้นับเฉพาะ "Parent ID" ที่ไม่ซ้ำกัน
   const detectedCount = useMemo(() => {
     const activeParentIds = new Set<string>();
-
-    // วนลูปตรวจสอบทุกเทคนิคที่มีข้อมูล Stats
     Object.entries(techniqueStats).forEach(([id, stat]) => {
       if (stat.count > 0) {
         const parentId = id.split('.')[0];
-        const isValidParent = techniques.some(t => t.id === parentId);
-        
-        if (isValidParent) {
+        if (techniques.some(t => t.id === parentId)) {
           activeParentIds.add(parentId);
         }
       }
     });
-
     return activeParentIds.size;
   }, [techniqueStats, techniques]);
 
   // --- 5. Date Handlers ---
+  
   const handleDatePreset = (days: number) => {
     const end = new Date();
     const start = new Date();
-    start.setDate(start.getDate() - days);
+    start.setTime(end.getTime() - (days * 24 * 60 * 60 * 1000));
+    
     setDateRange({
-      start: start.toISOString().split("T")[0],
-      end: end.toISOString().split("T")[0],
+      start: start.toISOString(), // มี Time ติดไปด้วย Hook จะรู้ว่าต้องใช้เวลาเป๊ะๆ
+      end: end.toISOString(),
     });
     setShowDatePicker(false);
+  };
+
+  // ฟังก์ชันสำหรับเลือกจากปฏิทิน (Manual Pick)
+  const handleManualDateChange = (type: 'start' | 'end', value: string) => {
+     setDateRange(prev => ({ ...prev, [type]: value }));
   };
 
   // --- 6. Render ---
@@ -188,16 +180,17 @@ const MitreAttackNavigator: React.FC = () => {
                       ))}
                     </div>
                     <div className="space-y-2">
+                      <p className="text-xs text-gray-400">Custom Range (Date Only)</p>
                       <input
                         type="date"
-                        value={dateRange.start}
-                        onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                        value={dateRange.start.split('T')[0]} 
+                        onChange={(e) => handleManualDateChange('start', e.target.value)}
                         className="w-full px-2 py-1 bg-gray-800 text-white text-xs rounded border border-gray-600"
                       />
                       <input
                         type="date"
-                        value={dateRange.end}
-                        onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                        value={dateRange.end.split('T')[0]}
+                        onChange={(e) => handleManualDateChange('end', e.target.value)}
                         className="w-full px-2 py-1 bg-gray-800 text-white text-xs rounded border border-gray-600"
                       />
                       <button
@@ -248,32 +241,30 @@ const MitreAttackNavigator: React.FC = () => {
           {(viewMode === "matrix" || viewMode === "summary") && (
             <div className="grid grid-cols-3 gap-3 mb-4">
               <StatCard title={`Total Events (${getDaysInRange()} Days)`} value={calculatedStats.total.toLocaleString()} />
-              <StatCard title="Data Source" value="PostgreSQL" />
+              <StatCard title="Data Source" value="Elasticsearch" />
               <StatCard title="Techniques Detected" value={`${detectedCount} / ${techniques.length}`} />
             </div>
-            
           )}
 
-          {/* Matrix Controls & Specific Stats */}
+          {/* Matrix Controls (Search/Filter) - แสดงเฉพาะตอน Matrix View */}
           {viewMode === "matrix" && (
             <>
-              {/* Event Severity Stats */}
-              <div className="grid grid-cols-4 gap-3 mb-4">
-                <StatCard title="Critical Severity (Event)" value={eventStats.critical.toLocaleString()} />
-                <StatCard title="High Severity (Event)" value={eventStats.high.toLocaleString()} />
-                <StatCard title="Medium Severity (Event)" value={eventStats.medium.toLocaleString()} />
-                <StatCard title="Low Severity (Event)" value={eventStats.low.toLocaleString()} />
+               {/* ... (Matrix Specific Filters & Legend - เหมือนเดิม) ... */}
+               <div className="grid grid-cols-4 gap-3 mb-4">
+                <StatCard title="Critical Severity" value={eventStats.critical.toLocaleString()} colorClass="text-red-500" />
+                <StatCard title="High Severity" value={eventStats.high.toLocaleString()} colorClass="text-orange-500" />
+                <StatCard title="Medium Severity" value={eventStats.medium.toLocaleString()} colorClass="text-yellow-500" />
+                <StatCard title="Low Severity" value={eventStats.low.toLocaleString()} colorClass="text-blue-500" />
               </div>
               <div className="grid grid-cols-4 gap-3 mb-4">
-                <StatCard title="Critical Severity (Calculated)" value={calculatedStats.critical.toLocaleString()} />
-                <StatCard title="High Severity (Calculated)" value={calculatedStats.high.toLocaleString()} />
-                <StatCard title="Medium Severity (Calculated)" value={calculatedStats.medium.toLocaleString()} />
-                <StatCard title="Low Severity (Calculated)" value={calculatedStats.low.toLocaleString()} />
+                <StatCard title="Critical Severity (Calculate)" value={calculatedStats.critical.toLocaleString()} colorClass="text-red-500" />
+                <StatCard title="High Severity (Calculate)" value={calculatedStats.high.toLocaleString()} colorClass="text-orange-500" />
+                <StatCard title="Medium Severity (Calculate)" value={calculatedStats.medium.toLocaleString()} colorClass="text-yellow-500" />
+                <StatCard title="Low Severity (Calculate)" value={calculatedStats.low.toLocaleString()} colorClass="text-blue-500" />
               </div>
 
-              {/* Filters */}
               <div className="flex gap-2 mb-4">
-                <div className="flex-1 relative">
+                 <div className="flex-1 relative">
                   <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
@@ -296,17 +287,6 @@ const MitreAttackNavigator: React.FC = () => {
                   <option value="low">Low</option>
                 </select>
               </div>
-
-              {/* Legend */}
-              <div className="flex items-center gap-4 text-xs mb-2">
-                <span className="text-gray-400">Legend:</span>
-                {["critical", "high", "medium", "low", "none"].map((sev) => (
-                  <div key={sev} className="flex items-center gap-1.5">
-                    <div className={`w-3 h-3 rounded ${getSeverityColor(sev)}`}></div>
-                    <span className="text-gray-300 capitalize">{sev}</span>
-                  </div>
-                ))}
-              </div>
             </>
           )}
         </div>
@@ -320,28 +300,15 @@ const MitreAttackNavigator: React.FC = () => {
               {/* Grid Header (Tactics) */}
               <div
                 className="gap-1.5 mb-1.5"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${tactics.length}, minmax(0, 1fr))`,
-                }}
+                style={{ display: "grid", gridTemplateColumns: `repeat(${tactics.length}, minmax(0, 1fr))` }}
               >
                 {tactics.map((tactic) => {
                   const techList = getTechniquesForTactic(tactic.shortName);
-                  // Count detected in this column
                   const detected = techList.filter(t => (techniqueStats[t.id]?.count || 0) > 0).length;
-
                   return (
-                    <div
-                      key={tactic.id}
-                      className="bg-red-600 rounded-t p-2 text-center"
-                      title={`${tactic.description}`}
-                    >
-                      <div className="text-white font-bold text-[10px] leading-tight mb-1">
-                        {tactic.name}
-                      </div>
-                      <div className="text-white text-[9px] opacity-90">
-                        {detected}/{techList.length}
-                      </div>
+                    <div key={tactic.id} className="bg-red-600 rounded-t p-2 text-center" title={tactic.description}>
+                      <div className="text-white font-bold text-[10px] leading-tight mb-1">{tactic.name}</div>
+                      <div className="text-white text-[9px] opacity-90">{detected}/{techList.length}</div>
                     </div>
                   );
                 })}
@@ -350,10 +317,7 @@ const MitreAttackNavigator: React.FC = () => {
               {/* Grid Body (Techniques) */}
               <div
                 className="gap-1.5"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${tactics.length}, minmax(0, 1fr))`,
-                }}
+                style={{ display: "grid", gridTemplateColumns: `repeat(${tactics.length}, minmax(0, 1fr))` }}
               >
                 {tactics.map((tactic) => (
                   <div key={tactic.id} className="space-y-1.5">
@@ -361,16 +325,10 @@ const MitreAttackNavigator: React.FC = () => {
                       <TechniqueCard
                         key={tech.id}
                         technique={tech}
-                        stats={
-                          techniqueStats[tech.id] || {
-                            count: 0,
-                            severity: "none",
-                            lastSeen: null,
-                          }
-                        }
+                        stats={techniqueStats[tech.id] || { count: 0, severity: "none", lastSeen: null }}
                         isSelected={selectedTechnique?.id === tech.id}
                         onClick={() => setSelectedTechnique(tech)}
-                        subTechniques={getSubTechniques(tech.id)} // รอ Implement ถ้ามี sub-tech
+                        subTechniques={getSubTechniques(tech.id)}
                         onSubTechniqueClick={(sub) => setSelectedTechnique(sub)}
                       />
                     ))}
@@ -381,18 +339,21 @@ const MitreAttackNavigator: React.FC = () => {
           </div>
         )}
 
-        {/* 2. Summary View */}
-        {viewMode === "summary" && summaryStats && (
+        {/* 2. Summary View (Analytics) */}
+        {viewMode === "summary" && (
           <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-            {/* Note: SummaryView อาจจะต้องปรับ Prop ให้รับ calculatedStats แทน 
-                ถ้า SummaryView เดิมรับ structure ที่ต่างจากนี้อาจต้องแก้ Component นั้นด้วย
-                ตอนนี้ส่งไปแบบ any หรือ structure ที่ใกล้เคียง
-            */}
-             <SummaryView
-                stats={summaryStats} // Cast เพื่อให้ใช้งานได้ชั่วคราว
-                loading={refreshing}
-                dayRange={getDaysInRange()}
-              />
+            {summaryStats ? (
+               <SummaryView
+                 stats={summaryStats}
+                 loading={refreshing}
+                 dayRange={getDaysInRange()}
+               />
+            ) : (
+               <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                  <BarChart3 className="w-12 h-12 mb-3 opacity-20" />
+                  <p>No analytics data available for this range.</p>
+               </div>
+            )}
           </div>
         )}
 
@@ -411,13 +372,7 @@ const MitreAttackNavigator: React.FC = () => {
       {selectedTechnique && (
         <TechniqueModal
           technique={selectedTechnique}
-          stats={
-            techniqueStats[selectedTechnique.id] || {
-              count: 0,
-              severity: "none",
-              lastSeen: null,
-            }
-          }
+          stats={techniqueStats[selectedTechnique.id] || { count: 0, severity: "none", lastSeen: null }}
           tactics={tactics}
           onClose={() => setSelectedTechnique(null)}
         />
