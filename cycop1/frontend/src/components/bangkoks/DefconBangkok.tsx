@@ -95,33 +95,44 @@ const DevConBangkok = () => {
   
   const getThreatTypeColor = (type: string): { color: string; hex: string } => {
     const colorMap: Record<string, { color: string; hex: string }> = {
-      "IP Sweep": { color: "bg-purple-500", hex: "#a855f7" },
-      "Malwares": { color: "bg-pink-500", hex: "#ec4899" },
-      "DDoS": { color: "bg-green-500", hex: "#22c55e" },
-      "Phising": { color: "bg-yellow-400", hex: "#facc15" },
-      "Brute Force": { color: "bg-red-500", hex: "#ef4444" },
-      "SQL Injection": { color: "bg-orange-500", hex: "#f97316" },
-      "XSS": { color: "bg-cyan-500", hex: "#06b6d4" },
-      "Spyware Detected via Anti-Spyware profile": { color: "bg-purple-500", hex: "#a855f7" },
-      "Vulnerability": { color: "bg-pink-500", hex: "#ec4899" },
-      "Scan Detected via Zone Protection Profile": { color: "bg-green-500", hex: "#22c55e" },
-      "Malware": { color: "bg-red-500", hex: "#ef4444" },
+      // --- GROUP 1: MALWARE & HIGH IMPACT (Red / Rose) ---
+      "Malware": { color: "bg-rose-600", hex: "#e11d48" },
+      "Malwares": { color: "bg-rose-600", hex: "#e11d48" }, 
+      "Spyware Detected via Anti-Spyware profile": { color: "bg-rose-500", hex: "#f43f5e" },
+      "Antivirus": { color: "bg-red-500", hex: "#ef4444" },
+      "Execution": { color: "bg-red-600", hex: "#dc2626" },
+      "DDoS": { color: "bg-red-700", hex: "#b91c1c" },
+      "Flood Detected via Zone Protection Profile": { color: "bg-red-500", hex: "#ef4444" },
+      "Exfiltration": { color: "bg-pink-600", hex: "#db2777" },
+
+      // --- GROUP 2: WEB, AUTH & ACCESS (Orange / Amber) ---
+      "Initial Access": { color: "bg-orange-500", hex: "#f97316" },
+      "Brute Force": { color: "bg-orange-600", hex: "#ea580c" },
+      "Phising": { color: "bg-amber-500", hex: "#f59e0b" },
+      "Credential Access": { color: "bg-amber-600", hex: "#d97706" },
+      "SQL Injection": { color: "bg-orange-400", hex: "#fb923c" },
+      "XSS": { color: "bg-yellow-500", hex: "#eab308" },
+      "Vulnerability": { color: "bg-yellow-600", hex: "#ca8a04" }, 
+
+      // --- GROUP 3: RECON & NETWORK (Blue / Cyan / Sky) ---
+      "Reconnaissance": { color: "bg-blue-500", hex: "#3b82f6" },
+      "Discovery": { color: "bg-sky-500", hex: "#0ea5e9" },
+      "Scan Detected via Zone Protection Profile": { color: "bg-cyan-500", hex: "#06b6d4" },
+      "IP Sweep": { color: "bg-cyan-600", hex: "#0891b2" },
+      "Collection": { color: "bg-blue-400", hex: "#60a5fa" },
+
+      // --- GROUP 4: ADVANCED CHAIN & C2 (Purple / Violet) ---
+      "Command and Control": { color: "bg-purple-600", hex: "#9333ea" },
+      "Persistence": { color: "bg-violet-600", hex: "#7c3aed" },
+      "Lateral Movement": { color: "bg-indigo-500", hex: "#6366f1" },
+      "Privilege Escalation": { color: "bg-fuchsia-600", hex: "#c026d3" },
+
+      // --- GROUP 5: OTHERS (Gray) ---
+      "anomaly": { color: "bg-slate-500", hex: "#64748b" },
       "Other": { color: "bg-gray-500", hex: "#6b7280" },
-      "Lateral Movement": { color: "bg-blue-500", hex: "#3b82f6" },
-      "Credential Access": { color: "bg-yellow-500", hex: "#eab308" },
-      "Reconnaissance": { color: "bg-cyan-500", hex: "#06b6d4" },
-      "Antivirus": { color: "bg-green-500", hex: "#22c55e" },
-      "Persistence": { color: "bg-indigo-500", hex: "#6366f1" },
-      "Discovery": { color: "bg-teal-500", hex: "#14b8a6" },
-      "Execution": { color: "bg-rose-500", hex: "#f43f5e" },
-      "Command and Control": { color: "bg-violet-500", hex: "#8b5cf6" },
-      "Initial Access": { color: "bg-amber-500", hex: "#f59e0b" },
-      "Flood Detected via Zone Protection Profile": { color: "bg-red-400", hex: "#f87171" },
-      "Exfiltration": { color: "bg-fuchsia-500", hex: "#d946ef" },
-      "Collection": { color: "bg-lime-500", hex: "#84cc16" },
-      "anomaly": { color: "bg-gray-400", hex: "#9ca3af" },
       "Others": { color: "bg-gray-500", hex: "#6b7280" },
     };
+
     return colorMap[type] || { color: "bg-gray-500", hex: "#6b7280" };
   };
 
@@ -554,7 +565,6 @@ const DevConBangkok = () => {
               <div className="flex flex-col text-[15px] leading-tight">
                 <span className="text-white font-semibold">
                   {formatThreatName(threat.id)}
-                  {/* แสดง Label เพื่อตรวจสอบ */}
                   <span className={`ml-2 text-[10px] uppercase font-mono ${threat.color.replace('bg', 'text')}`}>
                     {threat.severityLabel}
                   </span>
