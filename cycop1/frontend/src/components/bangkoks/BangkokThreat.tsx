@@ -1,105 +1,129 @@
 import { useState, useEffect } from "react";
-import { fetchAlertSummary, type AlertSummary, fetchLatestAlert } from "../../services/defensiveService";
+import { fetchAlertSummary, fetchLatestAlert } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import SeverityStatistics from "./SeverityStatistics";
 import "./BangkokThreat.css"
+
+// ✅ 1. Interface สำหรับ UI (Export ให้ Parent ใช้)
+export interface UiThreatSummary {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
 
 interface BangkokThreatProps {
   title?: string;
   filterSeverity?: 'all' | 'critical' | 'high' | 'medium' | 'low';
   logoPath?: string;
-  backgroundColor?: string; // ✅ เพิ่ม props สีพื้นหลัง
-  borderColor?: string; // ✅ เพิ่ม props สีขอบ border
+  backgroundColor?: string;
+  borderColor?: string;
+  
+  // ✅ 2. รับข้อมูลจากภายนอก
+  dataSummary?: UiThreatSummary | null; 
+  dataThreats?: AlertBase[];
 }
 
 const BangkokThreat = ({
   title = "THREAT ALERT LIST",
   filterSeverity,
   logoPath,
-  backgroundColor = "bg-black", // ✅ ค่าพื้นฐาน
-  borderColor = "border-gray-500", // ✅ ค่าพื้นฐาน
+  backgroundColor = "bg-black",
+  borderColor = "border-gray-500",
+  dataSummary,
+  dataThreats
 }: BangkokThreatProps) => {
-  const [alertData, setAlertData] = useState<AlertSummary | null>(null);
-  const [threatData, setThreatData] = useState<AlertBase[]>([]);
+  
+  // State ภายใน (Fallback)
+  const [internalAlertData, setAlertData] = useState<UiThreatSummary | null>(null);
+  const [internalThreatData, setThreatData] = useState<AlertBase[]>([]);
+
+  // ✅ Logic เลือกข้อมูล (Props > Internal)
+  const finalAlertData = dataSummary !== undefined ? dataSummary : internalAlertData;
+  const finalThreatData = dataThreats !== undefined ? dataThreats : internalThreatData;
 
   useEffect(() => {
+    if (dataSummary !== undefined || dataThreats !== undefined) {
+      return;
+    }
+
     const loadAlertData = async () => {
-      const summary = await fetchAlertSummary();
-      const threat = await fetchLatestAlert();
-      console.log("Show alert:", summary);
-      console.log("Show threat:", threat);
-      setAlertData(summary);
-      setThreatData(threat);
+      try {
+        // Note: ถ้าจะใช้ Standalone ต้องมีการ Map data ตรงนี้ให้เข้ากับ UiThreatSummary
+        // แต่ในบริบทนี้เราใช้ข้อมูลจาก Parent เป็นหลัก
+        const threat = await fetchLatestAlert();
+        setThreatData(threat);
+        // setAlertData(...) // ข้ามส่วนนี้ไปก่อนเพราะเราเน้นรับจาก Parent
+      } catch (error) {
+        console.error(error);
+      }
     };
     loadAlertData();
-  }, []);
+  }, [dataSummary, dataThreats]);
 
   function getSeverityColor(severity?: string): string {
     switch (severity) {
-      case "critical":
-        return "bg-red-500";
-      case "high":
-        return "bg-orange-500";
-      case "medium":
-        return "bg-yellow-500";
-      case "low":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-300";
+      case "critical": return "bg-red-500";
+      case "high": return "bg-orange-500";
+      case "medium": return "bg-yellow-500";
+      case "low": return "bg-blue-500";
+      default: return "bg-gray-300";
     }
   }
 
   const filteredThreats = filterSeverity && filterSeverity !== 'all'
-    ? threatData.filter((item) => item.severity === filterSeverity)
-    : threatData;
+    ? finalThreatData.filter((item) => item.severity === filterSeverity)
+    : finalThreatData;
 
   const threats = filteredThreats?.map((item) => ({
     description: item.description,
     code: item.incident_id,
     color: getSeverityColor(item.severity),
-  }));
+  })) || [];
 
-  if (!alertData) {
-  return (
-    <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4`}>
-      <div className="relative">
-        {/* Spinning border rings */}
-        <div className="w-16 h-16 rounded-full border-3 border-gray-700 border-t-cyan-400 animate-spin"></div>
-        <div className="absolute inset-0 w-16 h-16 rounded-full border-3 border-gray-700 border-b-blue-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}></div>
-        
-        {/* Center glow */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 animate-pulse shadow-[0_0_15px_rgba(6,182,212,0.5)]"></div>
+  // --- LOADING STATE (Design เดิมของคุณ) ---
+  if (!finalAlertData) {
+    return (
+      <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4`}>
+        <div className="relative">
+          {/* Spinning border rings */}
+          <div className="w-16 h-16 rounded-full border-3 border-gray-700 border-t-cyan-400 animate-spin"></div>
+          <div className="absolute inset-0 w-16 h-16 rounded-full border-3 border-gray-700 border-b-blue-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}></div>
+          
+          {/* Center glow */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 animate-pulse shadow-[0_0_15px_rgba(6,182,212,0.5)]"></div>
+          </div>
+          
+          {/* Alert icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-white text-lg animate-pulse">⚠</div>
+          </div>
         </div>
         
-        {/* Alert icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-white text-lg animate-pulse">⚠</div>
+        {/* Loading text */}
+        <div className="mt-4 text-center">
+          <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse">
+            LOADING DATA
+          </div>
+          <div className="flex justify-center gap-1 mt-2">
+            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+          </div>
         </div>
+        
+        {/* Optional logo display during loading */}
+        {logoPath && (
+          <div className="mt-3 opacity-50">
+            <img src={logoPath} alt="Loading" className="w-10 h-10 object-contain grayscale animate-pulse" />
+          </div>
+        )}
       </div>
-      
-      {/* Loading text */}
-      <div className="mt-4 text-center">
-        <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse">
-          LOADING DATA
-        </div>
-        <div className="flex justify-center gap-1 mt-2">
-          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-          <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
-        </div>
-      </div>
-      
-      {/* Optional logo display during loading */}
-      {logoPath && (
-        <div className="mt-3 opacity-50">
-          <img src={logoPath} alt="Loading" className="w-10 h-10 object-contain grayscale animate-pulse" />
-        </div>
-      )}
-    </div>
-  );
-}
+    );
+  }
 
+  // --- CONTENT STATE (Design เดิมของคุณ) ---
   return (
     <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col`}>
       <div className="p-1">
