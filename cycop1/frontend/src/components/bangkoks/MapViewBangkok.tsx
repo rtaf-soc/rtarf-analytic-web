@@ -40,6 +40,28 @@ const MapBoundsTracker = ({
   return null;
 };
 
+// ===================== MapFlyToController (NEW FEATURE) =====================
+// Component นี้ทำหน้าที่รับค่าพิกัดแล้วสั่ง Map ให้บิน (FlyTo) ไปหา
+interface MapFlyToControllerProps {
+  target: { lat: number; lng: number; zoom: number } | null;
+}
+
+const MapFlyToController: React.FC<MapFlyToControllerProps> = ({ target }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (target) {
+      map.flyTo([target.lat, target.lng], target.zoom, {
+        animate: true,
+        duration: 2, // ระยะเวลาบิน (วินาที) ยิ่งเยอะยิ่งสมูท
+        easeLinearity: 0.25,
+      });
+    }
+  }, [target, map]);
+
+  return null;
+};
+
 /* ======================
    BEZIER UTILITIES
 ====================== */
@@ -53,7 +75,7 @@ interface BezierCurve {
   points: LatLngTuple[]; // จุดที่ใช้วาด Polyline
 }
 
-// สร้าง control point + จุดตาม quadratic Bezier (เหมือนไฟล์ MapView ใหญ่)
+// สร้าง control point + จุดตาม quadratic Bezier
 const createBezierCurve = (
   start: LatLngTuple,
   end: LatLngTuple,
@@ -95,15 +117,6 @@ const createBezierCurve = (
 };
 
 // ===================== ICONS โลโก้แต่ละเหล่าทัพ =====================
-// โลโก้ บก.ทท. แบบปกติ (ยังเก็บไว้เผื่อใช้ทีหลัง)
-const iconRTARF = L.icon({
-  iconUrl: "/img/บก.ทท.png",
-  iconSize: [50, 45],
-  iconAnchor: [24, 24],
-  popupAnchor: [0, -30],
-});
-
-// 🔥 โลโก้บก.ทท. แบบ Alert เต้นหัวใจ (ใช้ class จาก index.css)
 const iconRTARFAlert = L.divIcon({
   className: "",
   html: `
@@ -116,7 +129,6 @@ const iconRTARFAlert = L.divIcon({
   popupAnchor: [0, -30],
 });
 
-// ⭐ โลโก้เหล่าทัพอื่น: Glow ฟ้า
 const iconARMY = L.divIcon({
   className: "",
   html: `
@@ -170,7 +182,7 @@ const FIXED_HQ = [
   {
     name: "บก.ทท.",
     icon: iconRTARFAlert,
-    position: [13.886433965395847, 100.56613525394891] as LatLngTuple,
+    position: [13.8863424,100.56493182] as LatLngTuple,
     description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
   },
   {
@@ -199,13 +211,9 @@ const FIXED_HQ = [
   },
 ];
 
-// จุดศูนย์กลาง (ปลายทาง) = HQ บก.ทท.
 const HQ_CENTER = FIXED_HQ[0].position;
-
-// ชื่อ HQ ไว้ใช้กรองไม่ให้ซ้อนกับ marker DB
 const HQ_NAMES = new Set(["บก.ทท.", "บก.ทท", "ทบ.", "ทอ.", "ทร.", "ตร."]);
 
-// เส้นคงที่จากโลโก้เหล่าทัพ → HQ บก.ทท.
 const HQ_CONNECTIONS = FIXED_HQ
   .filter((hq) => hq.name !== "บก.ทท.")
   .map((hq, idx) => ({
@@ -239,14 +247,12 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
     const curve = createBezierCurve(from, to);
     const { control, points } = curve;
 
-    // เส้น glow ด้านนอก (หนา/จาง)
     const glowLine = L.polyline(points, {
       color,
-      weight: 3, // เล็กลง
+      weight: 3,
       opacity: 0.22,
     }).addTo(map);
 
-    // เส้นด้านใน (dash + animation จาก JS เสริม)
     const dashLine = L.polyline(points, {
       color,
       weight: 1.4,
@@ -255,7 +261,6 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
       dashOffset: "0",
     }).addTo(map);
 
-    // จุดเรืองแสงวิ่ง
     const dot = L.circleMarker(from, {
       radius: 3,
       color,
@@ -272,7 +277,6 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
       const elapsed = timestamp - start;
       const t = (elapsed % durationMs) / durationMs;
 
-      // quadratic Bezier สำหรับจุดวิ่ง
       const oneMinusT = 1 - t;
       const lat =
         oneMinusT * oneMinusT * fromLat +
@@ -322,6 +326,10 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     []
   );
   const [bangkokGeoJSON, setBangkokGeoJSON] = useState<any>(null);
+
+  // State สำหรับเก็บเป้าหมายที่จะ Zoom ไป
+  const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
+  
   const mapSelect = "bangkok";
 
   useEffect(() => {
@@ -378,7 +386,6 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     }
   };
 
-  // เลือก icon ตาม node (DB)
   const getNodeIcon = (node: NodeGet, active: boolean) => {
     if (node.name === "บก.ทท." || node.name === "บก.ทท") return iconRTARFAlert;
     if (node.name === "ทบ.") return iconARMY;
@@ -430,6 +437,16 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
+      {/* Google Maps Hybrid Tile 
+         (Satellite + Labels)
+      */}
+      <TileLayer
+        url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+        attribution="&copy; Google Maps"
+        maxZoom={20}
+        subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+      />
+
       {bangkokGeoJSON && (
         <GeoJSON
           data={bangkokGeoJSON}
@@ -442,15 +459,8 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         />
       )}
 
-      <TileLayer
-        attribution="&copy; OpenStreetMap & CartoDB"
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
-        opacity={0.1}
-      />
-      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
+      {/* เรียกใช้ Controller เพื่อบินไปจุดที่กำหนดเมื่อ state flyToTarget เปลี่ยน */}
+      <MapFlyToController target={flyToTarget} />
 
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
@@ -465,7 +475,12 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
               position={[Number(node.latitude), Number(node.longitude)]}
               icon={getNodeIcon(node, active)}
               eventHandlers={{
-                click: () => onNodeClick && onNodeClick(node),
+                click: () => {
+                   // 1. เรียก callback เดิม
+                   if (onNodeClick) onNodeClick(node);
+                   // 2. สั่ง Zoom เข้าไปที่ตำแหน่งนี้ (Zoom Level 17 คือใกล้เหมือนรูปตัวอย่าง)
+                   setFlyToTarget({ lat: Number(node.latitude), lng: Number(node.longitude), zoom: 15 });
+                },
               }}
             >
               <Popup>
@@ -481,7 +496,17 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
       {/* FIXED HQ MARKERS */}
       {FIXED_HQ.map((hq, idx) => (
-        <Marker key={`hq-${idx}`} position={hq.position} icon={hq.icon}>
+        <Marker 
+          key={`hq-${idx}`} 
+          position={hq.position} 
+          icon={hq.icon}
+          eventHandlers={{
+             click: () => {
+                // สั่ง Zoom เข้าไปที่ HQ นี้
+                setFlyToTarget({ lat: hq.position[0], lng: hq.position[1], zoom: 19 });
+             }
+          }}
+        >
           <Popup>
             <strong>{hq.name}</strong>
             <br />
@@ -490,7 +515,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         </Marker>
       ))}
 
-      {/* เส้นเชื่อมโยงปกติจาก DB (เส้นตรง จาง ๆ และเล็กลง) */}
+      {/* เส้นเชื่อมโยงปกติจาก DB */}
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
@@ -503,7 +528,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         />
       ))}
 
-      {/* เส้นโค้ง + glow + dash + จุดวิ่ง จาก 4 เหล่าทัพ → บก.ทท. */}
+      {/* เส้นเชื่อมโยง HQ */}
       {HQ_CONNECTIONS.map((line) => (
         <AnimatedBeam
           key={line.id}
