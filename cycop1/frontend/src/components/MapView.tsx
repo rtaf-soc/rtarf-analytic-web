@@ -10,7 +10,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "../../../frontend/src/index.css";
+import "../index.css"
 
 // ===============================
 // ICONS
