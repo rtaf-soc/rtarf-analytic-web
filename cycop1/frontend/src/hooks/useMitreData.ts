@@ -63,15 +63,12 @@ export const useMitreData = ({ dateRange }: UseMitreDataProps) => {
 
   // Main Function: ยิง API (POST /api/mitrestats)
   const fetchData = useCallback(async (isRefresh = false) => {
-    // ต้องรอให้ techniques โหลดเสร็จก่อนถึงจะ map ข้อมูลได้ถูกต้อง
     if (techniques.length === 0) return;
     
     isRefresh ? setRefreshing(true) : setLoading(true);
 
     try {
       // ✅ Smart Date Logic:
-      // ถ้า dateRange มีเวลาติดมา (T...) ให้ใช้เวลานั้นเลย (Rolling Window)
-      // ถ้าไม่มี (เลือกจากปฏิทิน) ให้เติม 00:00 - 23:59
       const formatTimestamp = (dateStr: string, isEndOfDay: boolean) => {
         if (dateStr.includes('T')) return dateStr;
         return isEndOfDay ? `${dateStr}T23:59:59Z` : `${dateStr}T00:00:00Z`;
