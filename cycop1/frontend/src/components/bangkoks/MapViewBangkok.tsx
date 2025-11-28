@@ -182,7 +182,7 @@ const FIXED_HQ = [
   {
     name: "บก.ทท.",
     icon: iconRTARFAlert,
-    position: [13.886433965395847, 100.56613525394891] as LatLngTuple,
+    position: [13.8863424,100.56493182] as LatLngTuple,
     description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
   },
   {
@@ -479,7 +479,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
                    // 1. เรียก callback เดิม
                    if (onNodeClick) onNodeClick(node);
                    // 2. สั่ง Zoom เข้าไปที่ตำแหน่งนี้ (Zoom Level 17 คือใกล้เหมือนรูปตัวอย่าง)
-                   setFlyToTarget({ lat: Number(node.latitude), lng: Number(node.longitude), zoom: 17 });
+                   setFlyToTarget({ lat: Number(node.latitude), lng: Number(node.longitude), zoom: 15 });
                 },
               }}
             >
