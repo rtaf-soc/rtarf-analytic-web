@@ -196,6 +196,12 @@ def get_mitre_stats(body: MitreStatsRequest):
         f"api/Analytic/org/{ORG_ID}/action/GetMitreStats",
         payload=body.model_dump()
     )
+    
+@app.get("/api/bkkthreat", tags= ["BKKOrgStatus"])
+def get_bkk_org_status():
+    from app.services.get_bkk_org import get_all_org_status
+    return get_all_org_status()
+    
 
 
 # @app.get("/api/scheduler/status", tags=["Scheduler"])

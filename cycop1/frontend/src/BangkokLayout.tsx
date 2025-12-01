@@ -11,7 +11,7 @@ import { type AlertBase } from "./types/defensive";
 
 import "./index.css";
 
-// Interface สำหรับรับค่าจาก API (Private interfaces สำหรับไฟล์นี้)
+// Interface สำหรับรับค่าจาก API (Private interfaces สำหรับไฟล์นี้) - ของเดิม (RTARF)
 interface ApiSeverityItem {
   serverity?: string;
   quantity?: number;
@@ -24,15 +24,42 @@ interface ApiAlertItem {
   serverity?: string; 
 }
 
+// ✅ (ใหม่) Interface สำหรับรับค่าจาก Python API (4 เหล่าทัพ)
+interface OrgStatusApi {
+  id: string; // "rta", "rtaf", "rtn", "rtp"
+  name: string;
+  short_name: string;
+  status: string;
+  message: string;
+  stats: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  threat_list: Array<{
+    threatName: string;    // เปลี่ยนเป็น threatName
+    threatDetail: string;  // เพิ่ม threatDetail
+    serverity: string | null; // เปลี่ยน key เป็น serverity (และรับ string หรือ null)
+    incidentID: string;    // เพิ่ม incidentID
+    quantity: number;
+    percentage: number;
+  }>;
+}
+
 const BangkokLayout = () => {
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
 
-  // ✅ State เก็บข้อมูลจริง (ใช้ Type UiThreatSummary)
+  // ✅ State เก็บข้อมูลจริง RTARF (ของเดิม)
   const [realSummary, setRealSummary] = useState<UiThreatSummary | null>(null);
   const [realThreats, setRealThreats] = useState<AlertBase[]>([]);
 
-  // ✅ 1. Fetch ข้อมูลจาก API ของเราเอง
+  // ✅ (ใหม่) State เก็บข้อมูล 4 เหล่าทัพจาก Python API
+  const [orgStatuses, setOrgStatuses] = useState<OrgStatusApi[]>([]);
+
+  // ✅ 1. Fetch ข้อมูลจาก API ของเราเอง (RTARF) + Python API (เหล่าทัพอื่น)
   useEffect(() => {
+    // --- A. Logic เดิมของ RTARF (ห้ามแก้) ---
     const initData = async () => {
       try {
         const [severitiesRes, alertsRes] = await Promise.all([
@@ -43,13 +70,12 @@ const BangkokLayout = () => {
         const severitiesData = await severitiesRes.json();
         const alertsData = await alertsRes.json();
 
-        // --- A. Map Summary Data ---
+        // Map Summary Data
         const stats: UiThreatSummary = { critical: 0, high: 0, medium: 0, low: 0 };
         
         if (Array.isArray(severitiesData)) {
           severitiesData.forEach((item: ApiSeverityItem) => {
             const key = (item.serverity || '').toLowerCase();
-            // Map ตาม keyword ที่ API ส่งมา
             if (key.includes('critical')) stats.critical = item.quantity || 0;
             else if (key.includes('high')) stats.high = item.quantity || 0;
             else if (key.includes('medium')) stats.medium = item.quantity || 0;
@@ -58,13 +84,11 @@ const BangkokLayout = () => {
         }
         setRealSummary(stats);
 
-        // --- B. Map Threat List ---
+        // Map Threat List
         const rawAlerts = Array.isArray(alertsData.alerts) ? alertsData.alerts : (Array.isArray(alertsData) ? alertsData : []);
         
         const mappedThreats: AlertBase[] = rawAlerts.map((item: ApiAlertItem) => {
-          // แปลงคะแนนตัวเลข (เช่น "95") เป็น Label (เช่น "critical")
           const severityLabel = mapScoreToSeverity(item.serverity || "0");
-
           return {
             incident_id: item.incidentID || "N/A",
             description: item.threatName || "Unknown Threat",
@@ -74,7 +98,6 @@ const BangkokLayout = () => {
           };
         });
 
-        // เรียงลำดับ Critical ขึ้นก่อน
         const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
         mappedThreats.sort((a, b) => {
            const scoreA = severityOrder[a.severity as keyof typeof severityOrder] || 0;
@@ -88,12 +111,68 @@ const BangkokLayout = () => {
         console.error("Error fetching dashboard data:", error);
       }
     };
-    initData();
+
+    // --- B. (ใหม่) Logic ดึงข้อมูล 4 เหล่าทัพจาก Python ---
+    const fetchOrgData = async () => {
+      try {
+        // ยิงไปที่ API Python
+        const response = await fetch("http://127.0.0.1:8000/api/bkkthreat");
+        if (!response.ok) throw new Error("Failed to fetch python api");
+        const data: OrgStatusApi[] = await response.json();
+        setOrgStatuses(data);
+      } catch (error) {
+        console.error("Error fetching Python API:", error);
+      }
+    };
+
+    initData();      // เรียก RTARF (ครั้งเดียวตามเดิม)
+    fetchOrgData();  // เรียก Python (ครั้งแรก)
+
+    // ตั้งเวลาให้ดึงข้อมูล Python ใหม่ทุก 3 วินาที (เพื่อให้กราฟขยับ)
+    const interval = setInterval(fetchOrgData, 3000);
+    return () => clearInterval(interval);
+
   }, []);
 
-  // ✅ 2. สร้างข้อมูลว่าง (Empty Data) สำหรับเหล่าทัพอื่น
-  const emptySummary: UiThreatSummary = { critical: 0, high: 0, medium: 0, low: 0 };
-  const emptyThreats: AlertBase[] = [];
+  // ✅ Helper Function: แปลงข้อมูล API เป็น Props ของการ์ด
+  const getOrgDataProps = (targetId: string) => {
+    const org = orgStatuses.find((o) => o.id === targetId);
+    
+    // Default ค่าว่าง
+    const emptySummary: UiThreatSummary = { critical: 0, high: 0, medium: 0, low: 0 };
+    const emptyThreats: AlertBase[] = [];
+
+    if (!org) return { summary: emptySummary, threats: emptyThreats };
+
+    // Map Stats
+    const summary: UiThreatSummary = org.stats;
+
+    // Map Threats List (mapping ใหม่ตาม key ที่เปลี่ยนไป)
+    const threats: AlertBase[] = (org.threat_list || []).map((item) => {
+      
+      // ดึงค่า serverity ออกมา (ถ้าเป็น null ให้ถือว่าเป็น "0")
+      const scoreStr = item.serverity || "0";
+      
+      // แปลง Score เป็น Severity Label (สี)
+      const severityLabel = mapScoreToSeverity(scoreStr);
+
+      return {
+        incident_id: item.incidentID,  // ใช้ incidentID
+        description: item.threatName,  // ใช้ threatName
+        severity: severityLabel,       // ใช้ Label ที่แปลงมาแล้ว
+        timestamp: item.threatDetail || new Date().toISOString(), // ใช้ threatDetail เป็น timestamp หรือค่าประกอบ
+        event_id: "0"
+      };
+    });
+
+    return { summary, threats };
+  };
+
+  // เตรียมข้อมูลสำหรับแต่ละค่าย
+  const rta = getOrgDataProps("rta");   // ทบ.
+  const rtaf = getOrgDataProps("rtaf"); // ทอ.
+  const rtn = getOrgDataProps("rtn");   // ทร.
+  const rtp = getOrgDataProps("rtp");   // ตร.
 
   return (
     <div className="bg-black h-screen relative overflow-hidden">
@@ -116,7 +195,7 @@ const BangkokLayout = () => {
       <div className="fixed bottom-0 right-59 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
         <div className="flex items-center gap-2 h-full">
           
-          {/* 🟢 1. กองบัญชาการกองทัพไทย (RTARF) -> ส่งข้อมูลจริง */}
+          {/* 🟢 1. กองบัญชาการกองทัพไทย (RTARF) -> ส่งข้อมูลจริง (เหมือนเดิม) */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองบัญชาการกองทัพไทย"
@@ -129,46 +208,46 @@ const BangkokLayout = () => {
             />
           </div>
 
-          {/* ⚪ 2. กองทัพบก -> ส่งข้อมูลว่าง */}
+          {/* 🟢 2. กองทัพบก -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพบก"
-              filterSeverity="medium"
+              filterSeverity="all" 
               logoPath="../public/img/ทบ.png"
               backgroundColor="bg-green-700"
               borderColor="border-gray-700"
-              dataSummary={emptySummary}
-              dataThreats={emptyThreats}
+              dataSummary={rta.summary}    // ใช้ข้อมูลที่ดึงมา
+              dataThreats={rta.threats}    // ใช้ข้อมูลที่ดึงมา
             />
           </div>
 
-          {/* ⚪ 3. กองทัพอากาศ -> ส่งข้อมูลว่าง */}
+          {/* 🔵 3. กองทัพอากาศ -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพอากาศ"
-              filterSeverity="high"
+              filterSeverity="all"
               logoPath="../public/img/ทอ.png"
               backgroundColor="bg-blue-600"
               borderColor="border-gray-700"
-              dataSummary={emptySummary}
-              dataThreats={emptyThreats}
+              dataSummary={rtaf.summary}
+              dataThreats={rtaf.threats}
             />
           </div>
 
-          {/* ⚪ 4. กองทัพเรือ -> ส่งข้อมูลว่าง */}
+          {/* 🔵 4. กองทัพเรือ -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพเรือ"
-              filterSeverity="low"
+              filterSeverity="all"
               logoPath="../public/img/ทร.png"
               backgroundColor="bg-blue-900"
               borderColor="border-gray-700"
-              dataSummary={emptySummary}
-              dataThreats={emptyThreats}
+              dataSummary={rtn.summary}
+              dataThreats={rtn.threats}
             />
           </div>
 
-          {/* ⚪ 5. สำนักงานตำรวจแห่งชาติ -> ส่งข้อมูลว่าง */}
+          {/* 🔴 5. สำนักงานตำรวจแห่งชาติ -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="สำนักงานตำรวจแห่งชาติ"
@@ -176,8 +255,8 @@ const BangkokLayout = () => {
               logoPath="../public/img/ตอ.png"
               backgroundColor="bg-red-800"
               borderColor="border-gray-700"
-              dataSummary={emptySummary}
-              dataThreats={emptyThreats}
+              dataSummary={rtp.summary}
+              dataThreats={rtp.threats}
             />
           </div>
         
