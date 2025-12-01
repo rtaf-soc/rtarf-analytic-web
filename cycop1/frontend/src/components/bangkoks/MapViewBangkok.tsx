@@ -182,7 +182,7 @@ const FIXED_HQ = [
   {
     name: "บก.ทท.",
     icon: iconRTARFAlert,
-    position: [13.886433965395847, 100.56613525394891] as LatLngTuple,
+    position: [13.8863424,100.56493182] as LatLngTuple,
     description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
   },
   {
