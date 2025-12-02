@@ -583,7 +583,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
           key={line.id}
           from={line.from}
           to={line.to}
-          color="#22d3ee"
+          color="#d11515ff"
           durationMs={3500}
           dashSpeed={-1}
         />
