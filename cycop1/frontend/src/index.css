@@ -210,6 +210,13 @@
   }
 }
 
+/* ทำให้ tile ของ Google Map มืดตั้งแต่เฟรมแรก */
+.dynamic-dark-map {
+  filter: brightness(0.4) contrast(1.1) saturate(0.9);
+  transition: filter 0.3s ease-out;
+}
+
+
 
 
 

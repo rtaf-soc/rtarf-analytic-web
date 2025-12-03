@@ -49,11 +49,8 @@ const BangkokThreat = ({
 
     const loadAlertData = async () => {
       try {
-        // Note: ถ้าจะใช้ Standalone ต้องมีการ Map data ตรงนี้ให้เข้ากับ UiThreatSummary
-        // แต่ในบริบทนี้เราใช้ข้อมูลจาก Parent เป็นหลัก
         const threat = await fetchLatestAlert();
         setThreatData(threat);
-        // setAlertData(...) // ข้ามส่วนนี้ไปก่อนเพราะเราเน้นรับจาก Parent
       } catch (error) {
         console.error(error);
       }

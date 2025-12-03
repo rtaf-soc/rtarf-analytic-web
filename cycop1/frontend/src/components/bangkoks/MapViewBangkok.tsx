@@ -1,5 +1,5 @@
 // src/components/bangkoks/MapViewBangkok.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   GetAllConnectionsWithNodes,
   type NetworkConnection,
@@ -22,7 +22,9 @@ import "../../index.css";
 import { Router } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-// ===================== MapBoundsTracker =====================
+/* =====================
+   MapBoundsTracker
+===================== */
 const MapBoundsTracker = ({
   onBoundsChange,
 }: {
@@ -40,8 +42,28 @@ const MapBoundsTracker = ({
   return null;
 };
 
-// ===================== MapFlyToController (NEW FEATURE) =====================
-// Component นี้ทำหน้าที่รับค่าพิกัดแล้วสั่ง Map ให้บิน (FlyTo) ไปหา
+/* =====================
+   ZoomTracker
+===================== */
+const ZoomTracker = ({
+  onZoomChange,
+}: {
+  onZoomChange: (zoom: number) => void;
+}) => {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom());
+    },
+  });
+
+  useEffect(() => {
+    onZoomChange(map.getZoom());
+  }, [map, onZoomChange]);
+
+  return null;
+};
+
+// ===================== MapFlyToController =====================
 interface MapFlyToControllerProps {
   target: { lat: number; lng: number; zoom: number } | null;
 }
@@ -53,7 +75,7 @@ const MapFlyToController: React.FC<MapFlyToControllerProps> = ({ target }) => {
     if (target) {
       map.flyTo([target.lat, target.lng], target.zoom, {
         animate: true,
-        duration: 2, // ระยะเวลาบิน (วินาที) ยิ่งเยอะยิ่งสมูท
+        duration: 2,
         easeLinearity: 0.25,
       });
     }
@@ -72,10 +94,9 @@ interface BezierCurve {
   start: LatLngTuple;
   control: LatLngTuple;
   end: LatLngTuple;
-  points: LatLngTuple[]; // จุดที่ใช้วาด Polyline
+  points: LatLngTuple[];
 }
 
-// สร้าง control point + จุดตาม quadratic Bezier
 const createBezierCurve = (
   start: LatLngTuple,
   end: LatLngTuple,
@@ -87,12 +108,11 @@ const createBezierCurve = (
   const midLat = (lat1 + lat2) / 2;
   const midLng = (lng1 + lng2) / 2;
 
-  // เวกเตอร์ตั้งฉาก (~ความโค้ง)
   const dLat = lat2 - lat1;
   const dLng = lng2 - lng1;
   const length = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
 
-  const offsetFactor = 0.01; // ปรับมาก/น้อยได้เพื่อให้โค้งมากขึ้นหรือน้อยลง
+  const offsetFactor = 0.01;
   const offsetLat = (-dLng / length) * offsetFactor;
   const offsetLng = (dLat / length) * offsetFactor;
 
@@ -182,7 +202,7 @@ const FIXED_HQ = [
   {
     name: "บก.ทท.",
     icon: iconRTARFAlert,
-    position: [13.8863424,100.56493182] as LatLngTuple,
+    position: [13.8863424, 100.56493182] as LatLngTuple,
     description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
   },
   {
@@ -214,21 +234,20 @@ const FIXED_HQ = [
 const HQ_CENTER = FIXED_HQ[0].position;
 const HQ_NAMES = new Set(["บก.ทท.", "บก.ทท", "ทบ.", "ทอ.", "ทร.", "ตร."]);
 
-const HQ_CONNECTIONS = FIXED_HQ
-  .filter((hq) => hq.name !== "บก.ทท.")
-  .map((hq, idx) => ({
+const HQ_CONNECTIONS = FIXED_HQ.filter((hq) => hq.name !== "บก.ทท.").map(
+  (hq, idx) => ({
     id: `hq-static-${idx}`,
     from: hq.position as LatLngTuple,
     to: HQ_CENTER as LatLngTuple,
-  }));
+  })
+);
 
-// ===================== Animated Beam (โค้ง + glow + dot) =====================
+// ===================== Neon Beam + Moving Dot =====================
 interface AnimatedBeamProps {
   from: LatLngTuple;
   to: LatLngTuple;
   color?: string;
   durationMs?: number;
-  dashSpeed?: number;
 }
 
 const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
@@ -236,33 +255,18 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   to,
   color = "#22d3ee",
   durationMs = 3000,
-  dashSpeed = -1.5,
 }) => {
   const map = useMap();
 
+  // สร้างเส้นโค้งครั้งเดียวต่อ from/to
+  const curve = useMemo(() => createBezierCurve(from, to), [from, to]);
+
   useEffect(() => {
-    const [fromLat, fromLng] = from;
-    const [toLat, toLng] = to;
+    const points = curve.points;
 
-    const curve = createBezierCurve(from, to);
-    const { control, points } = curve;
-
-    const glowLine = L.polyline(points, {
-      color,
-      weight: 3,
-      opacity: 0.22,
-    }).addTo(map);
-
-    const dashLine = L.polyline(points, {
-      color,
-      weight: 1.4,
-      opacity: 0.95,
-      dashArray: "8 14",
-      dashOffset: "0",
-    }).addTo(map);
-
-    const dot = L.circleMarker(from, {
-      radius: 3,
+    // จุดกลมที่วิ่งตามเส้น
+    const dot = L.circleMarker(points[0], {
+      radius: 4,
       color,
       fillColor: color,
       fillOpacity: 1,
@@ -270,27 +274,17 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
 
     let frameId: number;
     let start: number | null = null;
-    let dashOffset = 0;
 
     const animate = (timestamp: number) => {
       if (start === null) start = timestamp;
       const elapsed = timestamp - start;
       const t = (elapsed % durationMs) / durationMs;
 
-      const oneMinusT = 1 - t;
-      const lat =
-        oneMinusT * oneMinusT * fromLat +
-        2 * oneMinusT * t * control[0] +
-        t * t * toLat;
-      const lng =
-        oneMinusT * oneMinusT * fromLng +
-        2 * oneMinusT * t * control[1] +
-        t * t * toLng;
+      // index ของจุดบนเส้น (0 -> points.length - 1)
+      const idx = Math.floor(t * (points.length - 1));
+      const nextPoint = points[idx];
 
-      dot.setLatLng([lat, lng]);
-
-      dashOffset = (dashOffset + dashSpeed) % 100;
-      dashLine.setStyle({ dashOffset: `${dashOffset}` });
+      dot.setLatLng(nextPoint);
 
       frameId = requestAnimationFrame(animate);
     };
@@ -299,13 +293,33 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
 
     return () => {
       cancelAnimationFrame(frameId);
-      map.removeLayer(glowLine);
-      map.removeLayer(dashLine);
       map.removeLayer(dot);
     };
-  }, [map, from, to, color, durationMs, dashSpeed]);
+  }, [map, curve, color, durationMs]);
 
-  return null;
+  return (
+    <>
+      {/* outer glow */}
+      <Polyline
+        positions={curve.points}
+        pathOptions={{
+          color,
+          weight: 6,
+          opacity: 0.25,
+        }}
+      />
+
+      {/* inner neon core */}
+      <Polyline
+        positions={curve.points}
+        pathOptions={{
+          color,
+          weight: 2,
+          opacity: 0.95,
+        }}
+      />
+    </>
+  );
 };
 
 // ===================== Props =====================
@@ -327,9 +341,14 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
   );
   const [bangkokGeoJSON, setBangkokGeoJSON] = useState<any>(null);
 
-  // State สำหรับเก็บเป้าหมายที่จะ Zoom ไป
-  const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
-  
+  const [flyToTarget, setFlyToTarget] = useState<{
+    lat: number;
+    lng: number;
+    zoom: number;
+  } | null>(null);
+
+  const [zoomLevel, setZoomLevel] = useState<number>(11);
+
   const mapSelect = "bangkok";
 
   useEffect(() => {
@@ -347,6 +366,23 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     };
     loadNodeData();
   }, []);
+
+  // ปรับความสว่างของ tile ตาม zoom level
+  useEffect(() => {
+    const tiles = document.querySelectorAll<HTMLElement>(".dynamic-dark-map");
+
+    tiles.forEach((tile) => {
+      let brightness = 0.4; // มุมมองไกล = มืด
+
+      if (zoomLevel >= 17) brightness = 1.0; // ซูมใกล้มาก = สว่างเต็ม
+      else if (zoomLevel >= 15) brightness = 0.7;
+      else if (zoomLevel >= 14) brightness = 0.55;
+      else brightness = 0.4;
+
+      tile.style.transition = "filter 0.3s ease-out";
+      tile.style.filter = `brightness(${brightness}) contrast(1.1) saturate(0.9)`;
+    });
+  }, [zoomLevel]);
 
   const nodeIdsInMap = new Set(nodeData.map((node) => node.id));
 
@@ -437,15 +473,17 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-      {/* Google Maps Hybrid Tile 
-         (Satellite + Labels)
-      */}
+      {/* Google Maps Hybrid Tile */}
       <TileLayer
+        className="dynamic-dark-map"
         url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         attribution="&copy; Google Maps"
         maxZoom={20}
-        subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+        subdomains={["mt0", "mt1", "mt2", "mt3"]}
       />
+
+      {/* ติดตาม zoom */}
+      <ZoomTracker onZoomChange={setZoomLevel} />
 
       {bangkokGeoJSON && (
         <GeoJSON
@@ -459,7 +497,6 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         />
       )}
 
-      {/* เรียกใช้ Controller เพื่อบินไปจุดที่กำหนดเมื่อ state flyToTarget เปลี่ยน */}
       <MapFlyToController target={flyToTarget} />
 
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
@@ -476,10 +513,12 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
               icon={getNodeIcon(node, active)}
               eventHandlers={{
                 click: () => {
-                   // 1. เรียก callback เดิม
-                   if (onNodeClick) onNodeClick(node);
-                   // 2. สั่ง Zoom เข้าไปที่ตำแหน่งนี้ (Zoom Level 17 คือใกล้เหมือนรูปตัวอย่าง)
-                   setFlyToTarget({ lat: Number(node.latitude), lng: Number(node.longitude), zoom: 15 });
+                  if (onNodeClick) onNodeClick(node);
+                  setFlyToTarget({
+                    lat: Number(node.latitude),
+                    lng: Number(node.longitude),
+                    zoom: 15,
+                  });
                 },
               }}
             >
@@ -496,15 +535,18 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
       {/* FIXED HQ MARKERS */}
       {FIXED_HQ.map((hq, idx) => (
-        <Marker 
-          key={`hq-${idx}`} 
-          position={hq.position} 
+        <Marker
+          key={`hq-${idx}`}
+          position={hq.position}
           icon={hq.icon}
           eventHandlers={{
-             click: () => {
-                // สั่ง Zoom เข้าไปที่ HQ นี้
-                setFlyToTarget({ lat: hq.position[0], lng: hq.position[1], zoom: 19 });
-             }
+            click: () => {
+              setFlyToTarget({
+                lat: hq.position[0],
+                lng: hq.position[1],
+                zoom: 19,
+              });
+            },
           }}
         >
           <Popup>
@@ -528,15 +570,14 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         />
       ))}
 
-      {/* เส้นเชื่อมโยง HQ */}
+      {/* เส้นเชื่อมโยง HQ + จุดกลมวิ่ง */}
       {HQ_CONNECTIONS.map((line) => (
         <AnimatedBeam
           key={line.id}
           from={line.from}
           to={line.to}
-          color="#22d3ee"
-          durationMs={3500}
-          dashSpeed={-1}
+          color="#d11515ff"
+          durationMs={1500}
         />
       ))}
     </MapContainer>
