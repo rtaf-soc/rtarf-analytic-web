@@ -481,6 +481,8 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         maxZoom={20}
         subdomains={["mt0", "mt1", "mt2", "mt3"]}
       />
+      {/* labels / boundaries */}
+      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
 
       {/* ติดตาม zoom */}
       <ZoomTracker onZoomChange={setZoomLevel} />

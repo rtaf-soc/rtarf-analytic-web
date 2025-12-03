@@ -54,12 +54,11 @@ const BangkokLayout = () => {
   const [realSummary, setRealSummary] = useState<UiThreatSummary | null>(null);
   const [realThreats, setRealThreats] = useState<AlertBase[]>([]);
 
-  // ✅ (ใหม่) State เก็บข้อมูล 4 เหล่าทัพจาก Python API
+  // ✅ (ใหม่) State เก็บข้อมูล 4 เหล่าทัพจาก Python API Mock Data
   const [orgStatuses, setOrgStatuses] = useState<OrgStatusApi[]>([]);
 
   // ✅ 1. Fetch ข้อมูลจาก API ของเราเอง (RTARF) + Python API (เหล่าทัพอื่น)
   useEffect(() => {
-    // --- A. Logic เดิมของ RTARF (ห้ามแก้) ---
     const initData = async () => {
       try {
         const [severitiesRes, alertsRes] = await Promise.all([
@@ -116,7 +115,7 @@ const BangkokLayout = () => {
     const fetchOrgData = async () => {
       try {
         // ยิงไปที่ API Python
-        const response = await fetch("http://127.0.0.1:8000/api/bkkthreat");
+        const response = await fetch("/api/bkkthreat");
         if (!response.ok) throw new Error("Failed to fetch python api");
         const data: OrgStatusApi[] = await response.json();
         setOrgStatuses(data);
@@ -125,10 +124,9 @@ const BangkokLayout = () => {
       }
     };
 
-    initData();      // เรียก RTARF (ครั้งเดียวตามเดิม)
-    fetchOrgData();  // เรียก Python (ครั้งแรก)
+    initData();      
+    fetchOrgData();  
 
-    // ตั้งเวลาให้ดึงข้อมูล Python ใหม่ทุก 3 วินาที (เพื่อให้กราฟขยับ)
     const interval = setInterval(fetchOrgData, 3000);
     return () => clearInterval(interval);
 
@@ -138,29 +136,24 @@ const BangkokLayout = () => {
   const getOrgDataProps = (targetId: string) => {
     const org = orgStatuses.find((o) => o.id === targetId);
     
-    // Default ค่าว่าง
     const emptySummary: UiThreatSummary = { critical: 0, high: 0, medium: 0, low: 0 };
     const emptyThreats: AlertBase[] = [];
 
     if (!org) return { summary: emptySummary, threats: emptyThreats };
 
-    // Map Stats
     const summary: UiThreatSummary = org.stats;
 
-    // Map Threats List (mapping ใหม่ตาม key ที่เปลี่ยนไป)
     const threats: AlertBase[] = (org.threat_list || []).map((item) => {
       
-      // ดึงค่า serverity ออกมา (ถ้าเป็น null ให้ถือว่าเป็น "0")
       const scoreStr = item.serverity || "0";
       
-      // แปลง Score เป็น Severity Label (สี)
       const severityLabel = mapScoreToSeverity(scoreStr);
 
       return {
-        incident_id: item.incidentID,  // ใช้ incidentID
-        description: item.threatName,  // ใช้ threatName
-        severity: severityLabel,       // ใช้ Label ที่แปลงมาแล้ว
-        timestamp: item.threatDetail || new Date().toISOString(), // ใช้ threatDetail เป็น timestamp หรือค่าประกอบ
+        incident_id: item.incidentID,  
+        description: item.threatName, 
+        severity: severityLabel,       
+        timestamp: item.threatDetail || new Date().toISOString(), 
         event_id: "0"
       };
     });
@@ -216,8 +209,8 @@ const BangkokLayout = () => {
               logoPath="../public/img/ทบ.png"
               backgroundColor="bg-green-700"
               borderColor="border-gray-700"
-              dataSummary={rta.summary}    // ใช้ข้อมูลที่ดึงมา
-              dataThreats={rta.threats}    // ใช้ข้อมูลที่ดึงมา
+              dataSummary={rta.summary}    
+              dataThreats={rta.threats}    
             />
           </div>
 
