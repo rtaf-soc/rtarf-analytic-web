@@ -19,7 +19,8 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../../index.css";
-import { Router } from "lucide-react";
+// Icon สำหรับ Threat
+import { Router, ShieldAlert, Server, Radio, Database, Monitor } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 /* =====================
@@ -242,6 +243,67 @@ const HQ_CONNECTIONS = FIXED_HQ.filter((hq) => hq.name !== "บก.ทท.").map
   })
 );
 
+// ===================== THREAT MAPPING UTILS =====================
+
+const THREAT_LOCATIONS = [
+    { 
+        position: [13.88533894,100.56438735] as LatLngTuple, // Threat 5
+        icon: <Server size={14}/> 
+    },
+    { 
+        position: [13.88530696,100.56470503] as LatLngTuple, // Threat 4
+        icon: <Server size={14}/> 
+    },
+    { 
+        position: [13.88503809,100.56528421] as LatLngTuple, // Threat 3
+        icon: <Server size={14}/> 
+    },
+    { 
+        position: [13.88472362,100.56640554] as LatLngTuple, // Threat 2
+        icon: <Server size={14}/> 
+    },
+    { 
+        position: [13.88719732,100.56653012] as LatLngTuple, // Threat 1
+        icon: <Server size={14}/> 
+    },
+];
+
+// 2. ฟังก์ชันกำหนดสีตาม Severity
+const getSeverityColor = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+        case 'critical': return "#ef4444"; // Red
+        case 'high': return "#f97316";     // Orange
+        case 'medium': return "#eab308";   // Yellow
+        case 'low': return "#3b82f6";      // Blue
+        default: return "#3b82f6";         // Blue
+    }
+};
+
+// 3. สร้าง Icon สำหรับ Threat
+const createThreatIcon = (iconNode: React.ReactNode, severity: string) => {
+    const color = getSeverityColor(severity);
+    const pulseColor = severity?.toLowerCase() === 'critical' ? 'rgba(239, 68, 68, 0.6)' : 'rgba(59, 130, 246, 0.5)';
+
+    const html = renderToStaticMarkup(
+        <div className="relative flex items-center justify-center">
+            <div className="absolute w-10 h-10 rounded-full animate-ping" style={{ backgroundColor: pulseColor }}></div>
+            <div className="relative w-9 h-9 bg-black/80 border-2 rounded-full flex items-center justify-center shadow-lg" 
+                 style={{ borderColor: color, boxShadow: `0 0 8px ${color}` }}>
+                <div style={{ color: color }}>{iconNode}</div>
+            </div>
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border border-black flex items-center justify-center text-[10px] text-white font-bold">!</div>
+        </div>
+    );
+
+    return L.divIcon({
+        html,
+        className: 'custom-threat-icon',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+    });
+};
+
+
 // ===================== Neon Beam + Moving Dot =====================
 interface AnimatedBeamProps {
   from: LatLngTuple;
@@ -258,13 +320,11 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
 }) => {
   const map = useMap();
 
-  // สร้างเส้นโค้งครั้งเดียวต่อ from/to
   const curve = useMemo(() => createBezierCurve(from, to), [from, to]);
 
   useEffect(() => {
     const points = curve.points;
 
-    // จุดกลมที่วิ่งตามเส้น
     const dot = L.circleMarker(points[0], {
       radius: 4,
       color,
@@ -280,7 +340,6 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
       const elapsed = timestamp - start;
       const t = (elapsed % durationMs) / durationMs;
 
-      // index ของจุดบนเส้น (0 -> points.length - 1)
       const idx = Math.floor(t * (points.length - 1));
       const nextPoint = points[idx];
 
@@ -299,7 +358,6 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
 
   return (
     <>
-      {/* outer glow */}
       <Polyline
         positions={curve.points}
         pathOptions={{
@@ -308,8 +366,6 @@ const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
           opacity: 0.25,
         }}
       />
-
-      {/* inner neon core */}
       <Polyline
         positions={curve.points}
         pathOptions={{
@@ -349,6 +405,8 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
   const [zoomLevel, setZoomLevel] = useState<number>(11);
 
+  const [apiThreats, setApiThreats] = useState<any[]>([]);
+
   const mapSelect = "bangkok";
 
   useEffect(() => {
@@ -367,14 +425,31 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     loadNodeData();
   }, []);
 
-  // ปรับความสว่างของ tile ตาม zoom level
   useEffect(() => {
-    const tiles = document.querySelectorAll<HTMLElement>(".dynamic-dark-map");
+    const fetchThreats = async () => {
+        try {
+            const res = await fetch('/api/threatalerts');
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setApiThreats(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch threats:", err);
+        }
+    };
+    
+    fetchThreats();
+    const interval = setInterval(fetchThreats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const tiles = document.querySelectorAll<HTMLElement>(".dynamic-dark-map, .satellite-ops-map");
 
     tiles.forEach((tile) => {
-      let brightness = 0.4; // มุมมองไกล = มืด
+      let brightness = 0.4;
 
-      if (zoomLevel >= 17) brightness = 1.0; // ซูมใกล้มาก = สว่างเต็ม
+      if (zoomLevel >= 17) brightness = 0.85;
       else if (zoomLevel >= 15) brightness = 0.7;
       else if (zoomLevel >= 14) brightness = 0.55;
       else brightness = 0.4;
@@ -473,18 +548,32 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
       className="w-full h-full rounded-lg"
       style={{ backgroundColor: "black" }}
     >
-      {/* Google Maps Hybrid Tile */}
-      <TileLayer
-        className="dynamic-dark-map"
-        url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-        attribution="&copy; Google Maps"
-        maxZoom={20}
-        subdomains={["mt0", "mt1", "mt2", "mt3"]}
-      />
-      {/* labels / boundaries */}
-      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
+      {/* Dynamic Tile Layer - Hybrid when zoomed out, Satellite when zoomed in */}
+      {zoomLevel < 15 ? (
+        <>
+          {/* Google Hybrid for overview */}
+          <TileLayer
+            className="dynamic-dark-map"
+            url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+            attribution="&copy; Google Maps"
+            maxZoom={20}
+            subdomains={["mt0", "mt1", "mt2", "mt3"]}
+          />
+          {/* labels / boundaries */}
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
+        </>
+      ) : (
+        <>
+          {/* Esri Satellite for detailed view */}
+          <TileLayer
+            className="satellite-ops-map"
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution="&copy; Esri, Maxar"
+            maxZoom={19}
+          />
+        </>
+      )}
 
-      {/* ติดตาม zoom */}
       <ZoomTracker onZoomChange={setZoomLevel} />
 
       {bangkokGeoJSON && (
@@ -503,7 +592,6 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
       {onBoundsChange && <MapBoundsTracker onBoundsChange={onBoundsChange} />}
 
-      {/* Marker จาก DB (ยกเว้น HQ) */}
       {nodeData
         .filter((node) => !HQ_NAMES.has(node.name))
         .map((node) => {
@@ -519,7 +607,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
                   setFlyToTarget({
                     lat: Number(node.latitude),
                     lng: Number(node.longitude),
-                    zoom: 15,
+                    zoom: 18,// ปรับ zoom เมื่อคลิก node
                   });
                 },
               }}
@@ -535,7 +623,6 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
           );
         })}
 
-      {/* FIXED HQ MARKERS */}
       {FIXED_HQ.map((hq, idx) => (
         <Marker
           key={`hq-${idx}`}
@@ -546,7 +633,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
               setFlyToTarget({
                 lat: hq.position[0],
                 lng: hq.position[1],
-                zoom: 19,
+                zoom: 18, //ปรับ zoom เมื่อคลิก node
               });
             },
           }}
@@ -559,7 +646,54 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         </Marker>
       ))}
 
-      {/* เส้นเชื่อมโยงปกติจาก DB */}
+      {/* ===================== ส่วนแสดงผล THREAT ===================== */}
+      {zoomLevel >= 16 && apiThreats.length > 0 && apiThreats.slice(0, THREAT_LOCATIONS.length).map((threat, idx) => {
+          // ดึง Location จริงจาก array
+          const location = THREAT_LOCATIONS[idx % THREAT_LOCATIONS.length];
+          // ใช้ Position จริงตรงๆ ไม่ต้องบวก offset
+          const targetPos = location.position;
+          
+          const severityColor = getSeverityColor(threat.severity);
+
+          return (
+            <React.Fragment key={`threat-${idx}`}>
+                {/* ลากเส้นจาก HQ ไปหาตึก (ถ้าต้องการ) */}
+                <Polyline
+                    positions={[HQ_CENTER, targetPos]}
+                    pathOptions={{
+                        color: severityColor,
+                        weight: 2,
+                        opacity: 0.8
+                    }}
+                />
+                
+                {/* Marker ที่ตำแหน่งตึกจริง */}
+                <Marker position={targetPos} icon={createThreatIcon(location.icon, threat.severity)}>
+                    <Popup className="custom-popup-dark">
+                        <div className="p-1 min-w-[150px]">
+                            <strong style={{color: '#3b82f6'}}></strong>
+                            <div className="mt-2 pt-2 border-t border-gray-600">
+                                <div style={{color: severityColor, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px'}}>
+                                    <ShieldAlert size={16}/>
+                                    {threat.threatName || "Unknown Threat"}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Severity: {threat.severity}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    {threat.threatDetail}
+                                </div>
+                                <div className="text-[10px] text-gray-400 mt-1">
+                                    IncidentID: {threat.incidentID || "N/A"}
+                                </div>
+                            </div>
+                        </div>
+                    </Popup>
+                </Marker>
+            </React.Fragment>
+          );
+      })}
+
       {connectionLines.map((line) => (
         <Polyline
           key={line.id}
@@ -572,7 +706,6 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
         />
       ))}
 
-      {/* เส้นเชื่อมโยง HQ + จุดกลมวิ่ง */}
       {HQ_CONNECTIONS.map((line) => (
         <AnimatedBeam
           key={line.id}

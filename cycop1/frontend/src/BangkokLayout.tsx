@@ -57,7 +57,6 @@ const BangkokLayout = () => {
   // ✅ (ใหม่) State เก็บข้อมูล 4 เหล่าทัพจาก Python API Mock Data
   const [orgStatuses, setOrgStatuses] = useState<OrgStatusApi[]>([]);
 
-  // ✅ 1. Fetch ข้อมูลจาก API ของเราเอง (RTARF) + Python API (เหล่าทัพอื่น)
   useEffect(() => {
     const initData = async () => {
       try {
