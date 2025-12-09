@@ -438,6 +438,8 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
   // 👇 ref เก็บ Marker ของ Threat ตาม incidentID
   const threatMarkerRefs = useRef<Record<string, L.Marker | null>>({});
+  // 👇 เก็บ incident ที่ต้องการเปิด popup เมื่อ marker พร้อม
+  const pendingPopupIncidentRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetch("/data/bangkok-districts.geojson")
@@ -501,7 +503,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     if (!focusIncidentId) return;
     if (!apiThreats || apiThreats.length === 0) return;
 
-    // หา index ของ threat ที่ incidentID ตรงกัน
+    // หา threat ตาม incidentID
     const idx = apiThreats.findIndex(
       (t) => String(t.incidentID) === String(focusIncidentId)
     );
@@ -510,18 +512,24 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
     const location = THREAT_LOCATIONS[idx % THREAT_LOCATIONS.length];
     const [lat, lng] = location.position;
 
-    // ให้ MapFlyToController ทำงาน flyTo
+    // สั่ง map ให้บินไปก่อน
     setFlyToTarget({
       lat,
       lng,
       zoom: 18,
     });
 
+    // ตั้ง incident ที่รอเปิด popup
+    pendingPopupIncidentRef.current = String(focusIncidentId);
+
+    // ถ้า marker มีแล้วก็เปิดได้เลย
     const marker = threatMarkerRefs.current[String(focusIncidentId)];
     if (marker) {
       marker.openPopup();
+      pendingPopupIncidentRef.current = null;
     }
   }, [focusIncidentId, apiThreats]);
+
 
   const nodeIdsInMap = new Set(nodeData.map((node) => node.id));
 
@@ -737,8 +745,15 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
                   position={targetPos}
                   icon={createThreatIcon(location.icon, threat.severity)}
                   ref={(ref) => {
-                    if (ref && threat.incidentID) {
-                      threatMarkerRefs.current[String(threat.incidentID)] = ref;
+                    if (threat.incidentID) {
+                      const id = String(threat.incidentID);
+                      threatMarkerRefs.current[id] = ref ?? null;
+
+                      // ถ้า incident นี้กำลังรอเปิด popup อยู่ และ ref มาแล้ว → เปิดเลย
+                      if (ref && pendingPopupIncidentRef.current === id) {
+                        ref.openPopup();
+                        pendingPopupIncidentRef.current = null;
+                      }
                     }
                   }}
                 >
