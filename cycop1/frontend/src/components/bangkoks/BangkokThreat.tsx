@@ -22,6 +22,9 @@ interface BangkokThreatProps {
   // ✅ 2. รับข้อมูลจากภายนอก
   dataSummary?: UiThreatSummary | null; 
   dataThreats?: AlertBase[];
+
+  // ✅ 3. callback เมื่อกดที่ Threat แต่ละรายการ
+  onThreatClick?: (incidentId: string) => void;
 }
 
 const BangkokThreat = ({
@@ -31,7 +34,8 @@ const BangkokThreat = ({
   backgroundColor = "bg-black",
   borderColor = "border-gray-500",
   dataSummary,
-  dataThreats
+  dataThreats,
+  onThreatClick,
 }: BangkokThreatProps) => {
   
   // State ภายใน (Fallback)
@@ -43,6 +47,7 @@ const BangkokThreat = ({
   const finalThreatData = dataThreats !== undefined ? dataThreats : internalThreatData;
 
   useEffect(() => {
+    // ถ้ามี data จาก parent แล้ว ไม่ต้อง fetch เอง
     if (dataSummary !== undefined || dataThreats !== undefined) {
       return;
     }
@@ -72,9 +77,10 @@ const BangkokThreat = ({
     ? finalThreatData.filter((item) => item.severity === filterSeverity)
     : finalThreatData;
 
+  // ✅ เก็บ incident_id เป็น string เพื่อส่งกลับให้ parent
   const threats = filteredThreats?.map((item) => ({
     description: item.description,
-    code: item.incident_id,
+    code: String(item.incident_id),
     color: getSeverityColor(item.severity),
   })) || [];
 
@@ -144,12 +150,15 @@ const BangkokThreat = ({
           </div>
           <div className="w-8 flex-shrink-0"></div>
         </div>
+
         <div className="space-y-1 overflow-y-auto flex-1 pr-1 custom-scroll">
           {threats.length > 0 ? (
             threats.map((threat, idx) => (
               <div
                 key={idx}
                 className="flex items-center gap-2 bg-black rounded-md hover:bg-gray-900 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                // ✅ เมื่อคลิก ส่ง incidentId กลับให้ Parent
+                onClick={() => onThreatClick?.(threat.code)}
               >
                 {/* Glowing animated background on hover */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
