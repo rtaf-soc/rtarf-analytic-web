@@ -248,23 +248,23 @@ const HQ_CONNECTIONS = FIXED_HQ.filter((hq) => hq.name !== "บก.ทท.").map
 const THREAT_LOCATIONS = [
     { 
         position: [13.88533894,100.56438735] as LatLngTuple, // Threat 5
-        icon: <Server size={14}/> 
+        icon: <Router size={14}/> 
     },
     { 
         position: [13.88530696,100.56470503] as LatLngTuple, // Threat 4
-        icon: <Server size={14}/> 
+        icon: <Router size={14}/> 
     },
     { 
         position: [13.88503809,100.56528421] as LatLngTuple, // Threat 3
-        icon: <Server size={14}/> 
+        icon: <Router size={14}/> 
     },
     { 
         position: [13.88472362,100.56640554] as LatLngTuple, // Threat 2
-        icon: <Server size={14}/> 
+        icon: <Router size={14}/> 
     },
     { 
         position: [13.88719732,100.56653012] as LatLngTuple, // Threat 1
-        icon: <Server size={14}/> 
+        icon: <Router size={14}/> 
     },
 ];
 
@@ -648,9 +648,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
 
       {/* ===================== ส่วนแสดงผล THREAT ===================== */}
       {zoomLevel >= 16 && apiThreats.length > 0 && apiThreats.slice(0, THREAT_LOCATIONS.length).map((threat, idx) => {
-          // ดึง Location จริงจาก array
           const location = THREAT_LOCATIONS[idx % THREAT_LOCATIONS.length];
-          // ใช้ Position จริงตรงๆ ไม่ต้องบวก offset
           const targetPos = location.position;
           
           const severityColor = getSeverityColor(threat.severity);
