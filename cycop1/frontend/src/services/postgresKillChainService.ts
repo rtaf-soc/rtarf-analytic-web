@@ -1,7 +1,7 @@
 // postgresKillChainService.ts
 // Service for PostgreSQL Cyber Kill Chain endpoint (Keyword Mapping Only)
 
-const BACKEND_API_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+// const BACKEND_API_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 // ===========================
 // Request/Response Types
@@ -86,7 +86,7 @@ export async function fetchPostgresKillChain(
       queryParams.append('search', options.search);
     }
 
-    const targetUrl = `${BACKEND_API_URL}/api/killchain?${queryParams.toString()}`;
+    const targetUrl = `/api/killchain?${queryParams.toString()}`;
     
 
     // 2. ยิง Request แบบ GET (ไม่มี Body)
