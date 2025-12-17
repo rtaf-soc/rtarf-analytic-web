@@ -1,7 +1,12 @@
+// src/BangkokLayout.tsx
 import { useState, useEffect } from "react";
+import type L from "leaflet";
+
 import DefconBangkok from "./components/bangkoks/DefconBangkok";
 // ✅ Import Interface UiThreatSummary ที่เราเพิ่งสร้างจาก BangkokThreat
-import BangkokThreat, { type UiThreatSummary } from "./components/bangkoks/BangkokThreat";
+import BangkokThreat, {
+  type UiThreatSummary,
+} from "./components/bangkoks/BangkokThreat";
 import MapViewBangkok from "./components/bangkoks/MapViewBangkok";
 import OverlayListBangkok from "./components/bangkoks/OverLaylistBangkok";
 
@@ -21,7 +26,7 @@ interface ApiAlertItem {
   threatName?: string;
   threatDetail?: string;
   incidentID?: string;
-  serverity?: string; 
+  serverity?: string;
 }
 
 // ✅ (ใหม่) Interface สำหรับรับค่าจาก Python API (4 เหล่าทัพ)
@@ -38,10 +43,10 @@ interface OrgStatusApi {
     low: number;
   };
   threat_list: Array<{
-    threatName: string;    // เปลี่ยนเป็น threatName
-    threatDetail: string;  // เพิ่ม threatDetail
+    threatName: string; // เปลี่ยนเป็น threatName
+    threatDetail: string; // เพิ่ม threatDetail
     serverity: string | null; // เปลี่ยน key เป็น serverity (และรับ string หรือ null)
-    incidentID: string;    // เพิ่ม incidentID
+    incidentID: string; // เพิ่ม incidentID
     quantity: number;
     percentage: number;
   }>;
@@ -57,54 +62,69 @@ const BangkokLayout = () => {
   // ✅ (ใหม่) State เก็บข้อมูล 4 เหล่าทัพจาก Python API Mock Data
   const [orgStatuses, setOrgStatuses] = useState<OrgStatusApi[]>([]);
 
+  // ✅ (ใหม่) Incident ที่ต้องการให้ Map ซูมไปหา
+  const [focusIncidentId, setFocusIncidentId] = useState<string | null>(null);
+
   useEffect(() => {
     const initData = async () => {
       try {
         const [severitiesRes, alertsRes] = await Promise.all([
-          fetch('/api/severities'),
-          fetch('/api/threatalerts')
+          fetch("/api/severities"),
+          fetch("/api/threatalerts"),
         ]);
 
         const severitiesData = await severitiesRes.json();
         const alertsData = await alertsRes.json();
 
         // Map Summary Data
-        const stats: UiThreatSummary = { critical: 0, high: 0, medium: 0, low: 0 };
-        
+        const stats: UiThreatSummary = {
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        };
+
         if (Array.isArray(severitiesData)) {
           severitiesData.forEach((item: ApiSeverityItem) => {
-            const key = (item.serverity || '').toLowerCase();
-            if (key.includes('critical')) stats.critical = item.quantity || 0;
-            else if (key.includes('high')) stats.high = item.quantity || 0;
-            else if (key.includes('medium')) stats.medium = item.quantity || 0;
-            else if (key.includes('low')) stats.low = item.quantity || 0;
+            const key = (item.serverity || "").toLowerCase();
+            if (key.includes("critical")) stats.critical = item.quantity || 0;
+            else if (key.includes("high")) stats.high = item.quantity || 0;
+            else if (key.includes("medium")) stats.medium = item.quantity || 0;
+            else if (key.includes("low")) stats.low = item.quantity || 0;
           });
         }
         setRealSummary(stats);
 
         // Map Threat List
-        const rawAlerts = Array.isArray(alertsData.alerts) ? alertsData.alerts : (Array.isArray(alertsData) ? alertsData : []);
-        
-        const mappedThreats: AlertBase[] = rawAlerts.map((item: ApiAlertItem) => {
-          const severityLabel = mapScoreToSeverity(item.serverity || "0");
-          return {
-            incident_id: item.incidentID || "N/A",
-            description: item.threatName || "Unknown Threat",
-            severity: severityLabel, 
-            timestamp: new Date().toISOString(),
-            event_id: item.incidentID || "0"
-          };
-        });
+        const rawAlerts = Array.isArray(alertsData.alerts)
+          ? alertsData.alerts
+          : Array.isArray(alertsData)
+          ? alertsData
+          : [];
+
+        const mappedThreats: AlertBase[] = rawAlerts.map(
+          (item: ApiAlertItem) => {
+            const severityLabel = mapScoreToSeverity(item.serverity || "0");
+            return {
+              incident_id: item.incidentID || "N/A",
+              description: item.threatName || "Unknown Threat",
+              severity: severityLabel,
+              timestamp: new Date().toISOString(),
+              event_id: item.incidentID || "0",
+            };
+          }
+        );
 
         const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
         mappedThreats.sort((a, b) => {
-           const scoreA = severityOrder[a.severity as keyof typeof severityOrder] || 0;
-           const scoreB = severityOrder[b.severity as keyof typeof severityOrder] || 0;
-           return scoreB - scoreA;
+          const scoreA =
+            severityOrder[a.severity as keyof typeof severityOrder] || 0;
+          const scoreB =
+            severityOrder[b.severity as keyof typeof severityOrder] || 0;
+          return scoreB - scoreA;
         });
 
         setRealThreats(mappedThreats);
-
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       }
@@ -123,19 +143,23 @@ const BangkokLayout = () => {
       }
     };
 
-    initData();      
-    fetchOrgData();  
+    initData();
+    fetchOrgData();
 
     const interval = setInterval(fetchOrgData, 3000);
     return () => clearInterval(interval);
-
   }, []);
 
   // ✅ Helper Function: แปลงข้อมูล API เป็น Props ของการ์ด
   const getOrgDataProps = (targetId: string) => {
     const org = orgStatuses.find((o) => o.id === targetId);
-    
-    const emptySummary: UiThreatSummary = { critical: 0, high: 0, medium: 0, low: 0 };
+
+    const emptySummary: UiThreatSummary = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    };
     const emptyThreats: AlertBase[] = [];
 
     if (!org) return { summary: emptySummary, threats: emptyThreats };
@@ -143,17 +167,15 @@ const BangkokLayout = () => {
     const summary: UiThreatSummary = org.stats;
 
     const threats: AlertBase[] = (org.threat_list || []).map((item) => {
-      
       const scoreStr = item.serverity || "0";
-      
       const severityLabel = mapScoreToSeverity(scoreStr);
 
       return {
-        incident_id: item.incidentID,  
-        description: item.threatName, 
-        severity: severityLabel,       
-        timestamp: item.threatDetail || new Date().toISOString(), 
-        event_id: "0"
+        incident_id: item.incidentID,
+        description: item.threatName,
+        severity: severityLabel,
+        timestamp: item.threatDetail || new Date().toISOString(),
+        event_id: "0",
       };
     });
 
@@ -161,32 +183,34 @@ const BangkokLayout = () => {
   };
 
   // เตรียมข้อมูลสำหรับแต่ละค่าย
-  const rta = getOrgDataProps("rta");   // ทบ.
+  const rta = getOrgDataProps("rta"); // ทบ.
   const rtaf = getOrgDataProps("rtaf"); // ทอ.
-  const rtn = getOrgDataProps("rtn");   // ทร.
-  const rtp = getOrgDataProps("rtp");   // ตร.
+  const rtn = getOrgDataProps("rtn"); // ทร.
+  const rtp = getOrgDataProps("rtp"); // ตร.
 
   return (
     <div className="bg-black h-screen relative overflow-hidden">
-      {/*ซ้าย*/}
+      {/* ซ้าย */}
       <div className="fixed left-0 top-0 h-auto z-40 w-60">
         <OverlayListBangkok mainMapBounds={mapBounds} />
       </div>
 
-      {/*เนื้อหากลาง*/}
+      {/* เนื้อหากลาง */}
       <div className="ml-60 mr-60 h-full pb-[260px] overflow-auto">
-        <MapViewBangkok onBoundsChange={setMapBounds} />
+        <MapViewBangkok
+          onBoundsChange={setMapBounds}
+          focusIncidentId={focusIncidentId} // 👈 ส่ง incident ให้แผนที่ซูม
+        />
       </div>
 
-      {/*ขวา*/}
+      {/* ขวา */}
       <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 w-60">
         <DefconBangkok />
       </div>
 
-      {/* ล่าง-Bangkok Threat แนวนอน */}
+      {/* ล่าง - Bangkok Threat แนวนอน */}
       <div className="fixed bottom-0 right-59 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
         <div className="flex items-center gap-2 h-full">
-          
           {/* 🟢 1. กองบัญชาการกองทัพไทย (RTARF) -> ส่งข้อมูลจริง (เหมือนเดิม) */}
           <div className="flex-shrink-0">
             <BangkokThreat
@@ -195,8 +219,10 @@ const BangkokLayout = () => {
               logoPath="../public/img/บก.ทท.png"
               backgroundColor="bg-yellow-700"
               borderColor="border-gray-700"
-              dataSummary={realSummary} 
+              dataSummary={realSummary}
               dataThreats={realThreats}
+              // ✅ เมื่อคลิก THREAT ให้ map ซูมไปหา incident นั้น
+              onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
             />
           </div>
 
@@ -204,12 +230,13 @@ const BangkokLayout = () => {
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพบก"
-              filterSeverity="all" 
+              filterSeverity="all"
               logoPath="../public/img/ทบ.png"
               backgroundColor="bg-green-700"
               borderColor="border-gray-700"
-              dataSummary={rta.summary}    
-              dataThreats={rta.threats}    
+              dataSummary={rta.summary}
+              dataThreats={rta.threats}
+              onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
             />
           </div>
 
@@ -223,6 +250,7 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
               dataSummary={rtaf.summary}
               dataThreats={rtaf.threats}
+              onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
             />
           </div>
 
@@ -236,6 +264,7 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
               dataSummary={rtn.summary}
               dataThreats={rtn.threats}
+              onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
             />
           </div>
 
@@ -249,9 +278,9 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
               dataSummary={rtp.summary}
               dataThreats={rtp.threats}
+              onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
             />
           </div>
-        
         </div>
       </div>
     </div>

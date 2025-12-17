@@ -1,7 +1,7 @@
 // postgresKillChainService.ts
 // Service for PostgreSQL Cyber Kill Chain endpoint (Keyword Mapping Only)
 
-const BACKEND_API_URL = import.meta.env.POSTGRES_API_URL || 'http://localhost:8001';
+// const BACKEND_API_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 // ===========================
 // Request/Response Types
@@ -76,19 +76,25 @@ export async function fetchPostgresKillChain(
   } = {}
 ): Promise<PostgresCyberKillChainResponse> {
   try {
-    const requestBody: PostgresKillChainRequest = {
-      dayRange: options.dayRange || 7,
-      search: options.search || null,
-      tactic: options.tactic || 'all',
-      severity: options.severity || 'all',
-    };
+    // 1. สร้าง Query Parameters
+    const queryParams = new URLSearchParams();
+    queryParams.append('dayRange', (options.dayRange || 7).toString());
+    queryParams.append('tactic', options.tactic || 'all');
+    queryParams.append('severity', options.severity || 'all');
 
-    const response = await fetch(`${BACKEND_API_URL}/api/postgres/cyber-kill-chain`, {
-      method: 'POST',
+    if (options.search) {
+      queryParams.append('search', options.search);
+    }
+
+    const targetUrl = `/api/killchain?${queryParams.toString()}`;
+    
+
+    // 2. ยิง Request แบบ GET (ไม่มี Body)
+    const response = await fetch(targetUrl, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -105,7 +111,7 @@ export async function fetchPostgresKillChain(
       total_detections: 0,
       active_phases: 0,
       time_range: { start: '', end: '' },
-      methodology: 'Cyber Kill Chain (Keyword Mapping Only)',
+      methodology: 'Cyber Kill Chain (Error Fallback)',
     };
   }
 }
@@ -235,9 +241,6 @@ export function detectAttackProgression(killChain: PostgresCyberKillChainRespons
   });
   
   // Calculate risk score based on:
-  // - Number of consecutive phases
-  // - Presence of critical late-stage phases
-  // - Total detection count
   let riskScore = 0;
   
   if (longestChain >= 5) riskScore += 40;
@@ -484,7 +487,7 @@ export function getPhaseMetadata(phaseId: string): {
   return metadata[phaseId] || { 
     description_en: '', 
     description_th: '', 
-    icon: '❓',
+    icon: '❓', 
     examples: []
   };
 }
