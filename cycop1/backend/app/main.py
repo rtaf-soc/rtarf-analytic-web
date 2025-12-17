@@ -117,6 +117,13 @@ class MitreStatsRequest(BaseModel):
 # Health Check & Scheduler Status
 # ===============================================================
 
+# สร้าง Model สำหรับรับ Request Body (ถ้าจำเป็น)
+# class KillChainRequest(BaseModel):
+#     dayRange: int = 7
+#     search: Optional[str] = None
+#     tactic: Optional[str] = "all"
+#     severity: Optional[str] = "all"
+
 # Routes
 @app.get("/api/health", tags=["Health"])
 def health_check():
@@ -201,6 +208,20 @@ def get_mitre_stats(body: MitreStatsRequest):
 def get_bkk_org_status():
     from app.services.get_bkk_org import get_all_org_status
     return get_all_org_status()
+
+@app.get("/api/arrmock", tags= ["ArrMock"])
+def get_arr_mock():
+    from app.services.get_arr_mock import get_arr_mock
+    return get_arr_mock()
+
+@app.get("/api/killchain", tags=["CyberKillChain"])
+def get_cyber_kill_chain():
+    from app.services.get_kill_chain_mock import get_kill_chain_mock_data
+    default_day_range = 7
+    data = get_kill_chain_mock_data(day_range=default_day_range)
+    
+    return data
+
     
 
 

@@ -255,7 +255,6 @@ const HQ_CONNECTIONS = FIXED_HQ.filter((hq) => hq.name !== "บก.ทท.").map
 // ===================== THREAT MAPPING UTILS =====================
 
 const THREAT_LOCATIONS = [
-<<<<<<< HEAD
     { 
         position: [13.88533894,100.56438735] as LatLngTuple, // Threat 5
         icon: <Router size={14}/> 
@@ -276,28 +275,6 @@ const THREAT_LOCATIONS = [
         position: [13.88719732,100.56653012] as LatLngTuple, // Threat 1
         icon: <Router size={14}/> 
     },
-=======
-  {
-    position: [13.88533894, 100.56438735] as LatLngTuple, // Threat 5
-    icon: <Server size={14} />,
-  },
-  {
-    position: [13.88530696, 100.56470503] as LatLngTuple, // Threat 4
-    icon: <Server size={14} />,
-  },
-  {
-    position: [13.88503809, 100.56528421] as LatLngTuple, // Threat 3
-    icon: <Server size={14} />,
-  },
-  {
-    position: [13.88472362, 100.56640554] as LatLngTuple, // Threat 2
-    icon: <Server size={14} />,
-  },
-  {
-    position: [13.88719732, 100.56653012] as LatLngTuple, // Threat 1
-    icon: <Server size={14} />,
-  },
->>>>>>> c258cac0d09fbb0efa698022408a5f0b87fd8aaa
 ];
 
 // 2. ฟังก์ชันกำหนดสีตาม Severity
@@ -483,16 +460,25 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
   useEffect(() => {
     const fetchThreats = async () => {
       try {
-        const res = await fetch("/api/threatalerts");
+        // [UPDATE] ใช้ mock api แทน
+        const res = await fetch("/api/arrmock");
         const data = await res.json();
-        // ปรับตามโครงสร้างจริงถ้าจำเป็น
+        
+        let formattedData = [];
         if (Array.isArray(data)) {
-          setApiThreats(data);
-        } else if (Array.isArray(data.alerts)) {
-          setApiThreats(data.alerts);
-        } else {
-          setApiThreats([]);
+            formattedData = data;
+        } else if (data.alerts && Array.isArray(data.alerts)) {
+            formattedData = data.alerts;
         }
+
+        // [UPDATE] Map field "serverity" (typo from backend) -> "severity" (frontend uses)
+        const mappedData = formattedData.map((item: any) => ({
+            ...item,
+            severity: item.severity || item.serverity // Handle typo
+        }));
+
+        setApiThreats(mappedData);
+
       } catch (err) {
         console.error("Failed to fetch threats:", err);
       }
@@ -742,22 +728,13 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
       ))}
 
       {/* ===================== ส่วนแสดงผล THREAT ===================== */}
-<<<<<<< HEAD
-      {zoomLevel >= 16 && apiThreats.length > 0 && apiThreats.slice(0, THREAT_LOCATIONS.length).map((threat, idx) => {
+      {/* [UPDATE] ลบ .slice ออกเพื่อให้ loop แสดงครบ 25 ตัวจาก mock */}
+      {zoomLevel >= 16 && apiThreats.length > 0 && apiThreats.map((threat, idx) => {
           const location = THREAT_LOCATIONS[idx % THREAT_LOCATIONS.length];
           const targetPos = location.position;
           
+          // ใช้ค่าสีที่ map มาแล้ว หรือ default ถ้าเป็น null
           const severityColor = getSeverityColor(threat.severity);
-=======
-      {zoomLevel >= 16 &&
-        apiThreats.length > 0 &&
-        apiThreats
-          .slice(0, THREAT_LOCATIONS.length)
-          .map((threat, idx) => {
-            const location = THREAT_LOCATIONS[idx % THREAT_LOCATIONS.length];
-            const targetPos = location.position;
-            const severityColor = getSeverityColor(threat.severity);
->>>>>>> c258cac0d09fbb0efa698022408a5f0b87fd8aaa
 
             return (
               <React.Fragment key={`threat-${idx}`}>
@@ -804,7 +781,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
                           {threat.threatName || "Unknown Threat"}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          Severity: {threat.severity}
+                          Severity: {threat.severity || "Normal"}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {threat.threatDetail}
