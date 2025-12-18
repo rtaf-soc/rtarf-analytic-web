@@ -460,8 +460,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
   useEffect(() => {
     const fetchThreats = async () => {
       try {
-        // [UPDATE] ใช้ mock api แทน
-        const res = await fetch("/api/arrmock");
+        const res = await fetch("/api/threatalerts");
         const data = await res.json();
         
         let formattedData = [];
