@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { fetchAlertSummary, fetchLatestAlert } from "../../services/defensiveService";
+import { fetchLatestAlert } from "../../services/defensiveService";
 import { type AlertBase } from "../../types/defensive";
 import SeverityStatistics from "./SeverityStatistics";
-import "./BangkokThreat.css"
+import { useNavigate } from "react-router-dom"; 
+import "./BangkokThreat.css";
 
-// ✅ 1. Interface สำหรับ UI (Export ให้ Parent ใช้)
+// Interface
 export interface UiThreatSummary {
   critical: number;
   high: number;
@@ -18,12 +19,8 @@ interface BangkokThreatProps {
   logoPath?: string;
   backgroundColor?: string;
   borderColor?: string;
-  
-  // ✅ 2. รับข้อมูลจากภายนอก
-  dataSummary?: UiThreatSummary | null; 
+  dataSummary?: UiThreatSummary | null;
   dataThreats?: AlertBase[];
-
-  // ✅ 3. callback เมื่อกดที่ Threat แต่ละรายการ
   onThreatClick?: (incidentId: string) => void;
 }
 
@@ -37,21 +34,21 @@ const BangkokThreat = ({
   dataThreats,
   onThreatClick,
 }: BangkokThreatProps) => {
-  
-  // State ภายใน (Fallback)
+
+  const navigate = useNavigate();
+
+  // State ภายใน
   const [internalAlertData, setAlertData] = useState<UiThreatSummary | null>(null);
   const [internalThreatData, setThreatData] = useState<AlertBase[]>([]);
 
-  // ✅ Logic เลือกข้อมูล (Props > Internal)
+  // Logic เลือกข้อมูล
   const finalAlertData = dataSummary !== undefined ? dataSummary : internalAlertData;
   const finalThreatData = dataThreats !== undefined ? dataThreats : internalThreatData;
 
   useEffect(() => {
-    // ถ้ามี data จาก parent แล้ว ไม่ต้อง fetch เอง
     if (dataSummary !== undefined || dataThreats !== undefined) {
       return;
     }
-
     const loadAlertData = async () => {
       try {
         const threat = await fetchLatestAlert();
@@ -64,7 +61,7 @@ const BangkokThreat = ({
   }, [dataSummary, dataThreats]);
 
   function getSeverityColor(severity?: string): string {
-    switch (severity) {
+    switch (severity?.toLowerCase()) {
       case "critical": return "bg-red-500";
       case "high": return "bg-orange-500";
       case "medium": return "bg-yellow-500";
@@ -77,70 +74,46 @@ const BangkokThreat = ({
     ? finalThreatData.filter((item) => item.severity === filterSeverity)
     : finalThreatData;
 
-  // ✅ เก็บ incident_id เป็น string เพื่อส่งกลับให้ parent
   const threats = filteredThreats?.map((item) => ({
     description: item.description,
     code: String(item.incident_id),
     color: getSeverityColor(item.severity),
   })) || [];
 
-  // --- LOADING STATE (Design เดิมของคุณ) ---
-  if (!finalAlertData) {
+  // --- LOADING STATE ---
+  if (!finalAlertData && finalThreatData.length === 0) {
     return (
       <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4`}>
         <div className="relative">
-          {/* Spinning border rings */}
           <div className="w-16 h-16 rounded-full border-3 border-gray-700 border-t-cyan-400 animate-spin"></div>
           <div className="absolute inset-0 w-16 h-16 rounded-full border-3 border-gray-700 border-b-blue-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}></div>
-          
-          {/* Center glow */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 animate-pulse shadow-[0_0_15px_rgba(6,182,212,0.5)]"></div>
           </div>
-          
-          {/* Alert icon */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-white text-lg animate-pulse">⚠</div>
           </div>
         </div>
-        
-        {/* Loading text */}
         <div className="mt-4 text-center">
           <div className="text-cyan-400 text-xs font-bold tracking-wider animate-pulse">
             LOADING DATA
           </div>
-          <div className="flex justify-center gap-1 mt-2">
-            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
-          </div>
         </div>
-        
-        {/* Optional logo display during loading */}
-        {logoPath && (
-          <div className="mt-3 opacity-50">
-            <img src={logoPath} alt="Loading" className="w-10 h-10 object-contain grayscale animate-pulse" />
-          </div>
-        )}
       </div>
     );
   }
 
-  // --- CONTENT STATE (Design เดิมของคุณ) ---
+  // --- CONTENT STATE ---
   return (
     <div className={`w-63 h-60 ${backgroundColor} rounded-2xl shadow-2xl flex flex-col`}>
       <div className="p-1">
         <SeverityStatistics threats={filteredThreats} />
       </div>
 
-      {/* Threat Alert List - adjust to fill remaining space */}
       <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor} flex-1 flex flex-col overflow-hidden`}>
-        {/* Header */}
         <div className="text-[15px] mb-1 text-white flex items-center justify-between font-bold px-2">
           <div className="w-8 flex-shrink-0">
-            {logoPath && (
-              <img src={logoPath} alt={title} className="w-8 h-8 object-contain" />
-            )}
+            {logoPath && <img src={logoPath} alt={title} className="w-8 h-8 object-contain" />}
           </div>
           <div className="flex-1 overflow-hidden px-1">
             <div className="animate-scroll-left whitespace-nowrap">
@@ -157,36 +130,24 @@ const BangkokThreat = ({
               <div
                 key={idx}
                 className="flex items-center gap-2 bg-black rounded-md hover:bg-gray-900 transition-all duration-300 cursor-pointer group relative overflow-hidden"
-                // ✅ เมื่อคลิก ส่ง incidentId กลับให้ Parent
-                onClick={() => onThreatClick?.(threat.code)}
+                onClick={() => {
+                    navigate(`/threatdetail?id=${threat.code}`);
+                }}
               >
-                {/* Glowing animated background on hover */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300">
                   <div className={`absolute inset-0 ${threat.color} blur-xl animate-pulse`}></div>
                 </div>
-
-                {/* แถบสีทางซ้าย with glow effect */}
                 <div className={`${threat.color} w-4 h-8 flex-shrink-0 relative group-hover:shadow-lg transition-all duration-300`}>
                   <div className={`absolute inset-0 ${threat.color} blur-md opacity-0 group-hover:opacity-75 transition-opacity duration-300`}></div>
                 </div>
-
-                {/* ข้อความ Threat ID และ Code */}
                 <div className="flex flex-col flex-1 min-w-0 text-[15px] leading-tight z-10">
-                  <span
-                    className="text-white font-semibold truncate group-hover:text-gray-200 transition-colors duration-300"
-                    title={threat.description}
-                  >
+                  <span className="text-white font-semibold truncate group-hover:text-gray-200 transition-colors duration-300" title={threat.description}>
                     {threat.description}
                   </span>
-                  <span
-                    className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300"
-                    title={threat.code}
-                  >
+                  <span className="text-gray-400 font-mono text-[12px] truncate group-hover:text-gray-300 transition-colors duration-300" title={threat.code}>
                     {threat.code}
                   </span>
                 </div>
-
-                {/* Pulse indicator on right side */}
                 <div className="flex-shrink-0 mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className={`w-2 h-2 rounded-full ${threat.color} animate-pulse`}></div>
                 </div>
