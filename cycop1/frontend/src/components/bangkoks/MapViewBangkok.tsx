@@ -213,7 +213,7 @@ const FIXED_HQ = [
     name: "บก.ทท.",
     icon: iconRTARFAlert,
     position: [13.8863424, 100.56493182] as LatLngTuple,
-    description: "ศูนย์ไซเบอร์ทหาร กองบัญชาการกองทัพไทย",
+    description: "กองบัญชาการกองทัพไทย",
   },
   {
     name: "ทบ.",
@@ -460,8 +460,7 @@ const MapViewBangkok: React.FC<MapViewProps> = ({
   useEffect(() => {
     const fetchThreats = async () => {
       try {
-        // [UPDATE] ใช้ mock api แทน
-        const res = await fetch("/api/arrmock");
+        const res = await fetch("/api/threatalerts");
         const data = await res.json();
         
         let formattedData = [];
