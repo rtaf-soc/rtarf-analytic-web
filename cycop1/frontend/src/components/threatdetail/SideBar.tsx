@@ -39,7 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const formatTime = (date: Date) => date.toLocaleTimeString("en-US", { hour12: false });
 
-  // รายการเมนู
   const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/bangkok" },
     { label: "Incident Detail", icon: ShieldAlert, path: "/threatdetail" },
