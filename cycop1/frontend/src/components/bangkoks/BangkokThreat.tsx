@@ -22,6 +22,8 @@ interface BangkokThreatProps {
   dataSummary?: UiThreatSummary | null;
   dataThreats?: AlertBase[];
   onThreatClick?: (incidentId: string) => void;
+  // ✅ เพิ่ม Callback สำหรับคลิกชื่อเหล่าทัพ
+  onTitleClick?: () => void;
 }
 
 const BangkokThreat = ({
@@ -33,6 +35,8 @@ const BangkokThreat = ({
   dataSummary,
   dataThreats,
   onThreatClick,
+  // ✅ รับ prop onTitleClick เข้ามา
+  onTitleClick,
 }: BangkokThreatProps) => {
 
   const navigate = useNavigate();
@@ -111,12 +115,16 @@ const BangkokThreat = ({
       </div>
 
       <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor} flex-1 flex flex-col overflow-hidden`}>
-        <div className="text-[15px] mb-1 text-white flex items-center justify-between font-bold px-2">
+        {/* ✅ ส่วน Header: เพิ่ม onClick และ Class สำหรับ Hover Effect */}
+        <div 
+          className={`text-[15px] mb-1 text-white flex items-center justify-between font-bold px-2 transition-all duration-200 ${onTitleClick ? 'cursor-pointer hover:bg-white/10 hover:shadow-sm rounded select-none' : ''}`}
+          onClick={onTitleClick}
+        >
           <div className="w-8 flex-shrink-0">
             {logoPath && <img src={logoPath} alt={title} className="w-8 h-8 object-contain" />}
           </div>
           <div className="flex-1 overflow-hidden px-1">
-            <div className="animate-scroll-left whitespace-nowrap">
+            <div className="animate-scroll-left whitespace-nowrap text-center">
               <span className="inline-block">{title}</span>
               <span className="inline-block ml-8">{title}</span>
             </div>

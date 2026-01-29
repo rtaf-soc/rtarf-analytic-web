@@ -108,25 +108,6 @@ export async function fetchLatestAlert(): Promise<AlertBase[]> {
   }
 }
 
-export const fetchThreatAlerts = async () => {
-  try {
-    // ยิง Request ไปที่ Path ของ API
-    const response = await fetch('/api/threatalerts');
-
-    // เช็คว่า Server ตอบกลับมา OK ไหม (200)
-    if (!response.ok) {
-      throw new Error(`Error fetching threat alerts: ${response.statusText}`);
-    }
-
-    // แปลงข้อมูลเป็น JSON และส่งกลับ
-    const data = await response.json();
-    return data; 
-  } catch (error) {
-    console.error("Failed to fetch threat alerts:", error);
-    return []; // ถ้า Error ให้ส่ง Array ว่างกลับไป หน้าเว็บจะได้ไม่พัง
-  }
-};
-
 
 // ==============================
 // Node Services
@@ -232,3 +213,22 @@ export async function GetAllConnectionsWithNodes(): Promise<NetworkConnection[]>
     return [];
   }
 }
+
+export const fetchThreatAlerts = async () => {
+  try {
+    // ยิง Request ไปที่ Path ของ API
+    const response = await fetch('/api/threatalerts');
+
+    // เช็คว่า Server ตอบกลับมา OK ไหม (200)
+    if (!response.ok) {
+      throw new Error(`Error fetching threat alerts: ${response.statusText}`);
+    }
+
+    // แปลงข้อมูลเป็น JSON และส่งกลับ
+    const data = await response.json();
+    return data; 
+  } catch (error) {
+    console.error("Failed to fetch threat alerts:", error);
+    return []; // ถ้า Error ให้ส่ง Array ว่างกลับไป หน้าเว็บจะได้ไม่พัง
+  }
+};
