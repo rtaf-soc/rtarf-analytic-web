@@ -1,22 +1,18 @@
 // src/BangkokLayout.tsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; 
 import type L from "leaflet";
 
 import DefconBangkok from "./components/bangkoks/DefconBangkok";
-// ✅ Import Interface UiThreatSummary ที่เราเพิ่งสร้างจาก BangkokThreat
 import BangkokThreat, {
   type UiThreatSummary,
 } from "./components/bangkoks/BangkokThreat";
 import MapViewBangkok from "./components/bangkoks/MapViewBangkok";
 import OverlayListBangkok from "./components/bangkoks/OverLaylistBangkok";
-
-// Helper และ Types
 import { mapScoreToSeverity } from "./components/mitreCard/mitreData";
 import { type AlertBase } from "./types/defensive";
-
 import "./index.css";
 
-// Interface สำหรับรับค่าจาก API (Private interfaces สำหรับไฟล์นี้) - ของเดิม (RTARF)
 interface ApiSeverityItem {
   serverity?: string;
   quantity?: number;
@@ -29,7 +25,6 @@ interface ApiAlertItem {
   serverity?: string;
 }
 
-// ✅ (ใหม่) Interface สำหรับรับค่าจาก Python API (4 เหล่าทัพ)
 interface OrgStatusApi {
   id: string; // "rta", "rtaf", "rtn", "rtp"
   name: string;
@@ -43,26 +38,21 @@ interface OrgStatusApi {
     low: number;
   };
   threat_list: Array<{
-    threatName: string; // เปลี่ยนเป็น threatName
-    threatDetail: string; // เพิ่ม threatDetail
-    serverity: string | null; // เปลี่ยน key เป็น serverity (และรับ string หรือ null)
-    incidentID: string; // เพิ่ม incidentID
+    threatName: string;
+    threatDetail: string;
+    serverity: string | null;
+    incidentID: string;
     quantity: number;
     percentage: number;
   }>;
 }
 
 const BangkokLayout = () => {
+  const navigate = useNavigate();
   const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
-
-  // ✅ State เก็บข้อมูลจริง RTARF (ของเดิม)
   const [realSummary, setRealSummary] = useState<UiThreatSummary | null>(null);
   const [realThreats, setRealThreats] = useState<AlertBase[]>([]);
-
-  // ✅ (ใหม่) State เก็บข้อมูล 4 เหล่าทัพจาก Python API Mock Data
   const [orgStatuses, setOrgStatuses] = useState<OrgStatusApi[]>([]);
-
-  // ✅ (ใหม่) Incident ที่ต้องการให้ Map ซูมไปหา
   const [focusIncidentId, setFocusIncidentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,10 +120,8 @@ const BangkokLayout = () => {
       }
     };
 
-    // --- B. (ใหม่) Logic ดึงข้อมูล 4 เหล่าทัพจาก Python ---
     const fetchOrgData = async () => {
       try {
-        // ยิงไปที่ API Python
         const response = await fetch("/api/bkkthreat");
         if (!response.ok) throw new Error("Failed to fetch python api");
         const data: OrgStatusApi[] = await response.json();
@@ -150,7 +138,6 @@ const BangkokLayout = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Helper Function: แปลงข้อมูล API เป็น Props ของการ์ด
   const getOrgDataProps = (targetId: string) => {
     const org = orgStatuses.find((o) => o.id === targetId);
 
@@ -182,7 +169,6 @@ const BangkokLayout = () => {
     return { summary, threats };
   };
 
-  // เตรียมข้อมูลสำหรับแต่ละค่าย
   const rta = getOrgDataProps("rta"); // ทบ.
   const rtaf = getOrgDataProps("rtaf"); // ทอ.
   const rtn = getOrgDataProps("rtn"); // ทร.
@@ -199,7 +185,7 @@ const BangkokLayout = () => {
       <div className="ml-60 mr-60 h-full pb-[260px] overflow-auto">
         <MapViewBangkok
           onBoundsChange={setMapBounds}
-          focusIncidentId={focusIncidentId} // 👈 ส่ง incident ให้แผนที่ซูม
+          focusIncidentId={focusIncidentId} 
         />
       </div>
 
@@ -211,7 +197,6 @@ const BangkokLayout = () => {
       {/* ล่าง - Bangkok Threat แนวนอน */}
       <div className="fixed bottom-0 right-59 z-30 bg-black border-t border-gray-900 p-1 h-[260px]">
         <div className="flex items-center gap-2 h-full">
-          {/* 🟢 1. กองบัญชาการกองทัพไทย (RTARF) -> ส่งข้อมูลจริง (เหมือนเดิม) */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองบัญชาการกองทัพไทย"
@@ -221,12 +206,11 @@ const BangkokLayout = () => {
               borderColor="border-gray-700"
               dataSummary={realSummary}
               dataThreats={realThreats}
-              // ✅ เมื่อคลิก THREAT ให้ map ซูมไปหา incident นั้น
               onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
+              onTitleClick={() => navigate('/orgsum?id=rtarf')}
             />
           </div>
 
-          {/* 🟢 2. กองทัพบก -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพบก"
@@ -237,10 +221,10 @@ const BangkokLayout = () => {
               dataSummary={rta.summary}
               dataThreats={rta.threats}
               onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
+              onTitleClick={() => navigate('/orgsum?id=rta')}
             />
           </div>
 
-          {/* 🔵 3. กองทัพอากาศ -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพอากาศ"
@@ -251,10 +235,10 @@ const BangkokLayout = () => {
               dataSummary={rtaf.summary}
               dataThreats={rtaf.threats}
               onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
+              onTitleClick={() => navigate('/orgsum?id=rtaf')}
             />
           </div>
 
-          {/* 🔵 4. กองทัพเรือ -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="กองทัพเรือ"
@@ -265,10 +249,10 @@ const BangkokLayout = () => {
               dataSummary={rtn.summary}
               dataThreats={rtn.threats}
               onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
+              onTitleClick={() => navigate('/orgsum?id=rtn')}
             />
           </div>
 
-          {/* 🔴 5. สำนักงานตำรวจแห่งชาติ -> ข้อมูลจาก Python */}
           <div className="flex-shrink-0">
             <BangkokThreat
               title="สำนักงานตำรวจแห่งชาติ"
@@ -279,6 +263,7 @@ const BangkokLayout = () => {
               dataSummary={rtp.summary}
               dataThreats={rtp.threats}
               onThreatClick={(incidentId) => setFocusIncidentId(incidentId)}
+              onTitleClick={() => navigate('/orgsum?id=rtp')}
             />
           </div>
         </div>

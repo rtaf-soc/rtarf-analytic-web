@@ -6,6 +6,8 @@ import CreateNode from "./components/CreateNode.tsx";
 import MainLayout from "./MainLayout.tsx";
 import BangkokLayout from "./BangkokLayout.tsx";
 import MitreAttackNavigator from "./pages/mitre-framework/index.tsx";
+import OrgSummary from "./components/bangkoks/OrgSummary.tsx";
+import ThreatDetail from "./components/threatdetail/ThreatDetailLayout.tsx";
 import App from "./App.tsx";
 
 const router = createBrowserRouter([
@@ -14,27 +16,27 @@ const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { index: true, element: <MainLayout /> },
-      { path: "/node-create", element: <CreateNode /> },
       { path: "/defcon1", element: <MainLayout /> },
     ],
   },
-
-  {
-    path: "/node-create",
-    element: <App />,
-    children: [{ index: true, element: <CreateNode /> }],
-  },
-
   {
     path: "/mitre1",
     element: <App />,
     children: [{ index: true, element: <MitreAttackNavigator /> }],
   },
-
+  
   {
     path: "/bangkok",
     element: <BangkokLayout />,
-    children: [{ index: true, element: <BangkokLayout /> }],
+  },
+
+  {
+    path: "/threatdetail",
+    element: <ThreatDetail />,
+  },
+  {
+    path: "/orgsum",
+    element: <OrgSummary />,
   },
 ]);
 
