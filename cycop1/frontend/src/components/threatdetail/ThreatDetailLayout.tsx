@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Menu } from "lucide-react"; // ✅ Import ไอคอน Hamburger Menu
+import { Menu } from "lucide-react"; 
 import "leaflet/dist/leaflet.css";
 
 // Import Components
@@ -25,7 +25,6 @@ interface ApiThreatResponse {
   percentage: number;
 }
 
-// Mock Data (คงเดิม)
 const threatDatabase: Record<string, any> = {
   "1": { 
     id: "INC-00001",
@@ -124,7 +123,6 @@ const ThreatDetailLayout: React.FC = () => {
   const [searchParams] = useSearchParams();
   const incidentId = searchParams.get("id");
 
-  // ✅ 1. เพิ่ม State สำหรับควบคุม Sidebar บนมือถือ
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const selectedData = incidentId && threatDatabase[incidentId] 
@@ -168,7 +166,6 @@ const ThreatDetailLayout: React.FC = () => {
   return (
     <div className="flex flex-col md:flex-row h-screen w-full bg-black overflow-hidden font-sans text-slate-300">
       
-      {/* ✅ 2. Sidebar: ไม่ต้องซ่อนแล้ว (Sidebar จัดการตัวเองด้วย props) */}
       <Sidebar 
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)} 
@@ -177,7 +174,6 @@ const ThreatDetailLayout: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none"></div>
 
-        {/* ✅ 3. Mobile Header Bar: แสดงเฉพาะมือถือ (md:hidden) เพื่อให้มีปุ่มกดเปิดเมนู */}
         <div className="md:hidden flex items-center justify-between p-4 bg-slate-950/80 border-b border-slate-900 backdrop-blur-md sticky top-0 z-30">
           <div className="flex items-center space-x-3">
             <button 

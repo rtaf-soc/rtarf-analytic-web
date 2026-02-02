@@ -22,7 +22,6 @@ interface BangkokThreatProps {
   dataSummary?: UiThreatSummary | null;
   dataThreats?: AlertBase[];
   onThreatClick?: (incidentId: string) => void;
-  // ✅ เพิ่ม Callback สำหรับคลิกชื่อเหล่าทัพ
   onTitleClick?: () => void;
 }
 
@@ -35,13 +34,11 @@ const BangkokThreat = ({
   dataSummary,
   dataThreats,
   onThreatClick,
-  // ✅ รับ prop onTitleClick เข้ามา
   onTitleClick,
 }: BangkokThreatProps) => {
 
   const navigate = useNavigate();
 
-  // State ภายใน
   const [internalAlertData, setAlertData] = useState<UiThreatSummary | null>(null);
   const [internalThreatData, setThreatData] = useState<AlertBase[]>([]);
 
@@ -115,7 +112,6 @@ const BangkokThreat = ({
       </div>
 
       <div className={`backdrop-blur-sm rounded-lg p-2 border-8 ${borderColor} flex-1 flex flex-col overflow-hidden`}>
-        {/* ✅ ส่วน Header: เพิ่ม onClick และ Class สำหรับ Hover Effect */}
         <div 
           className={`text-[15px] mb-1 text-white flex items-center justify-between font-bold px-2 transition-all duration-200 ${onTitleClick ? 'cursor-pointer hover:bg-white/10 hover:shadow-sm rounded select-none' : ''}`}
           onClick={onTitleClick}

@@ -1,30 +1,48 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { 
-  Activity, 
   LayoutDashboard, 
-  Map, 
   ShieldAlert, 
-  FileText, 
-  Settings,
   X 
 } from "lucide-react";
 
-// ✅ เพิ่ม Interface Props เพื่อรับค่าจาก Parent Component
+export interface SidebarConfig {
+  title?: string; // ชื่อหน่วยงาน 
+  logo: string;   // พาร์ทรูปโลโก้
+  menuItems: Array<{
+    label: string;
+    icon: any;
+    path: string;
+  }>;
+}
+
 interface SidebarProps {
   isOpen?: boolean;     
   onClose?: () => void; 
   className?: string;   
+  config?: SidebarConfig; 
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
-  isOpen = true, // Default เป็น true (เปิดตลอด) สำหรับ Desktop
+  isOpen = true, 
   onClose,
-  className = ""
+  className = "",
+  config 
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const navigate = useNavigate();
   const location = useLocation();
+
+  const defaultConfig: SidebarConfig = {
+    title: "RTARF",
+    logo: "/img/rtarf.png",
+    menuItems: [
+      { label: "Dashboard", icon: LayoutDashboard, path: "/bangkok" },
+      { label: "Incident Detail", icon: ShieldAlert, path: "/threatdetail" },
+    ]
+  };
+
+  const activeConfig = config || defaultConfig;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -39,14 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const formatTime = (date: Date) => date.toLocaleTimeString("en-US", { hour12: false });
 
-  const menuItems = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/bangkok" },
-    { label: "Incident Detail", icon: ShieldAlert, path: "/threatdetail" },
-  ];
-
   return (
     <>
-      {/* Mobile Overlay: ฉากหลังสีดำจางๆ (แสดงเฉพาะตอนเปิดบนมือถือ) */}
       <div 
         className={`fixed inset-0 bg-black/80 z-40 md:hidden transition-opacity duration-300 ${
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -78,7 +90,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex justify-center mb-1">
               <div className="w-30 h-12 flex items-center justify-center">
                 <div className="text-center mt-6">
-                  <img src="img/rtarf.png" alt="RTARF Logo" className="object-contain h-20" />
+                  <img 
+                    src={activeConfig.logo} 
+                    alt="Org Logo" 
+                    className="object-contain h-20" 
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/img/rtarf.png"; 
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -89,10 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Section (Uncommented & Active State Logic) */}
+        {/* Navigation Section */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-hide">
-          {menuItems.map((item, idx) => {
-            const isActive = location.pathname.includes(item.path) && item.path !== "#";
+          {activeConfig.menuItems.map((item, idx) => {
+            const isActive = location.pathname === item.path; // ปรับ Logic active ให้แม่นยำขึ้น
 
             return (
               <div
